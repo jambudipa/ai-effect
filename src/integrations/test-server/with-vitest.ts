@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, ManagedRuntime } from 'effect';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createTestServer as makeTestServer } from '../test-server.js';
 
 export { TestResponseController } from '../test-server.js';
@@ -31,7 +31,7 @@ export const createTestServer = <
   );
 
   beforeAll(() => runtime.runPromise(Effect.void));
-  afterEach(() => runtime.runPromise(reset));
+  beforeEach(() => runtime.runPromise(reset));
   afterAll(() => runtime.dispose());
   return {
     urls: Effect.map(fixture, (testServer) => testServer.urls),
