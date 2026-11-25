@@ -67,7 +67,9 @@ export { filterActiveTools as experimental_filterActiveTools };
 
 export const dynamicTool = <Failure, Services>(
   options: EffectToolOptions<unknown, unknown, Failure, Services>,
-) => Object.assign(tool(options), { type: 'dynamic' as const });
+): EffectToolOptions<unknown, unknown, Failure, Services> & {
+  readonly type: 'dynamic';
+} => Object.assign(tool(options), { type: 'dynamic' as const });
 
 export const fingerprintTools = <Tools extends EffectTools>(tools: Tools) =>
   Effect.scoped(
@@ -117,7 +119,9 @@ export const toolSearch = <R = never>(options?: {
     );
     const handle = {
       type: 'function' as const,
-      description: preview.description,
+      ...(typeof preview.description === 'string'
+        ? { description: preview.description }
+        : {}),
       inputSchema: searchInput,
       outputSchema: searchOutput,
       execute: (
