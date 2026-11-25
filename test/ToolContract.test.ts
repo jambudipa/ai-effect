@@ -10,6 +10,8 @@ import {
 import { bindTools, tool, type ToolServices } from '../src/internal/tool.js';
 import {
   executeTool,
+  tool as protocolTool,
+  type InferToolContext,
   type InferToolInput,
   type InferToolOutput,
   type InferToolSetContext,
@@ -22,6 +24,45 @@ class Offset extends Context.Service<Offset, number>()(
 class Approval extends Context.Service<Approval, boolean>()(
   '@jambudipa/ai-effect/tests/ToolApproval',
 ) {}
+
+it('preserves the SDK tool overloads with explicit context', () => {
+  type ToolContext = { readonly offset: number };
+  const contextSchema = Schema.Struct({ offset: Schema.Number }).annotate({
+    identifier: 'ExplicitToolContext',
+  });
+  const inputOnly = tool<number, ToolContext>({
+    inputSchema: Schema.Number,
+    contextSchema,
+    description: ({ context }) => context.offset.toFixed(0),
+  });
+  const outputOnly = protocolTool<string, ToolContext>({
+    inputSchema: Schema.Never,
+    outputSchema: Schema.String,
+    contextSchema,
+  });
+  const contextOnly = tool<ToolContext>({
+    inputSchema: Schema.Never,
+    contextSchema,
+  });
+  const execute = (input: number) => Effect.succeed(input.toFixed(0));
+  const executable = tool<number, string, ToolContext>({
+    inputSchema: Schema.Number,
+    outputSchema: Schema.String,
+    contextSchema,
+    execute,
+  });
+
+  expectTypeOf<InferToolInput<typeof inputOnly>>().toEqualTypeOf<number>();
+  expectTypeOf<InferToolOutput<typeof inputOnly>>().toEqualTypeOf<never>();
+  expectTypeOf<InferToolInput<typeof outputOnly>>().toEqualTypeOf<never>();
+  expectTypeOf<InferToolOutput<typeof outputOnly>>().toEqualTypeOf<string>();
+  expectTypeOf<InferToolInput<typeof contextOnly>>().toEqualTypeOf<never>();
+  expectTypeOf<
+    InferToolContext<typeof contextOnly>
+  >().toEqualTypeOf<ToolContext>();
+  expectTypeOf(executable.execute).toBeFunction();
+  expect(executable.execute).toBe(execute);
+});
 
 it.effect('infers context, numeric results and all callback services', () =>
   Effect.gen(function* () {

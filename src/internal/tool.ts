@@ -172,12 +172,27 @@ type ScalarTool<Input, Output, Failure, Services> = EffectToolOptions<
   ) => Effect.Effect<Output, Failure, Services>;
 };
 
+type ExplicitTool<
+  Input,
+  Output,
+  Context,
+  Failure = unknown,
+  Services = never,
+> = EffectToolOptions<Input, Output, Failure, Services, Context>;
+
+type ExplicitExecutableTool<Input, Output, Context, Failure, Services> =
+  ExplicitTool<Input, Output, Context, Failure, Services> & {
+    readonly execute: NonNullable<
+      ExplicitTool<Input, Output, Context, Failure, Services>['execute']
+    >;
+  };
+
 /** Define a tool whose callbacks use the context of each invocation. */
 export function tool<
+  const Definition extends FunctionToolDefinition,
   Input,
   Output = never,
   Context = ContextData,
-  const Definition extends FunctionToolDefinition = FunctionToolDefinition,
 >(
   options: Definition & ToolOptions<Input, Output, unknown, unknown, Context>,
 ): CallableTool<Definition, Input, Context> &
@@ -190,6 +205,33 @@ export function tool<
 export function tool<Input, Output, Failure, Services>(
   options: ScalarTool<Input, Output, Failure, Services>,
 ): ScalarTool<Input, Output, Failure, Services>;
+export function tool<
+  Input,
+  Output,
+  Context extends ContextData,
+  Failure = unknown,
+  Services = never,
+>(
+  options: ExplicitExecutableTool<Input, Output, Context, Failure, Services>,
+): ExplicitExecutableTool<Input, Output, Context, Failure, Services>;
+export function tool<
+  Input,
+  Output,
+  Context extends ContextData,
+  Failure = unknown,
+  Services = never,
+>(
+  options: ExplicitTool<Input, Output, Context, Failure, Services>,
+): ExplicitTool<Input, Output, Context, Failure, Services>;
+export function tool<Input, Context extends ContextData>(
+  options: ExplicitTool<Input, never, Context>,
+): ExplicitTool<Input, never, Context>;
+export function tool<Output, Context extends ContextData>(
+  options: ExplicitTool<never, Output, Context>,
+): ExplicitTool<never, Output, Context>;
+export function tool<Context extends ContextData>(
+  options: ExplicitTool<never, never, Context>,
+): ExplicitTool<never, never, Context>;
 export function tool(options: FunctionToolDefinition): FunctionToolDefinition {
   return options;
 }
