@@ -68,6 +68,26 @@ function checkAliases(wrapper, sdk, name, visited) {
 }
 
 let checked = 0;
+const hostFailures = [];
+const load = (file) => commonjs ? require(file) : import(pathToFileURL(file));
+
+function matchingHostFailure(item, actual, upstream) {
+  if (commonjs && item.upstream === '@ai-sdk/solid') {
+    return actual.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED'
+      && actual.code === upstream.code
+      && actual.message === upstream.message
+      && actual.message.includes('@solid-primitives/trigger/package.json');
+  }
+  if (item.reactServer && item.upstream === '@ai-sdk/rsc') {
+    return [actual, upstream].every((error) =>
+      error.name === 'SyntaxError'
+      && error.message.includes("module 'react'")
+      && /(?:does not provide an export named 'startTransition'|Named export 'startTransition' not found)/u.test(error.message),
+    );
+  }
+  return false;
+}
+
 for (const item of cases) {
   try {
     const resolveEntry = () => commonjs
@@ -88,21 +108,37 @@ for (const item of cases) {
       failures.push(item.specifier + ' resolved to ' + file + ', expected ' + item.expectedFile);
       continue;
     }
-    const wrapper = commonjs ? require(item.specifier) : await import(item.specifier);
+    if (!item.execute) {
+      checked += 1;
+      continue;
+    }
     const visited = new Set();
     const upstreamName = item.upstream.match(/^(@[^/]+\/[^/]+|[^/]+)/u)[0];
     const upstreamManifest = findPackageJSON(upstreamName, pathToFileURL(file));
     if (!upstreamManifest) throw new Error('Missing owned SDK dependency ' + upstreamName);
     const upstreamFile = resolve(dirname(upstreamManifest), item.upstreamTarget);
+    let wrapper;
+    let wrapperFailure;
+    try {
+      wrapper = commonjs ? require(item.specifier) : await import(item.specifier);
+    } catch (error) {
+      wrapperFailure = error;
+    }
     let upstream;
     try {
-      upstream = commonjs ? require(upstreamFile) : await import(pathToFileURL(upstreamFile));
+      upstream = await load(upstreamFile);
     } catch (error) {
+      if (wrapperFailure && matchingHostFailure(item, wrapperFailure, error)) {
+        hostFailures.push(item.upstream + ' (' + (error.code ?? error.name) + ')');
+        checked += 1;
+        continue;
+      }
       // The legacy CJS test entry requires Vitest synchronously. The wrapper
       // reaches its ESM export inside an Effect instead of requiring Vitest.
       if (!item.aliasTarget || !error.message.includes('Vitest cannot be imported in a CommonJS module')) throw error;
       upstream = await import(pathToFileURL(resolve(dirname(upstreamManifest), item.aliasTarget)));
     }
+    if (wrapperFailure) throw wrapperFailure;
     for (const name of item.names) {
       if (!Object.hasOwn(wrapper, name)) failures.push(item.specifier + ' missing runtime export ' + name);
       else if (!Object.hasOwn(upstream, name)) failures.push(item.upstream + ' archive signature did not match loaded export ' + name);
@@ -113,7 +149,7 @@ for (const item of cases) {
     failures.push(item.specifier + ' failed to execute (' + (error.code ?? error.name) + '): ' + error.message);
   }
 }
-console.log(JSON.stringify({ checked, failures }));
+console.log(JSON.stringify({ checked, failures, hostFailures }));
 `;
 
 const root = await realpath(
@@ -157,6 +193,10 @@ for (const [context, { mode, flag }] of Object.entries(contexts)) {
       specifier: `${manifest.name}${path.wrapper.slice(1)}`,
       upstream: path.upstream,
       upstreamTarget,
+      reactServer: context === 'react-server',
+      execute:
+        context !== 'node-require' ||
+        path.leaves.some(({ conditions }) => conditions.includes('require')),
       aliasTarget:
         context === 'node-require' && path.upstream === '@ai-sdk/ui-utils/test'
           ? path.resolvers['node-import'].runtime
@@ -184,12 +224,17 @@ for (const [context, { mode, flag }] of Object.entries(contexts)) {
     0,
     `${context}: ${result.stderr || result.error}`,
   );
-  const { checked, failures: errors } = JSON.parse(
-    result.stdout.trimEnd().split('\n').at(-1),
-  );
+  const {
+    checked,
+    failures: errors,
+    hostFailures,
+  } = JSON.parse(result.stdout.trimEnd().split('\n').at(-1));
   console.log(
-    `${context}: executed ${checked} of ${cases.length} Node resolver cases`,
+    `${context}: checked ${checked}/${cases.length} resolver cases (${cases.filter(({ execute, expectedTarget }) => execute && expectedTarget).length} runtime loads requested)`,
   );
+  for (const route of hostFailures) {
+    console.log(`${context}: reproduced upstream host load failure ${route}`);
+  }
   failures.push(...errors.map((error) => `${context}: ${error}`));
 }
 if (failures.length) {
