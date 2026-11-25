@@ -2,13 +2,16 @@ import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
-import { installConsumer } from './consumer-install.mjs';
+import { installConsumer, readConsumerLock } from './consumer-install.mjs';
 
 const tarball = process.argv[2];
 if (!tarball) throw new Error('Pass the built npm tarball.');
-const fixture = mkdtempSync(join(tmpdir(), 'ai-effect-rsc-'));
+const existing = process.env.AI_EFFECT_FIXTURE_DIR;
+const fixture = existing
+  ? resolve(existing)
+  : mkdtempSync(join(tmpdir(), 'ai-effect-rsc-'));
 const next = join(fixture, 'node_modules/next/dist/bin/next');
 const env = { ...process.env, NEXT_TELEMETRY_DISABLED: '1' };
 
@@ -43,12 +46,14 @@ try {
   cpSync(new URL('../test/fixtures/rsc-host', import.meta.url), fixture, {
     recursive: true,
   });
-  installConsumer(fixture, tarball, {
-    effect: '4.1.5',
-    next: '16.4.6',
-    react: '19.3.1',
-    'react-dom': '19.3.1',
-  });
+  if (existing) readConsumerLock(fixture, tarball);
+  else
+    installConsumer(fixture, tarball, {
+      effect: '4.1.5',
+      next: '16.4.6',
+      react: '19.3.1',
+      'react-dom': '19.3.1',
+    });
   run(process.execPath, [next, 'build', '--webpack']);
 
   const listener = createServer();
@@ -81,6 +86,6 @@ try {
   );
 } finally {
   child?.kill('SIGTERM');
-  if (process.env.AI_EFFECT_KEEP_FIXTURE) console.log(fixture);
+  if (existing || process.env.AI_EFFECT_KEEP_FIXTURE) console.log(fixture);
   else rmSync(fixture, { recursive: true, force: true });
 }
