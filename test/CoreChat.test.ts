@@ -235,9 +235,9 @@ describe('Core chat', () => {
             },
           }),
         );
-      const messages: UIMessage[] = [
+      const messages = [
         { id: 'user', role: 'user', parts: [{ type: 'text', text: 'Hello' }] },
-      ];
+      ] satisfies UIMessage[];
       const transport = yield* DirectChatTransport({
         agent: new ToolLoopAgent({ model: createModel() }),
       });
