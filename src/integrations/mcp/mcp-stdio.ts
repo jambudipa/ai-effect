@@ -1,11 +1,20 @@
 import { StdioMCPTransport as SdkStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
-import type { JSONRPCMessage } from '@ai-sdk/mcp';
+import type { JSONRPCMessage } from '../internal/mcp-contract.js';
 import { Effect } from 'effect';
 import { runRequest, runSync } from '../../internal/operation.js';
 import { transports } from '../internal/mcp-stdio.js';
 
-export type { StdioConfig } from '@ai-sdk/mcp/mcp-stdio';
-import type { StdioConfig } from '@ai-sdk/mcp/mcp-stdio';
+import type { IOType } from 'node:child_process';
+import type { Stream } from 'node:stream';
+
+export interface StdioConfig {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  stderr?: IOType | Stream | number;
+  cwd?: string;
+  shell?: boolean | string;
+}
 
 /** A scoped standard I/O transport for MCP. */
 export class StdioMCPTransport {

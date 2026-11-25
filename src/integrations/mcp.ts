@@ -1,5 +1,6 @@
-import * as sdk from '@ai-sdk/mcp';
-import type { Experimental_ManagedMCPClient as NativeManagedClient } from '@ai-sdk/mcp';
+import * as runtime from '@ai-sdk/mcp';
+import type * as MCPContract from './internal/mcp-contract.js';
+import type { Experimental_ManagedMCPClient as NativeManagedClient } from './internal/mcp-contract.js';
 import { Effect } from 'effect';
 import {
   type AiSdkError,
@@ -16,6 +17,9 @@ import { wrapError } from './internal/error.js';
 import { wrapTools } from './internal/sdk-tool.js';
 import { transports } from './internal/mcp-stdio.js';
 import type { StdioMCPTransport } from './mcp/mcp-stdio.js';
+
+// Use the normalized declarations with the pinned native runtime.
+const sdk = runtime as unknown as typeof MCPContract;
 
 export type {
   CallToolResult,
@@ -52,7 +56,7 @@ export type {
   OAuthClientMetadata,
   OAuthTokens,
   experimental_MCPClientCapabilities,
-} from '@ai-sdk/mcp';
+} from './internal/mcp-contract.js';
 
 export const MCP_APP_MIME_TYPE = sdk.MCP_APP_MIME_TYPE;
 export const mcpAppClientCapabilities = sdk.mcpAppClientCapabilities;
@@ -76,7 +80,9 @@ export const ElicitResultSchema = {
     ),
 };
 
-export const fingerprintMCPAppResource = (resource: sdk.MCPAppResource) =>
+export const fingerprintMCPAppResource = (
+  resource: MCPContract.MCPAppResource,
+) =>
   runRequest('MCP.fingerprintMCPAppResource', {}, () =>
     sdk.fingerprintMCPAppResource(resource),
   );
@@ -84,11 +90,11 @@ export const fingerprintMCPAppResource = (resource: sdk.MCPAppResource) =>
 export const detectMCPAppResourceDrift = (current: string, baseline: string) =>
   sdk.detectMCPAppResourceDrift(current, baseline);
 
-export const splitMCPAppTools = (definitions: sdk.ListToolsResult) =>
+export const splitMCPAppTools = (definitions: MCPContract.ListToolsResult) =>
   runSync('MCP.splitMCPAppTools', () => sdk.splitMCPAppTools(definitions));
 
 type RequestOptions = NonNullable<
-  NonNullable<Parameters<sdk.MCPClient['listTools']>[0]>['options']
+  NonNullable<Parameters<MCPContract.MCPClient['listTools']>[0]>['options']
 >;
 
 type RequestArguments = { options?: RequestOptions };
@@ -121,7 +127,9 @@ const optional =
     request(operation, invoke, input ?? ({} as A));
 
 const wrapEvents = (
-  events: sdk.Experimental_MCPEvents | sdk.Experimental_ManagedMCPEvents,
+  events:
+    | MCPContract.Experimental_MCPEvents
+    | MCPContract.Experimental_ManagedMCPEvents,
 ) => {
   const list = optional('MCP.events.list', events.list.bind(events));
   if ('getSubscription' in events) {
@@ -154,7 +162,7 @@ const wrapEvents = (
 };
 
 const wrapClient = <R>(
-  native: sdk.MCPClient | NativeManagedClient,
+  native: MCPContract.MCPClient | NativeManagedClient,
   owner: Effect.Success<ReturnType<typeof openOperation<R>>>,
   close: Effect.Effect<void, import('../internal/operation.js').AiSdkError>,
 ) => ({
@@ -167,7 +175,7 @@ const wrapClient = <R>(
     runRequest('MCP.tools', {}, () => native.tools()).pipe(
       Effect.map((tools) => wrapTools('MCP.tools', tools)),
     ),
-  toolsFromDefinitions: (definitions: sdk.ListToolsResult) =>
+  toolsFromDefinitions: (definitions: MCPContract.ListToolsResult) =>
     runSync('MCP.toolsFromDefinitions', () =>
       wrapTools('MCP.tools', native.toolsFromDefinitions(definitions)),
     ),
@@ -194,8 +202,8 @@ const wrapClient = <R>(
   complete: effects('MCP.complete', native.complete.bind(native)),
   onElicitationRequest: <E>(
     handler: (
-      input: sdk.ElicitationRequest,
-    ) => Effect.Effect<sdk.ElicitResult, E, R>,
+      input: MCPContract.ElicitationRequest,
+    ) => Effect.Effect<MCPContract.ElicitResult, E, R>,
   ) =>
     runSync('MCP.onElicitationRequest', () =>
       native.onElicitationRequest(sdk.ElicitationRequestSchema, (input) =>
@@ -206,12 +214,12 @@ const wrapClient = <R>(
 });
 
 type NativeHttpTransport = Extract<
-  sdk.MCPClientConfig['transport'],
+  MCPContract.MCPClientConfig['transport'],
   { type: 'http' | 'sse' }
 >;
 
 export type MCPClientConfig<R = never, E = never> = Omit<
-  sdk.MCPClientConfig,
+  MCPContract.MCPClientConfig,
   'transport' | 'onUncaughtError' | 'experimental_events'
 > & {
   readonly transport: HttpTransport<R, E> | MCPTransport;
@@ -357,7 +365,7 @@ const oauthCallbacks = [
 ] as const;
 
 export type OAuthClientProvider<R = never, E = never> = WithEffectCallbacks<
-  sdk.OAuthClientProvider,
+  MCPContract.OAuthClientProvider,
   (typeof oauthCallbacks)[number],
   E,
   R
@@ -378,7 +386,7 @@ const bindHttpTransport = <R, E>(
     ...rest,
     ...(authProvider && {
       authProvider: bindCallbacks<
-        sdk.OAuthClientProvider,
+        MCPContract.OAuthClientProvider,
         typeof oauthCallbacks,
         E,
         R
@@ -395,7 +403,7 @@ export const auth = <R = never, E = never>(
     Effect.gen(function* () {
       const owner = yield* openOperation<R>();
       const native = bindCallbacks<
-        sdk.OAuthClientProvider,
+        MCPContract.OAuthClientProvider,
         typeof oauthCallbacks,
         E,
         R
@@ -406,7 +414,7 @@ export const auth = <R = never, E = never>(
     }),
   );
 
-type NativeWebContext = sdk.Experimental_WebMCPModelContext;
+type NativeWebContext = MCPContract.Experimental_WebMCPModelContext;
 type NativeWebTransport = InstanceType<typeof sdk.Experimental_WebMCPTransport>;
 
 const webCallbacks = ['getTools', 'executeTool'] as const;
@@ -420,7 +428,7 @@ export type {
   Experimental_WebMCPTool,
   MCPTransportCloseOptions,
   MCPTransportSendOptions,
-} from '@ai-sdk/mcp';
+} from './internal/mcp-contract.js';
 
 /** Turn a WebMCP context into a scoped MCP transport. */
 export class Experimental_WebMCPTransport {
@@ -466,7 +474,10 @@ export class Experimental_WebMCPTransport {
     return runRequest('WebMCPTransport.close', {}, () => this.native.close());
   }
 
-  send(message: sdk.JSONRPCMessage, options?: sdk.MCPTransportSendOptions) {
+  send(
+    message: MCPContract.JSONRPCMessage,
+    options?: MCPContract.MCPTransportSendOptions,
+  ) {
     return runRequest(
       'WebMCPTransport.send',
       { ...(options?.signal && { abortSignal: options.signal }) },
@@ -477,7 +488,7 @@ export class Experimental_WebMCPTransport {
 
 export type MCPTransport = StdioMCPTransport | Experimental_WebMCPTransport;
 
-type NativeWebhook = sdk.Experimental_MCPEventWebhookOptions;
+type NativeWebhook = MCPContract.Experimental_MCPEventWebhookOptions;
 const webhookCallbacks = [
   'validatePayload',
   'onEvent',
@@ -490,7 +501,7 @@ export type Experimental_MCPEventStore<
   R = never,
   E = never,
 > = WithEffectCallbacks<
-  sdk.Experimental_MCPEventStore,
+  MCPContract.Experimental_MCPEventStore,
   (typeof storeCallbacks)[number],
   E,
   R
@@ -512,7 +523,7 @@ export const experimental_createMCPEventWebhook =
         const owner = yield* openOperation<R>(request.signal);
         const { store, ...callbacks } = options;
         const nativeStore = bindCallbacks<
-          sdk.Experimental_MCPEventStore,
+          MCPContract.Experimental_MCPEventStore,
           typeof storeCallbacks,
           E,
           R
@@ -549,7 +560,7 @@ export type Experimental_MCPEventOperations<
   R = never,
   E = never,
 > = WithEffectCallbacks<
-  sdk.Experimental_MCPEventOperations,
+  MCPContract.Experimental_MCPEventOperations,
   (typeof managedCallbacks)[number],
   E,
   R
@@ -557,11 +568,13 @@ export type Experimental_MCPEventOperations<
 
 export interface Experimental_MCPEventAdapter<R = never, E = never> {
   readonly createAdapter: (
-    context: Parameters<sdk.Experimental_MCPEventAdapter['createAdapter']>[0],
+    context: Parameters<
+      MCPContract.Experimental_MCPEventAdapter['createAdapter']
+    >[0],
   ) => Experimental_MCPEventOperations<R, E>;
 }
 
-type NativeEvents = sdk.Experimental_MCPEventsConfig;
+type NativeEvents = MCPContract.Experimental_MCPEventsConfig;
 type NativeStoreEvents = Extract<NativeEvents, { store: object }>;
 
 export type Experimental_MCPEventsConfig<R = never, E = never> =
@@ -586,7 +599,7 @@ const bindEvents = <R, E>(
       adapter: {
         createAdapter: (context) =>
           bindCallbacks<
-            sdk.Experimental_MCPEventOperations,
+            MCPContract.Experimental_MCPEventOperations,
             typeof managedCallbacks,
             E,
             R
@@ -597,7 +610,7 @@ const bindEvents = <R, E>(
   const { store, validateArguments } = config;
   return {
     store: bindCallbacks<
-      sdk.Experimental_MCPEventStore,
+      MCPContract.Experimental_MCPEventStore,
       typeof storeCallbacks,
       E,
       R
