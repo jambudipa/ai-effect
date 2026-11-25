@@ -806,7 +806,9 @@
     "@opentelemetry/exporter-trace-otlp-http": "0.216.0",
     "@opentelemetry/sdk-trace-base": "2.7.1",
     "@opentelemetry/sdk-trace-node": "2.7.1",
+    "@types/async-retry": "1.4.9",
     "@types/json-schema": "7.0.15",
+    "@types/ws": "8.18.2",
     "ai": "7.0.181",
     "zod": "3.25.76"
   },
