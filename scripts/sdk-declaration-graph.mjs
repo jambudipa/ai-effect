@@ -5,8 +5,10 @@ function sourcePath(declaration) {
 }
 
 function hasSdkOrigin(declaration) {
-  return /\/node_modules\/(?:ai|@ai-sdk\/[^/]+)\//u.test(
-    sourcePath(declaration),
+  const path = sourcePath(declaration);
+  return (
+    /\/node_modules\/(?:ai|@ai-sdk\/[^/]+)\//u.test(path) ||
+    path.endsWith('/integrations/internal/mcp-contract.d.ts')
   );
 }
 

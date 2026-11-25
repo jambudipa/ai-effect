@@ -28,6 +28,7 @@ function inspect(declarations) {
     }
     const program = ts.createProgram([wrapper], {
       module: ts.ModuleKind.NodeNext,
+      lib: ['lib.es5.d.ts'],
       strict: true,
       types: [],
     });
