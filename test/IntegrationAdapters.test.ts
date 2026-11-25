@@ -87,6 +87,46 @@ describe('MCP integration', () => {
       expect(request).toBeDefined();
       if (request)
         expect(yield* request).toMatchObject({ method: 'tools/list' });
+      const tools = yield* client.toolsFromDefinitions(
+        { tools: [{ name: 'typed', inputSchema: { type: 'object' } }] },
+        {
+          schemas: {
+            typed: { inputSchema: Schema.Struct({ subject: Schema.String }) },
+          },
+        },
+      );
+      expect(
+        yield* tools.typed.inputSchema.validate({ subject: 'fixture' }),
+      ).toEqual({ subject: 'fixture' });
+      const managedSubscription = {
+        id: 's-1',
+        name: 'updates',
+        arguments: {},
+        status: 'active',
+        expiresAt: '2026-11-26T00:00:00.000Z',
+      } as const;
+      const managed = yield* createMCPClient({
+        transport: { type: 'http', url, terminateSessionOnClose: false },
+        initialInitializeResult: {
+          protocolVersion: '2025-11-25',
+          capabilities: {},
+          serverInfo: { name: 'managed fixture', version: '1.0' },
+        },
+        experimental_events: {
+          adapter: {
+            createAdapter: () => ({
+              subscribe: () => Effect.succeed(managedSubscription),
+              getSubscription: () => Effect.succeed(managedSubscription),
+              listSubscriptions: () =>
+                Effect.succeed({ subscriptions: [managedSubscription] }),
+              unsubscribe: () => Effect.succeed(managedSubscription),
+            }),
+          },
+        },
+      });
+      expect(
+        yield* managed.experimental_events.getSubscription({ id: 's-1' }),
+      ).toEqual(managedSubscription);
     }),
   );
 });

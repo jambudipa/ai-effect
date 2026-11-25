@@ -1,10 +1,16 @@
-import type {
-  Experimental_MCPEventControl,
-  JSONRPCMessage,
+import { Schema } from 'effect';
+import type { Effect } from 'effect';
+import {
+  createMCPClient,
+  type Experimental_MCPEventAdapter,
+  type Experimental_MCPEventControl,
+  type MCPClient,
+  type JSONRPCMessage,
 } from '../src/integrations/mcp.js';
 
 type Expect<T extends true> = T;
 type Present<T> = [T] extends [never] ? false : true;
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 type Gap = Extract<Experimental_MCPEventControl, { type: 'gap' }>;
 type Terminated = Extract<Experimental_MCPEventControl, { type: 'terminated' }>;
@@ -31,6 +37,48 @@ export type RequestIdentifiers = Expect<
     JSONRPCMessage,
     { method: string; id: string | number }
   >['id']
+    ? true
+    : false
+>;
+
+declare const client: MCPClient;
+const tools = client.tools({
+  schemas: {
+    known: {
+      inputSchema: Schema.Struct({ input: Schema.String }),
+      outputSchema: Schema.Struct({ count: Schema.Number }),
+    },
+  },
+});
+type KnownTool = Effect.Success<typeof tools>['known'];
+
+export type ToolInputIsPreserved = Expect<
+  Same<Parameters<KnownTool['execute']>[0], { readonly input: string }>
+>;
+type KnownSchema = NonNullable<KnownTool['outputSchema']>;
+type KnownOutput = Effect.Success<ReturnType<KnownSchema['validate']>>;
+
+export type ToolOutputIsPreserved = Expect<
+  Same<KnownOutput, { readonly count: number }>
+>;
+
+declare const adapter: Experimental_MCPEventAdapter;
+const transport = { type: 'http', url: 'https://mcp.example.test' } as const;
+const standard = createMCPClient({ transport });
+const managed = createMCPClient({
+  transport,
+  experimental_events: { adapter },
+});
+
+export type StandardEventsAreExact = Expect<
+  'refresh' extends keyof Effect.Success<typeof standard>['experimental_events']
+    ? true
+    : false
+>;
+export type ManagedEventsAreExact = Expect<
+  'getSubscription' extends keyof Effect.Success<
+    typeof managed
+  >['experimental_events']
     ? true
     : false
 >;

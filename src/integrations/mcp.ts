@@ -1,7 +1,7 @@
 import * as runtime from '@ai-sdk/mcp';
 import type * as MCPContract from './internal/mcp-contract.js';
 import type { Experimental_ManagedMCPClient as NativeManagedClient } from './internal/mcp-contract.js';
-import { Effect } from 'effect';
+import { Effect, type Schema, type Scope } from 'effect';
 import {
   type AiSdkError,
   openOperation,
@@ -14,7 +14,8 @@ import {
   type WithEffectCallbacks,
 } from './internal/callbacks.js';
 import { wrapError } from './internal/error.js';
-import { wrapTools } from './internal/sdk-tool.js';
+import { wrapTool, wrapTools } from './internal/sdk-tool.js';
+import { toSdkSchema } from '../internal/schema.js';
 import { transports } from './internal/mcp-stdio.js';
 import type { StdioMCPTransport } from './mcp/mcp-stdio.js';
 
@@ -134,31 +135,128 @@ const wrapEvents = (
   const list = optional('MCP.events.list', events.list.bind(events));
   if ('getSubscription' in events) {
     return {
+      kind: 'managed' as const,
+      operations: {
+        list,
+        subscribe: effects(
+          'MCP.events.subscribe',
+          events.subscribe.bind(events),
+        ),
+        unsubscribe: effects(
+          'MCP.events.unsubscribe',
+          events.unsubscribe.bind(events),
+        ),
+        getSubscription: effects(
+          'MCP.events.getSubscription',
+          events.getSubscription.bind(events),
+        ),
+        listSubscriptions: optional(
+          'MCP.events.listSubscriptions',
+          events.listSubscriptions.bind(events),
+        ),
+      },
+    };
+  }
+  return {
+    kind: 'standard' as const,
+    operations: {
       list,
       subscribe: effects('MCP.events.subscribe', events.subscribe.bind(events)),
+      refresh: effects('MCP.events.refresh', events.refresh.bind(events)),
       unsubscribe: effects(
         'MCP.events.unsubscribe',
         events.unsubscribe.bind(events),
       ),
-      getSubscription: effects(
-        'MCP.events.getSubscription',
-        events.getSubscription.bind(events),
-      ),
-      listSubscriptions: optional(
-        'MCP.events.listSubscriptions',
-        events.listSubscriptions.bind(events),
-      ),
-    };
-  }
-  return {
-    list,
-    subscribe: effects('MCP.events.subscribe', events.subscribe.bind(events)),
-    refresh: effects('MCP.events.refresh', events.refresh.bind(events)),
-    unsubscribe: effects(
-      'MCP.events.unsubscribe',
-      events.unsubscribe.bind(events),
-    ),
+    },
   };
+};
+
+type ToolSchemas = Readonly<
+  Record<
+    string,
+    {
+      readonly inputSchema: Schema.ConstraintDecoder<unknown>;
+      readonly outputSchema?: Schema.ConstraintDecoder<unknown>;
+    }
+  >
+>;
+
+type Client = MCPContract.MCPClient | NativeManagedClient;
+type SchemaSelection = { readonly schemas?: ToolSchemas | 'automatic' };
+
+type ToolDefinition<Input, Output> = ReturnType<
+  typeof wrapTool<Input, Output, unknown>
+>;
+type ExecutableTool<Input, Output> = ToolDefinition<Input, Output> & {
+  readonly execute: NonNullable<ToolDefinition<Input, Output>['execute']>;
+};
+
+type AdaptedTools<S> = S extends ToolSchemas
+  ? {
+      readonly [K in keyof S]: ExecutableTool<
+        S[K]['inputSchema']['Type'],
+        S[K] extends {
+          readonly outputSchema: Schema.ConstraintDecoder<infer A>;
+        }
+          ? A
+          : MCPContract.CallToolResult
+      >;
+    }
+  : Record<string, ExecutableTool<unknown, MCPContract.CallToolResult>>;
+
+const toNativeToolSchemas = (options?: SchemaSelection) => {
+  const schemas = options?.schemas;
+  return schemas === 'automatic' || !schemas
+    ? 'automatic'
+    : Object.fromEntries(
+        Object.entries(schemas).map(([name, { inputSchema, outputSchema }]) => [
+          name,
+          {
+            inputSchema: toSdkSchema(inputSchema),
+            ...(outputSchema && { outputSchema: toSdkSchema(outputSchema) }),
+          },
+        ]),
+      );
+};
+
+const mcpTools = (native: Client) => {
+  function tools<S extends ToolSchemas>(options: {
+    readonly schemas: S;
+  }): Effect.Effect<AdaptedTools<S>, AiSdkError>;
+  function tools(options?: {
+    readonly schemas?: 'automatic';
+  }): Effect.Effect<AdaptedTools<'automatic'>, AiSdkError>;
+  function tools(
+    options?: SchemaSelection,
+  ): Effect.Effect<unknown, AiSdkError> {
+    return runRequest('MCP.tools', {}, () =>
+      native.tools({ schemas: toNativeToolSchemas(options) }),
+    ).pipe(Effect.map((definitions) => wrapTools('MCP.tools', definitions)));
+  }
+
+  function toolsFromDefinitions<S extends ToolSchemas>(
+    definitions: MCPContract.ListToolsResult,
+    options: { readonly schemas: S },
+  ): Effect.Effect<AdaptedTools<S>, AiSdkError>;
+  function toolsFromDefinitions(
+    definitions: MCPContract.ListToolsResult,
+    options?: { readonly schemas?: 'automatic' },
+  ): Effect.Effect<AdaptedTools<'automatic'>, AiSdkError>;
+  function toolsFromDefinitions(
+    definitions: MCPContract.ListToolsResult,
+    options?: SchemaSelection,
+  ): Effect.Effect<unknown, AiSdkError> {
+    return runSync('MCP.toolsFromDefinitions', () =>
+      wrapTools(
+        'MCP.tools',
+        native.toolsFromDefinitions(definitions, {
+          schemas: toNativeToolSchemas(options),
+        }),
+      ),
+    );
+  }
+
+  return { tools, toolsFromDefinitions };
 };
 
 const wrapClient = <R>(
@@ -171,14 +269,7 @@ const wrapClient = <R>(
   instructions: native.instructions,
   experimental_events: wrapEvents(native.experimental_events),
   listTools: optional('MCP.listTools', native.listTools.bind(native)),
-  tools: () =>
-    runRequest('MCP.tools', {}, () => native.tools()).pipe(
-      Effect.map((tools) => wrapTools('MCP.tools', tools)),
-    ),
-  toolsFromDefinitions: (definitions: MCPContract.ListToolsResult) =>
-    runSync('MCP.toolsFromDefinitions', () =>
-      wrapTools('MCP.tools', native.toolsFromDefinitions(definitions)),
-    ),
+  ...mcpTools(native),
   callTool: effects('MCP.callTool', native.callTool.bind(native)),
   listResources: optional(
     'MCP.listResources',
@@ -227,15 +318,55 @@ export type MCPClientConfig<R = never, E = never> = Omit<
   readonly onUncaughtError?: (error: unknown) => Effect.Effect<void, E, R>;
 };
 
-export type MCPClient<R = never> = ReturnType<typeof wrapClient<R>>;
-export type experimental_MCPClient = MCPClient;
-export type experimental_MCPClientConfig = MCPClientConfig;
+type ClientShape<R> = Omit<
+  ReturnType<typeof wrapClient<R>>,
+  'experimental_events'
+>;
+
+export type MCPClient<R = never> = ClientShape<R> & {
+  readonly experimental_events: Exclude<
+    Experimental_MCPEvents,
+    Experimental_ManagedMCPEvents
+  >;
+};
+
+export type experimental_MCPClient<R = never> = MCPClient<R>;
+export type experimental_MCPClientConfig<
+  R = never,
+  E = never,
+> = MCPClientConfig<R, E>;
+
+type ManagedConfig<R, E> = MCPClientConfig<R, E> & {
+  readonly experimental_events: {
+    readonly adapter: Experimental_MCPEventAdapter<R, E>;
+  };
+};
+
+type StandardConfig<R, E> = MCPClientConfig<R, E> & {
+  readonly experimental_events?: Extract<
+    Experimental_MCPEventsConfig<R, E>,
+    { store: object }
+  >;
+};
 
 /** Own the MCP handshake, callbacks, and client shutdown in the caller's scope. */
-export const createMCPClient = <R = never, E = never>(
+export function createMCPClient<R = never, E = never>(
+  config: ManagedConfig<R, E>,
+): Effect.Effect<Experimental_ManagedMCPClient<R>, AiSdkError, R | Scope.Scope>;
+export function createMCPClient<R = never, E = never>(
+  config: StandardConfig<R, E>,
+): Effect.Effect<MCPClient<R>, AiSdkError, R | Scope.Scope>;
+export function createMCPClient<R = never, E = never>(
   config: MCPClientConfig<R, E>,
-) =>
-  Effect.gen(function* () {
+): Effect.Effect<
+  MCPClient<R> | Experimental_ManagedMCPClient<R>,
+  AiSdkError,
+  R | Scope.Scope
+>;
+export function createMCPClient<R = never, E = never>(
+  config: MCPClientConfig<R, E>,
+) {
+  return Effect.gen(function* () {
     const operation = 'MCP.createMCPClient';
     const {
       transport,
@@ -282,12 +413,23 @@ export const createMCPClient = <R = never, E = never>(
         ),
       { interruptible: true },
     );
-    return wrapClient(
+    const { experimental_events: events, ...client } = wrapClient(
       opened,
       owner,
       runRequest('MCP.close', {}, () => opened.close()),
     );
+    if (events.kind === 'managed') {
+      return {
+        ...client,
+        experimental_events: events.operations,
+      } satisfies Experimental_ManagedMCPClient<R>;
+    }
+    return {
+      ...client,
+      experimental_events: events.operations,
+    } satisfies MCPClient<R>;
   });
+}
 
 export const experimental_createMCPClient = createMCPClient;
 
@@ -542,12 +684,16 @@ export const experimental_createMCPEventWebhook =
       }),
     );
 
-export type Experimental_MCPEvents = ReturnType<typeof wrapEvents>;
-export type Experimental_ManagedMCPClient<R = never> = MCPClient<R>;
+export type Experimental_MCPEvents = ReturnType<
+  typeof wrapEvents
+>['operations'];
+export type Experimental_ManagedMCPClient<R = never> = ClientShape<R> & {
+  readonly experimental_events: Experimental_ManagedMCPEvents;
+};
 export type Experimental_ManagedMCPEvents = Extract<
   ReturnType<typeof wrapEvents>,
-  { getSubscription: unknown }
->;
+  { kind: 'managed' }
+>['operations'];
 
 const managedCallbacks = [
   'subscribe',
@@ -597,13 +743,31 @@ const bindEvents = <R, E>(
     const adapter = config.adapter;
     return {
       adapter: {
-        createAdapter: (context) =>
-          bindCallbacks<
-            MCPContract.Experimental_MCPEventOperations,
-            typeof managedCallbacks,
-            E,
-            R
-          >(adapter.createAdapter(context), managedCallbacks, owner),
+        createAdapter: (context) => {
+          const operations = adapter.createAdapter(context);
+          return {
+            subscribe: (input) =>
+              owner.runCallback(
+                operations.subscribe(input),
+                input.options?.signal,
+              ),
+            getSubscription: (input) =>
+              owner.runCallback(
+                operations.getSubscription(input),
+                input.options?.signal,
+              ),
+            listSubscriptions: (input) =>
+              owner.runCallback(
+                operations.listSubscriptions(input),
+                input?.options?.signal,
+              ),
+            unsubscribe: (input) =>
+              owner.runCallback(
+                operations.unsubscribe(input),
+                input.options?.signal,
+              ),
+          };
+        },
       },
     };
   }
