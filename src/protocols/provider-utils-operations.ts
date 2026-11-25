@@ -832,11 +832,14 @@ export const experimental_getToolCaller = (tool?: {
 }) => tool?.experimental_toolCaller;
 
 type NativeProviderTool = ReturnType<Parameters<typeof adaptProviderTool>[1]>;
+type AdaptedFactory<Fn extends (...args: never[]) => object> = ReturnType<
+  typeof adaptProviderTool<Parameters<Fn>, ReturnType<Fn> & NativeProviderTool>
+>;
 
 const adaptFactory = <Fn extends (...args: never[]) => object>(
   operation: string,
   create: Fn,
-) =>
+): AdaptedFactory<Fn> =>
   adaptProviderTool(
     operation,
     create as unknown as (
@@ -855,9 +858,14 @@ export const createProviderDefinedToolFactory = <
   > & {
     readonly inputSchema: Schema.ConstraintDecoder<I>;
   },
-) =>
+): Effect.Effect<
+  AdaptedFactory<
+    ReturnType<typeof sdk.createProviderDefinedToolFactory<I, Args, C>>
+  >,
+  AiSdkError
+> =>
   runSync('ProviderUtils.createProviderDefinedToolFactory', () =>
-    adaptProviderTool(
+    adaptFactory(
       'ProviderUtils.createProviderDefinedTool',
       sdk.createProviderDefinedToolFactory<I, Args, C>({
         ...options,
@@ -881,7 +889,14 @@ export const createProviderDefinedToolFactoryWithOutputSchema = <
     readonly inputSchema: Schema.ConstraintDecoder<I>;
     readonly outputSchema: Schema.ConstraintDecoder<A>;
   },
-) =>
+): Effect.Effect<
+  AdaptedFactory<
+    ReturnType<
+      typeof sdk.createProviderDefinedToolFactoryWithOutputSchema<I, A, Args, C>
+    >
+  >,
+  AiSdkError
+> =>
   runSync(
     'ProviderUtils.createProviderDefinedToolFactoryWithOutputSchema',
     () =>
@@ -908,7 +923,12 @@ export const createProviderExecutedToolFactory = <
     readonly inputSchema: Schema.ConstraintDecoder<I>;
     readonly outputSchema: Schema.ConstraintDecoder<A>;
   },
-) =>
+): Effect.Effect<
+  AdaptedFactory<
+    ReturnType<typeof sdk.createProviderExecutedToolFactory<I, A, Args, C>>
+  >,
+  AiSdkError
+> =>
   runSync('ProviderUtils.createProviderExecutedToolFactory', () =>
     adaptFactory(
       'ProviderUtils.createProviderExecutedTool',
