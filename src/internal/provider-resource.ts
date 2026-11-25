@@ -8,11 +8,13 @@ import { Effect } from 'effect';
 import { runRequest } from './operation.js';
 import { readMethod, requestMethod } from './provider-model.js';
 
+const nativeFiles = new WeakMap<object, FilesV4>();
+const nativeSkills = new WeakMap<object, SkillsV4>();
 export const wrapFiles = (files: FilesV4) => {
   const getFileMetadata = files.getFileMetadata?.bind(files);
   const downloadFile = files.downloadFile?.bind(files);
   const deleteFile = files.deleteFile?.bind(files);
-  return {
+  const wrapped = {
     specificationVersion: files.specificationVersion,
     provider: files.provider,
     uploadFile: requestMethod(
@@ -39,14 +41,27 @@ export const wrapFiles = (files: FilesV4) => {
       ? deleteFile
       : requestMethod('FilesV4.deleteFile', deleteFile),
   };
+  nativeFiles.set(wrapped, files);
+  return wrapped;
 };
 
-export const wrapSkills = (skills: SkillsV4) => ({
-  specificationVersion: skills.specificationVersion,
-  provider: skills.provider,
-  uploadSkill: (options: Parameters<typeof skills.uploadSkill>[0]) =>
-    runRequest('SkillsV4.uploadSkill', {}, () => skills.uploadSkill(options)),
-});
+export const wrapSkills = (skills: SkillsV4) => {
+  const wrapped = {
+    specificationVersion: skills.specificationVersion,
+    provider: skills.provider,
+    uploadSkill: (options: Parameters<typeof skills.uploadSkill>[0]) =>
+      runRequest('SkillsV4.uploadSkill', {}, () => skills.uploadSkill(options)),
+  };
+  nativeSkills.set(wrapped, skills);
+  return wrapped;
+};
+
+export type FilesV4Handle = ReturnType<typeof wrapFiles>;
+export type SkillsV4Handle = ReturnType<typeof wrapSkills>;
+
+export const unwrapFiles = (files: FilesV4Handle) => nativeFiles.get(files);
+export const unwrapSkills = (skills: SkillsV4Handle) =>
+  nativeSkills.get(skills);
 
 const nativeBatches = new WeakMap<object, Experimental_BatchV4>();
 export const wrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
