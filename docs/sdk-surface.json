@@ -1165,6 +1165,9 @@
             "wrapProvider": "326f363453c1efddf588d5f4192a77fea031d3ab0eed71c14c074253d075091d",
             "zodSchema": "2e022ed5c628b1ca725dd78e4014dc9ac6ddbf9c6ed32e197c03bc83c3120ebd"
           },
+          "overloads": {
+            "tool": 5
+          },
           "declarationHash": "e215439581908fe6feead9d86a60f01dd0f33f3a93e1be27f33fbebf5c85f1f4"
         },
         "./dist/index.js": {
@@ -8315,6 +8318,10 @@
             "splitMCPAppTools": "8d6296a10b812dc54a5c53e9ea85f8ffeb7963068f0959d95eed136065c098eb",
             "validateJSONRPCMessage": "6bb43625b5ce295944ed459294ed99757dd17cf122c0f6996625d5fa81d5e135"
           },
+          "overloads": {
+            "createMCPClient": 3,
+            "experimental_createMCPClient": 3
+          },
           "declarationHash": "883cbf95522b38ded3737653142d29510c5726ca00ea7502b52d18ab093372db"
         },
         "./dist/index.js": {
@@ -10828,6 +10835,11 @@
             "withoutTrailingSlash": "b9a72c649a1ecf9767e9051d1e2384e0de2c5bcf2b672e76dd5d9c432b73da2c",
             "zodSchema": "366b8ac0818e4250976ad790a69eb61366051d947f2cc7ffa693b282111a490c"
           },
+          "overloads": {
+            "parseJSON": 2,
+            "safeParseJSON": 2,
+            "tool": 5
+          },
           "declarationHash": "19fd4a831c948a09e7fe0b54223c1d76687e5b8d79de1c28246606b24ccf623c"
         },
         "./dist/index.js": {
@@ -11810,6 +11822,11 @@
             "useStreamableValue": "44e617b1ff5f1137e8b3d2b7f274c6992888d452df7db0ddb87121ffc17bc9c3",
             "useSyncUIState": "4076053574f3f62bc206b75d368ca30df4b633a5ec3f89d78232bdd955bb123c",
             "useUIState": "7435e7e90ba96547b31b74d76dc1b123040d51c9a32aca86005846b5c4c63383"
+          },
+          "overloads": {
+            "getAIState": 2,
+            "getMutableAIState": 2,
+            "useAIState": 2
           },
           "declarationHash": "1aae71b48c4b3c927b657f7ac7c18a1820a73a0f0a4f41aa01b0ba13626f27e0"
         },

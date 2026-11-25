@@ -55,6 +55,16 @@ function typeArguments(checker, type) {
 }
 
 /** Report raw SDK calls, constructors, methods, and getters in the public types. */
+export function countSignatures(checker, exported) {
+  const symbol =
+    exported.flags & ts.SymbolFlags.Alias
+      ? checker.getAliasedSymbol(exported)
+      : exported;
+  if (!(symbol.flags & ts.SymbolFlags.Value) || isTypeOnly(exported)) return 0;
+  const type = checker.getTypeOfSymbol(symbol);
+  return type.getCallSignatures().length + type.getConstructSignatures().length;
+}
+
 export function findSdkOperations(
   checker,
   publicSymbols,

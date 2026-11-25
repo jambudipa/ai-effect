@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import ts from 'typescript';
 import {
+  countSignatures,
   findPrivateSdkImports,
   findSdkOperations,
 } from './sdk-declaration-graph.mjs';
@@ -137,7 +138,7 @@ function inspect(context, { mode, bundler, flags }) {
     );
     const symbols = checker.getExportsOfModule(namespace);
     if (!values['operations-only']) {
-      const names = new Set(symbols.map(({ name }) => name));
+      const names = new Map(symbols.map((symbol) => [symbol.name, symbol]));
       const target = path.resolvers[context].types;
       const runtime = path.resolvers[context].runtime;
       const runtimeNames = new Set(path.targets[runtime]?.names ?? []);
@@ -155,6 +156,18 @@ function inspect(context, { mode, bundler, flags }) {
           continue;
         if (!names.has(name))
           failures.push(`${path.wrapper} is missing type export ${name}`);
+      }
+      for (const [name, expected] of Object.entries(
+        path.targets[target]?.overloads ?? {},
+      )) {
+        const symbol = names.get(name);
+        if (!symbol || !runtimeNames.has(name)) continue;
+        const actual = countSignatures(checker, symbol);
+        if (actual < expected) {
+          failures.push(
+            `${path.wrapper} ${name} exposes ${actual} signatures; the pinned SDK exposes ${expected}`,
+          );
+        }
       }
     }
     for (const operation of findSdkOperations(
