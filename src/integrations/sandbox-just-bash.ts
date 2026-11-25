@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/sandbox-just-bash';
+import * as native from '@ai-sdk/sandbox-just-bash';
+import type * as SDKContract from './internal/harness-contracts/sandbox-just-bash.js';
 import { Effect } from 'effect';
 import { openOperation, runSync } from '../internal/operation.js';
 import {
@@ -10,30 +11,34 @@ import {
   wrapSandboxProvider,
 } from './internal/sandbox.js';
 
+const sdk = native as unknown as typeof SDKContract;
+
 export type {
   JustBashNativeSandboxSession,
   JustBashNetworkSandboxSessionResumeOptions,
   JustBashSandboxSettings,
-} from '@ai-sdk/sandbox-just-bash';
+} from './internal/harness-contracts/sandbox-just-bash.js';
 
 type WithoutTemplate<T> = T extends unknown ? Omit<T, 'template'> : never;
 
 export type JustBashNetworkSandboxSessionCreateOptions<
   R = never,
   E = never,
-> = WithoutTemplate<sdk.JustBashNetworkSandboxSessionCreateOptions> & {
+> = WithoutTemplate<SDKContract.JustBashNetworkSandboxSessionCreateOptions> & {
   readonly template?: SandboxTemplate<R, E>;
 };
 
 /** Create the legacy sandbox provider. */
-export const createJustBashSandbox = (settings?: sdk.JustBashSandboxSettings) =>
+export const createJustBashSandbox = (
+  settings?: SDKContract.JustBashSandboxSettings,
+) =>
   runSync('JustBash.createSandbox', () =>
     wrapSandboxProvider(sdk.createJustBashSandbox(settings)),
   );
 
 /** Construct the legacy provider with explicit settings. */
 export const JustBashSandboxProvider = {
-  make: (settings: sdk.JustBashSandboxSettings) =>
+  make: (settings: SDKContract.JustBashSandboxSettings) =>
     runSync('JustBashSandboxProvider.make', () =>
       wrapSandboxProvider(new sdk.JustBashSandboxProvider(settings)),
     ),
@@ -66,7 +71,7 @@ export const createJustBashNetworkSandboxSession = <R = never, E = never>(
 
 /** Reattach to an existing sandbox in the caller's scope. */
 export const resumeJustBashNetworkSandboxSession = (
-  options: sdk.JustBashNetworkSandboxSessionResumeOptions,
+  options: SDKContract.JustBashNetworkSandboxSessionResumeOptions,
 ) =>
   Effect.map(
     scopedResource(
@@ -81,7 +86,7 @@ export const resumeJustBashNetworkSandboxSession = (
 
 /** Wrap a host-owned sandbox without taking ownership of its lifecycle. */
 export const createJustBashSandboxSessionFromNativeSandbox = (
-  native: sdk.JustBashNativeSandboxSession,
+  native: SDKContract.JustBashNativeSandboxSession,
 ) =>
   runSync('JustBash.createSandboxSessionFromNativeSandbox', () =>
     wrapSandbox(sdk.createJustBashSandboxSessionFromNativeSandbox(native)),
@@ -89,7 +94,7 @@ export const createJustBashSandboxSessionFromNativeSandbox = (
 
 /** Wrap a host-owned network sandbox without stopping it on scope exit. */
 export const createJustBashNetworkSandboxSessionFromNativeSandbox = (
-  native: sdk.JustBashNativeSandboxSession,
+  native: SDKContract.JustBashNativeSandboxSession,
 ) =>
   runSync('JustBash.createNetworkSandboxSessionFromNativeSandbox', () =>
     wrapNetworkSandbox(

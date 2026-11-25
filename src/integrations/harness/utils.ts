@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/harness/utils';
+import * as native from '@ai-sdk/harness/utils';
+import type * as SDKContract from '../internal/harness-contracts/harness-utils.js';
 import {
   type AiSdkError,
   openOperation,
@@ -17,6 +18,8 @@ import {
   unwrapSandbox,
   wrapSandbox,
 } from '../internal/sandbox.js';
+
+const sdk = native as unknown as typeof SDKContract;
 
 export type {
   BridgeAuthKeyPair,
@@ -37,8 +40,8 @@ export type {
   WaitForBridgeReadyResult,
   WriteInstructionsResult,
   WriteSkillsResult,
-} from '@ai-sdk/harness/utils';
-export type { HarnessV1RequestTransformation } from '@ai-sdk/harness';
+} from '../internal/harness-contracts/harness-utils.js';
+export type { HarnessV1RequestTransformation } from '../internal/harness-contracts/harness.js';
 
 export const BRIDGE_AUTH_PUBLIC_KEY_ENV = sdk.BRIDGE_AUTH_PUBLIC_KEY_ENV;
 export const harnessPromptContentSchema = wrapSchema(
@@ -248,10 +251,13 @@ const withSandbox = <A, E, R>(
   });
 
 export type WriteInstructionsOptions = Sandboxed<
-  sdk.WriteInstructionsOptions,
+  SDKContract.WriteInstructionsOptions,
   'sandbox'
 >;
-export type WriteSkillsOptions = Sandboxed<sdk.WriteSkillsOptions, 'sandbox'>;
+export type WriteSkillsOptions = Sandboxed<
+  SDKContract.WriteSkillsOptions,
+  'sandbox'
+>;
 
 export const resolveSandboxHomeDir = (
   options: Sandboxed<
@@ -478,15 +484,15 @@ export const createBridgeErrorHandler =
     );
 
 export type CreateBridgeWebSocketConnectOptions = Omit<
-  sdk.CreateBridgeWebSocketConnectOptions,
+  SDKContract.CreateBridgeWebSocketConnectOptions,
   'onHello'
 > & {
-  readonly onHello?: (message: sdk.BridgeHello) => void;
+  readonly onHello?: (message: SDKContract.BridgeHello) => void;
 };
 
 export const createBridgeWebSocketConnect =
   (options: CreateBridgeWebSocketConnectOptions) =>
-  (connect: sdk.SandboxChannelConnectOptions) =>
+  (connect: SDKContract.SandboxChannelConnectOptions) =>
     runRequest(
       'HarnessUtils.connectBridgeWebSocket',
       { abortSignal: connect.abortSignal },
@@ -500,16 +506,20 @@ export const sleep = (options: Parameters<typeof sdk.sleep>[0]) =>
   );
 
 const wrapSubmitter = (
-  native: sdk.Experimental_BridgeUserMessageSubmitter,
+  native: SDKContract.Experimental_BridgeUserMessageSubmitter,
 ) => ({
   submit: (
-    ...args: Parameters<sdk.Experimental_BridgeUserMessageSubmitter['submit']>
+    ...args: Parameters<
+      SDKContract.Experimental_BridgeUserMessageSubmitter['submit']
+    >
   ) =>
     runRequest('HarnessUtils.bridgeUserMessage.submit', {}, () =>
       native.submit(...args),
     ),
   close: (
-    ...args: Parameters<sdk.Experimental_BridgeUserMessageSubmitter['close']>
+    ...args: Parameters<
+      SDKContract.Experimental_BridgeUserMessageSubmitter['close']
+    >
   ) =>
     runSync('HarnessUtils.bridgeUserMessage.close', () =>
       native.close(...args),
@@ -540,17 +550,23 @@ export const experimental_createBridgeUserMessageSubmitter = (
   );
 
 type Frame = { readonly type: string };
-type Channel<Out extends Frame, In extends Frame> = sdk.SandboxChannel<Out, In>;
+type Channel<Out extends Frame, In extends Frame> = SDKContract.SandboxChannel<
+  Out,
+  In
+>;
 
 export type SandboxChannelOptions<
   Out extends Frame,
   R = never,
   E = never,
-> = Omit<sdk.SandboxChannelOptions<Out>, 'connect' | 'outboundSchema'> & {
+> = Omit<
+  SDKContract.SandboxChannelOptions<Out>,
+  'connect' | 'outboundSchema'
+> & {
   readonly connect: (
-    options: sdk.SandboxChannelConnectOptions,
+    options: SDKContract.SandboxChannelConnectOptions,
   ) => Effect.Effect<
-    Awaited<ReturnType<sdk.SandboxChannelOptions<Out>['connect']>>,
+    Awaited<ReturnType<SDKContract.SandboxChannelOptions<Out>['connect']>>,
     E,
     R
   >;
@@ -690,14 +706,14 @@ export class SandboxChannel<Out extends Frame, In extends Frame = Frame> {
 }
 
 export type BridgeReadyErrorContext = Omit<
-  sdk.BridgeReadyErrorContext,
+  SDKContract.BridgeReadyErrorContext,
   'proc'
 > & {
   readonly proc: Process;
 };
 
 export type WaitForBridgeReadyOptions<R = never, E = never> = Omit<
-  sdk.WaitForBridgeReadyOptions,
+  SDKContract.WaitForBridgeReadyOptions,
   'proc' | 'sandbox' | 'createTimeoutError' | 'createExitError'
 > & {
   readonly proc: Process;

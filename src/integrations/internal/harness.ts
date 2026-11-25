@@ -9,7 +9,7 @@ import type {
   HarnessV1Session as NativeSession,
   HarnessV1StartOptions as NativeStartOptions,
   HarnessV1StreamPart,
-} from '@ai-sdk/harness';
+} from './harness-contracts/harness.js';
 import type { ToolSet } from '@ai-sdk/provider-utils';
 import { Cause, Effect, Fiber, Queue, Ref, Stream } from 'effect';
 import {

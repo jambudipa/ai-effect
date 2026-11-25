@@ -1,4 +1,4 @@
-import type { HarnessV1 } from '@ai-sdk/harness';
+import type { HarnessV1 } from './harness-contracts/harness.js';
 import type { HarnessAgent as NativeAgent } from '@ai-sdk/harness/agent';
 import type { ToolSet } from 'ai';
 import type { HarnessAgent } from '../harness/agent.js';

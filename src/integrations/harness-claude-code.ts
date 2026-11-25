@@ -1,4 +1,9 @@
-import * as sdk from '@ai-sdk/harness-claude-code';
+import {
+  VERSION as nativeVersion,
+  claudeCode as nativeClaudeCode,
+  createClaudeCode as nativeCreateClaudeCode,
+} from '@ai-sdk/harness-claude-code';
+import type * as SDKContract from './internal/harness-contracts/harness-claude-code.js';
 import { runSync } from '../internal/operation.js';
 import {
   makeWithCredentialForwarding,
@@ -10,17 +15,21 @@ export type {
   ClaudeCodeAuthenticationMode,
   ClaudeCodeThinkingConfig,
   JSONObject,
-} from '@ai-sdk/harness-claude-code';
+} from './internal/harness-contracts/harness-claude-code.js';
 
 export type ClaudeCodeHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<sdk.ClaudeCodeHarnessSettings, R, E>;
+> = WithCredentialForwarding<SDKContract.ClaudeCodeHarnessSettings, R, E>;
 
-export const VERSION = sdk.VERSION;
+export const VERSION = nativeVersion;
 export const createClaudeCode = <R = never, E = never>(
   settings?: ClaudeCodeHarnessSettings<R, E>,
-) => makeWithCredentialForwarding(sdk.createClaudeCode, settings);
+) =>
+  makeWithCredentialForwarding(
+    nativeCreateClaudeCode as unknown as typeof SDKContract.createClaudeCode,
+    settings,
+  );
 export const claudeCode = runSync('ClaudeCode.default', () =>
-  wrapHarness(sdk.claudeCode),
+  wrapHarness(nativeClaudeCode as unknown as typeof SDKContract.claudeCode),
 );

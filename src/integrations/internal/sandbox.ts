@@ -2,7 +2,7 @@ import type {
   HarnessV1NetworkSandboxSession as NativeNetworkSandbox,
   HarnessV1SandboxProvider as NativeProvider,
   HarnessV1SandboxTemplate as NativeTemplate,
-} from '@ai-sdk/harness';
+} from './harness-contracts/harness.js';
 import { Effect } from 'effect';
 import {
   openOperation,

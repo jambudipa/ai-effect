@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/sandbox-vercel';
+import * as native from '@ai-sdk/sandbox-vercel';
+import type * as SDKContract from './internal/harness-contracts/sandbox-vercel.js';
 import { Effect } from 'effect';
 import { openOperation, runSync } from '../internal/operation.js';
 import {
@@ -10,30 +11,34 @@ import {
   wrapSandboxProvider,
 } from './internal/sandbox.js';
 
+const sdk = native as unknown as typeof SDKContract;
+
 export type {
   VercelNativeSandboxSession,
   VercelNetworkSandboxSessionResumeOptions,
   VercelSandboxSettings,
-} from '@ai-sdk/sandbox-vercel';
+} from './internal/harness-contracts/sandbox-vercel.js';
 
 type WithoutTemplate<T> = T extends unknown ? Omit<T, 'template'> : never;
 
 export type VercelNetworkSandboxSessionCreateOptions<
   R = never,
   E = never,
-> = WithoutTemplate<sdk.VercelNetworkSandboxSessionCreateOptions> & {
+> = WithoutTemplate<SDKContract.VercelNetworkSandboxSessionCreateOptions> & {
   readonly template?: SandboxTemplate<R, E>;
 };
 
 /** Create the legacy sandbox provider. */
-export const createVercelSandbox = (settings?: sdk.VercelSandboxSettings) =>
+export const createVercelSandbox = (
+  settings?: SDKContract.VercelSandboxSettings,
+) =>
   runSync('Vercel.createSandbox', () =>
     wrapSandboxProvider(sdk.createVercelSandbox(settings)),
   );
 
 /** Construct the legacy provider with explicit settings. */
 export const VercelSandboxProvider = {
-  make: (settings: sdk.VercelSandboxSettings) =>
+  make: (settings: SDKContract.VercelSandboxSettings) =>
     runSync('VercelSandboxProvider.make', () =>
       wrapSandboxProvider(new sdk.VercelSandboxProvider(settings)),
     ),
@@ -66,7 +71,7 @@ export const createVercelNetworkSandboxSession = <R = never, E = never>(
 
 /** Reattach to an existing sandbox in the caller's scope. */
 export const resumeVercelNetworkSandboxSession = (
-  options: sdk.VercelNetworkSandboxSessionResumeOptions,
+  options: SDKContract.VercelNetworkSandboxSessionResumeOptions,
 ) =>
   Effect.map(
     scopedResource(
@@ -81,7 +86,7 @@ export const resumeVercelNetworkSandboxSession = (
 
 /** Wrap a host-owned sandbox without taking ownership of its lifecycle. */
 export const createVercelSandboxSessionFromNativeSandbox = (
-  native: sdk.VercelNativeSandboxSession,
+  native: SDKContract.VercelNativeSandboxSession,
 ) =>
   runSync('Vercel.createSandboxSessionFromNativeSandbox', () =>
     wrapSandbox(sdk.createVercelSandboxSessionFromNativeSandbox(native)),
@@ -89,7 +94,7 @@ export const createVercelSandboxSessionFromNativeSandbox = (
 
 /** Wrap a host-owned network sandbox without stopping it on scope exit. */
 export const createVercelNetworkSandboxSessionFromNativeSandbox = (
-  native: sdk.VercelNativeSandboxSession,
+  native: SDKContract.VercelNativeSandboxSession,
 ) =>
   runSync('Vercel.createNetworkSandboxSessionFromNativeSandbox', () =>
     wrapNetworkSandbox(

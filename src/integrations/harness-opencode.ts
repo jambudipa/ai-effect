@@ -1,4 +1,9 @@
-import * as sdk from '@ai-sdk/harness-opencode';
+import {
+  VERSION as nativeVersion,
+  openCode as nativeOpenCode,
+  createOpenCode as nativeCreateOpenCode,
+} from '@ai-sdk/harness-opencode';
+import type * as SDKContract from './internal/harness-contracts/harness-opencode.js';
 import { runSync } from '../internal/operation.js';
 import {
   makeWithCredentialForwarding,
@@ -9,17 +14,21 @@ import {
 export type {
   JSONObject,
   OpenCodeAuthenticationMode,
-} from '@ai-sdk/harness-opencode';
+} from './internal/harness-contracts/harness-opencode.js';
 
 export type OpenCodeHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<sdk.OpenCodeHarnessSettings, R, E>;
+> = WithCredentialForwarding<SDKContract.OpenCodeHarnessSettings, R, E>;
 
-export const VERSION = sdk.VERSION;
+export const VERSION = nativeVersion;
 export const createOpenCode = <R = never, E = never>(
   settings?: OpenCodeHarnessSettings<R, E>,
-) => makeWithCredentialForwarding(sdk.createOpenCode, settings);
+) =>
+  makeWithCredentialForwarding(
+    nativeCreateOpenCode as unknown as typeof SDKContract.createOpenCode,
+    settings,
+  );
 export const openCode = runSync('OpenCode.default', () =>
-  wrapHarness(sdk.openCode),
+  wrapHarness(nativeOpenCode as unknown as typeof SDKContract.openCode),
 );

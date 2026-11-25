@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/harness-deepagents';
+import * as native from '@ai-sdk/harness-deepagents';
+import type * as SDKContract from './internal/harness-contracts/harness-deepagents.js';
 import { runSync } from '../internal/operation.js';
 import {
   makeWithCredentialForwarding,
@@ -6,15 +7,17 @@ import {
   wrapHarness,
 } from './internal/harness.js';
 
+const sdk = native as unknown as typeof SDKContract;
+
 export type {
   DeepAgentsAuthenticationMode,
   DeepAgentsThinkingConfig,
-} from '@ai-sdk/harness-deepagents';
+} from './internal/harness-contracts/harness-deepagents.js';
 
 export type DeepAgentsHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<sdk.DeepAgentsHarnessSettings, R, E>;
+> = WithCredentialForwarding<SDKContract.DeepAgentsHarnessSettings, R, E>;
 
 export const VERSION = sdk.VERSION;
 export const createDeepAgents = <R = never, E = never>(

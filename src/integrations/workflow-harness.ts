@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/workflow-harness';
+import * as native from '@ai-sdk/workflow-harness';
+import type * as SDKContract from './internal/harness-contracts/workflow-harness.js';
 import { runSync } from '../internal/operation.js';
 
 export type {
@@ -9,17 +10,17 @@ export type {
   HarnessWorkflowState,
   HarnessWorkflowStatus,
   HarnessWorkflowUsageSummary,
-} from '@ai-sdk/workflow-harness';
+} from './internal/harness-contracts/workflow-harness.js';
 
 export const createHarnessWorkflowState = <A = unknown>(
-  input: sdk.HarnessWorkflowInput,
+  input: SDKContract.HarnessWorkflowInput,
 ) =>
   runSync('WorkflowHarness.createHarnessWorkflowState', () =>
     sdk.createHarnessWorkflowState<A>(input),
   );
 
 export const finalizeHarnessWorkflow = <A = unknown>(
-  state: sdk.HarnessWorkflowState<A>,
+  state: SDKContract.HarnessWorkflowState<A>,
 ) =>
   runSync('WorkflowHarness.finalizeHarnessWorkflow', () =>
     sdk.finalizeHarnessWorkflow(state),
@@ -30,6 +31,8 @@ import { runRequest, sdkError } from '../internal/operation.js';
 import type { HarnessAgent } from './harness/agent.js';
 import { agents } from './internal/harness-agent.js';
 import { type SandboxSession, unwrapSandbox } from './internal/sandbox.js';
+
+const sdk = native as unknown as typeof SDKContract;
 
 export type HarnessWorkflowAgent = HarnessAgent;
 export type HarnessWorkflowStreamResult = Effect.Success<
@@ -42,18 +45,18 @@ type Options<T> = Omit<T, 'agent' | 'sandboxSession'> & {
 };
 
 export type RunHarnessAgentStepOptions =
-  Options<sdk.RunHarnessAgentStepOptions>;
+  Options<SDKContract.RunHarnessAgentStepOptions>;
 export type RunHarnessAgentTimeSliceOptions =
-  Options<sdk.RunHarnessAgentTimeSliceOptions>;
+  Options<SDKContract.RunHarnessAgentTimeSliceOptions>;
 export type RunHarnessAgentSliceOptions =
-  Options<sdk.RunHarnessAgentSliceOptions>;
+  Options<SDKContract.RunHarnessAgentSliceOptions>;
 
-type NativeOptions = sdk.RunHarnessAgentSliceOptions;
+type NativeOptions = SDKContract.RunHarnessAgentSliceOptions;
 
 const run = <T extends NativeOptions>(
   name: string,
   options: Options<T>,
-  invoke: (native: T) => Promise<sdk.HarnessWorkflowState>,
+  invoke: (native: T) => Promise<SDKContract.HarnessWorkflowState>,
 ) =>
   Effect.gen(function* () {
     const { agent, sandboxSession, ...rest } = options;

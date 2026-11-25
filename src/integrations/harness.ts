@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/harness';
+import * as native from '@ai-sdk/harness';
+import type * as SDKContract from './internal/harness-contracts/harness.js';
 import type { InferToolInput } from '@ai-sdk/provider-utils';
 import type { Schema } from 'effect';
 import { runSync, type AiSdkError } from '../internal/operation.js';
@@ -6,6 +7,8 @@ import { toSdkSchema } from '../internal/schema.js';
 import { wrapError } from './internal/error.js';
 import { wrapSchema } from './internal/schema.js';
 import { wrapTool, wrapTools } from './internal/sdk-tool.js';
+
+const sdk = native as unknown as typeof SDKContract;
 
 export type {
   Experimental_HarnessV1BridgeUserMessageResponse,
@@ -62,7 +65,7 @@ export type {
   HarnessV1ToolSpec,
   HarnessV1TurnSettings,
   HarnessV1UserMessage,
-} from '@ai-sdk/harness';
+} from './internal/harness-contracts/harness.js';
 
 export type {
   HarnessV1,
@@ -91,17 +94,16 @@ export type HarnessV1BuiltinTool<
   Output = unknown,
 > = ReturnType<typeof wrapTool<Input, Output, unknown>> &
   Pick<
-    sdk.HarnessV1BuiltinTool<Input, Output>,
+    SDKContract.HarnessV1BuiltinTool<Input, Output>,
     'nativeName' | 'commonName' | 'toolUseKind'
   >;
 
 export type HarnessV1QuestionsTool =
   (typeof HARNESS_V1_BUILTIN_TOOLS)['askUserQuestions'];
 
-type StandardInput<N extends sdk.HarnessV1BuiltinToolName> = InferToolInput<
-  (typeof sdk.HARNESS_V1_BUILTIN_TOOLS)[N]
->;
-type CommonToolResult<N extends sdk.HarnessV1BuiltinToolName, A> =
+type StandardInput<N extends SDKContract.HarnessV1BuiltinToolName> =
+  InferToolInput<(typeof sdk.HARNESS_V1_BUILTIN_TOOLS)[N]>;
+type CommonToolResult<N extends SDKContract.HarnessV1BuiltinToolName, A> =
   StandardInput<N> extends A
     ? HarnessV1BuiltinTool<A>
     : [
@@ -110,11 +112,11 @@ type CommonToolResult<N extends sdk.HarnessV1BuiltinToolName, A> =
       ];
 
 /** Define a tool which implements the standard input for a named harness tool. */
-export const commonTool = <N extends sdk.HarnessV1BuiltinToolName, A>(
+export const commonTool = <N extends SDKContract.HarnessV1BuiltinToolName, A>(
   name: N,
   options: {
     readonly nativeName: string;
-    readonly toolUseKind?: sdk.HarnessV1BuiltinToolUseKind;
+    readonly toolUseKind?: SDKContract.HarnessV1BuiltinToolUseKind;
     readonly description?: string;
     readonly inputSchema: Schema.ConstraintDecoder<A>;
   },
@@ -126,7 +128,7 @@ export const commonTool = <N extends sdk.HarnessV1BuiltinToolName, A>(
     });
     return wrapTool(
       'Harness.commonTool',
-      native as sdk.HarnessV1BuiltinTool<A>,
+      native as SDKContract.HarnessV1BuiltinTool<A>,
     ) as CommonToolResult<N, A>;
   });
 
@@ -412,7 +414,7 @@ export type {
   HarnessV1RequestTransformation,
   HarnessV1RequestTransformationSources,
   HarnessV1SandboxSessionResumeOptions,
-} from '@ai-sdk/harness';
+} from './internal/harness-contracts/harness.js';
 
 export type HarnessV1SandboxProvider = ReturnType<
   typeof import('./internal/sandbox.js').wrapSandboxProvider

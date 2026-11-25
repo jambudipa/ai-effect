@@ -1,5 +1,5 @@
 import * as sdk from '@ai-sdk/harness/agent';
-import type { HarnessV1 as NativeHarness } from '@ai-sdk/harness';
+import type { HarnessV1 as NativeHarness } from '../internal/harness-contracts/harness.js';
 import type { GenerateTextResult, OutputInterface, ToolSet } from 'ai';
 import { Effect, Ref } from 'effect';
 import {

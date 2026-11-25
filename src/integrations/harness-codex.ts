@@ -1,4 +1,9 @@
-import * as sdk from '@ai-sdk/harness-codex';
+import {
+  VERSION as nativeVersion,
+  codex as nativeCodex,
+  createCodex as nativeCreateCodex,
+} from '@ai-sdk/harness-codex';
+import type * as SDKContract from './internal/harness-contracts/harness-codex.js';
 import { runSync } from '../internal/operation.js';
 import {
   makeWithCredentialForwarding,
@@ -9,15 +14,21 @@ import {
 export type {
   CodexAuthenticationMode,
   JSONObject,
-} from '@ai-sdk/harness-codex';
+} from './internal/harness-contracts/harness-codex.js';
 
 export type CodexHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<sdk.CodexHarnessSettings, R, E>;
+> = WithCredentialForwarding<SDKContract.CodexHarnessSettings, R, E>;
 
-export const VERSION = sdk.VERSION;
+export const VERSION = nativeVersion;
 export const createCodex = <R = never, E = never>(
   settings?: CodexHarnessSettings<R, E>,
-) => makeWithCredentialForwarding(sdk.createCodex, settings);
-export const codex = runSync('Codex.default', () => wrapHarness(sdk.codex));
+) =>
+  makeWithCredentialForwarding(
+    nativeCreateCodex as unknown as typeof SDKContract.createCodex,
+    settings,
+  );
+export const codex = runSync('Codex.default', () =>
+  wrapHarness(nativeCodex as unknown as typeof SDKContract.codex),
+);

@@ -656,7 +656,7 @@
     "node": "^22.19.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
-    "build": "vite build && vite build --mode legacy && tsc -p tsconfig.build.json && node scripts/copy-legacy-declarations.mjs",
+    "build": "vite build && vite build --mode legacy && tsc -p tsconfig.build.json && node scripts/copy-legacy-declarations.mjs && node scripts/generate-harness-contracts.mjs --copy-to-dist",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "format:check": "prettier --check src test scripts/*.mjs *.json *.mjs *.ts",
     "lint": "npm run lint:eslint; e=$?; npm run lint:effect; f=$?; exit $(( e > f ? e : f ))",

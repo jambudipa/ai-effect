@@ -1,4 +1,9 @@
-import * as sdk from '@ai-sdk/harness-cursor';
+import {
+  VERSION as nativeVersion,
+  cursor as nativeCursor,
+  createCursor as nativeCreateCursor,
+} from '@ai-sdk/harness-cursor';
+import type * as SDKContract from './internal/harness-contracts/harness-cursor.js';
 import { runSync } from '../internal/operation.js';
 import {
   makeWithCredentialForwarding,
@@ -9,15 +14,21 @@ import {
 export type {
   CursorAuthenticationMode,
   JSONObject,
-} from '@ai-sdk/harness-cursor';
+} from './internal/harness-contracts/harness-cursor.js';
 
 export type CursorHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<sdk.CursorHarnessSettings, R, E>;
+> = WithCredentialForwarding<SDKContract.CursorHarnessSettings, R, E>;
 
-export const VERSION = sdk.VERSION;
+export const VERSION = nativeVersion;
 export const createCursor = <R = never, E = never>(
   settings?: CursorHarnessSettings<R, E>,
-) => makeWithCredentialForwarding(sdk.createCursor, settings);
-export const cursor = runSync('Cursor.default', () => wrapHarness(sdk.cursor));
+) =>
+  makeWithCredentialForwarding(
+    nativeCreateCursor as unknown as typeof SDKContract.createCursor,
+    settings,
+  );
+export const cursor = runSync('Cursor.default', () =>
+  wrapHarness(nativeCursor as unknown as typeof SDKContract.cursor),
+);

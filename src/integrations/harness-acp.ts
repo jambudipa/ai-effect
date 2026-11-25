@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/harness-acp';
+import * as native from '@ai-sdk/harness-acp';
+import type * as SDKContract from './internal/harness-contracts/harness-acp.js';
 import { Effect } from 'effect';
 import { openOperation, runSync } from '../internal/operation.js';
 import {
@@ -12,6 +13,8 @@ import {
   wrapHarness,
 } from './internal/harness.js';
 import { type SandboxSession, wrapSandbox } from './internal/sandbox.js';
+
+const sdk = native as unknown as typeof SDKContract;
 
 export type {
   ACPAnnotations,
@@ -53,13 +56,15 @@ export type {
   ACPToolCallStatus,
   ACPToolKind,
   ACPValueSource,
-} from '@ai-sdk/harness-acp';
+} from './internal/harness-contracts/harness-acp.js';
 
-type PrepareSandbox = NonNullable<sdk.ACPHarnessSettings['prepareSandbox']>;
-type ResolveAuthentication = NonNullable<
-  sdk.ACPHarnessSettings['resolveAuthenticationEnvironment']
+type PrepareSandbox = NonNullable<
+  SDKContract.ACPHarnessSettings['prepareSandbox']
 >;
-type AskQuestions = sdk.ACPAskUserQuestionsSettings | undefined;
+type ResolveAuthentication = NonNullable<
+  SDKContract.ACPHarnessSettings['resolveAuthenticationEnvironment']
+>;
+type AskQuestions = SDKContract.ACPAskUserQuestionsSettings | undefined;
 
 export type ACPHarnessSettings<
   T extends EffectTools = {},
@@ -67,7 +72,7 @@ export type ACPHarnessSettings<
   R = never,
   E = never,
 > = Omit<
-  sdk.ACPHarnessSettings<BoundTools<T>, Q>,
+  SDKContract.ACPHarnessSettings<BoundTools<T>, Q>,
   | 'builtinTools'
   | 'credentialForwarding'
   | 'prepareSandbox'
@@ -130,7 +135,7 @@ export const createACP = <
   });
 
 export type ACPV1Settings<R = never, E = never> = Omit<
-  sdk.ACPV1Settings,
+  SDKContract.ACPV1Settings,
   'credentialForwarding' | 'prepareSandbox' | 'resolveAuthenticationEnvironment'
 > &
   Pick<

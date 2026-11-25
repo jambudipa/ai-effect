@@ -1,4 +1,9 @@
-import * as sdk from '@ai-sdk/harness-grok-build';
+import {
+  VERSION as nativeVersion,
+  grokBuild as nativeGrokBuild,
+  createGrokBuild as nativeCreateGrokBuild,
+} from '@ai-sdk/harness-grok-build';
+import type * as SDKContract from './internal/harness-contracts/harness-grok-build.js';
 import { runSync } from '../internal/operation.js';
 import {
   makeWithCredentialForwarding,
@@ -9,17 +14,21 @@ import {
 export type {
   GrokBuildAuthenticationMode,
   JSONObject,
-} from '@ai-sdk/harness-grok-build';
+} from './internal/harness-contracts/harness-grok-build.js';
 
 export type GrokBuildHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<sdk.GrokBuildHarnessSettings, R, E>;
+> = WithCredentialForwarding<SDKContract.GrokBuildHarnessSettings, R, E>;
 
-export const VERSION = sdk.VERSION;
+export const VERSION = nativeVersion;
 export const createGrokBuild = <R = never, E = never>(
   settings?: GrokBuildHarnessSettings<R, E>,
-) => makeWithCredentialForwarding(sdk.createGrokBuild, settings);
+) =>
+  makeWithCredentialForwarding(
+    nativeCreateGrokBuild as unknown as typeof SDKContract.createGrokBuild,
+    settings,
+  );
 export const grokBuild = runSync('GrokBuild.default', () =>
-  wrapHarness(sdk.grokBuild),
+  wrapHarness(nativeGrokBuild as unknown as typeof SDKContract.grokBuild),
 );
