@@ -1,6 +1,7 @@
 import * as sdk from 'ai';
+import { Redacted } from 'effect';
 import { wrapErrorConstructor } from './internal/error-constructor.js';
-import type { AiSdkError } from './internal/operation.js';
+import { AiSdkError } from './internal/operation.js';
 
 export {
   AISDKError,
@@ -132,9 +133,16 @@ export const NoTranslationGeneratedError = wrapErrorConstructor(
 );
 export type NoTranslationGeneratedError = AiSdkError;
 
-export const NoVideoGeneratedError = wrapErrorConstructor(
-  'NoVideoGeneratedError',
-  sdk.NoVideoGeneratedError,
+export const NoVideoGeneratedError = Object.assign(
+  wrapErrorConstructor('NoVideoGeneratedError', sdk.NoVideoGeneratedError),
+  {
+    /** @deprecated Use `isInstance` instead. */
+    isNoVideoGeneratedError: (error: unknown): error is AiSdkError =>
+      error instanceof AiSdkError &&
+      sdk.NoVideoGeneratedError.isNoVideoGeneratedError(
+        Redacted.value(error.cause),
+      ),
+  },
 );
 export type NoVideoGeneratedError = AiSdkError;
 
