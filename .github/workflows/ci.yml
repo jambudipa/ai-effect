@@ -13,11 +13,45 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: node scripts/check-sdk-surface.mjs
+      - run: node scripts/sync-sdk-exports.mjs --check
+      - run: node scripts/generate-sdk-data-types.mjs --check
+      - run: node scripts/generate-sdk-simple-functions.mjs --check
+      - run: npm run build
+      - run: npm pack --dry-run --ignore-scripts
+      - run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai-effect-tarball
+          path: ${{ runner.temp }}/jambudipa-ai-effect-*.tgz
+          if-no-files-found: error
+
+  consumers:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        node: ['22.19.0', '24.x']
+        include:
+          - node: '22.19.0'
+            zod: '4.6.7'
+          - node: '24.x'
+            zod: '3.25.76'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -26,10 +60,23 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm pack --dry-run --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: ai-effect-tarball
+          path: ${{ runner.temp }}/ai-effect-package
+      - run: npm ci --ignore-scripts
+      - name: Install and exercise the packed package
+        env:
+          AI_EFFECT_KEEP_FIXTURE: '1'
+          AI_EFFECT_ZOD: ${{ matrix.zod }}
+        run: |
+          set -o pipefail
+          archive=("$RUNNER_TEMP"/ai-effect-package/*.tgz)
+          node scripts/check-packed-proofs.mjs "${archive[0]}" | tee "$RUNNER_TEMP/ai-effect-consumer.log"
+          echo "AI_EFFECT_CONSUMER=$(tail -n 1 "$RUNNER_TEMP/ai-effect-consumer.log")" >> "$GITHUB_ENV"
+      - run: node scripts/check-sdk-runtime.mjs --fixture "$AI_EFFECT_CONSUMER"
+      - run: node scripts/check-sdk-declarations.mjs --fixture "$AI_EFFECT_CONSUMER"
+      - name: Verify both RSC routes in Next.js
+        run: |
+          archive=("$RUNNER_TEMP"/ai-effect-package/*.tgz)
+          node scripts/check-rsc-host.mjs "${archive[0]}"
