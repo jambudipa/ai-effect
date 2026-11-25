@@ -64,6 +64,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - uses: actions/download-artifact@v4
+        id: tarball
         with:
           name: ai-effect-tarball
           path: ${{ runner.temp }}/ai-effect-package
@@ -80,6 +81,7 @@ jobs:
       - run: node scripts/check-sdk-runtime.mjs --fixture "$AI_EFFECT_CONSUMER"
       - run: node scripts/check-sdk-declarations.mjs --fixture "$AI_EFFECT_CONSUMER"
       - name: Verify both RSC routes in Next.js
+        if: ${{ !cancelled() && steps.tarball.outcome == 'success' }}
         run: |
           archive=("$RUNNER_TEMP"/ai-effect-package/*.tgz)
           node scripts/check-rsc-host.mjs "${archive[0]}"
