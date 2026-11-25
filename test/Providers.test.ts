@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@effect/vitest';
 import { Context, Effect, Layer, Stream } from 'effect';
 import { expectTypeOf } from 'vitest';
+import { wrapLegacyModel } from '../src/internal/legacy-model.js';
 import { openOperation, sdkError } from '../src/internal/operation.js';
 import { readMethod } from '../src/internal/provider-model.js';
 import type { ProviderToolHandle } from '../src/internal/provider-tool.js';
@@ -198,6 +199,29 @@ describe('provider adapters', () => {
       ).toEqualTypeOf<'continuous'>();
       expectTypeOf(model.doCreateWebRTCSession).toBeFunction();
       expect(model.capabilities.conversation).toBe('continuous');
+    }),
+  );
+
+  it.effect('resolves a legacy model limit only when the Effect runs', () =>
+    Effect.gen(function* () {
+      let reads = 0;
+      const model = wrapLegacyModel({
+        specificationVersion: 'v3',
+        provider: 'fixture',
+        modelId: 'image-fixture',
+        get maxImagesPerCall() {
+          reads++;
+          return (options: { modelId: string }) =>
+            Effect.runPromise(
+              Effect.succeed(options.modelId === this.modelId ? 4 : 1),
+            );
+        },
+      });
+
+      const readLimit = model.maxImagesPerCall({ modelId: 'image-fixture' });
+      expect(reads).toBe(0);
+      expect(yield* readLimit).toBe(4);
+      expect(reads).toBe(1);
     }),
   );
 
