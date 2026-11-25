@@ -6,6 +6,11 @@ import {
 } from 'ai';
 import { Effect, Schema } from 'effect';
 import type { openOperation } from './operation.js';
+import {
+  bindProviderTool,
+  isProviderTool,
+  type ProviderToolHandle,
+} from './provider-tool.js';
 import { toSdkSchema } from './schema.js';
 
 export type EffectToolOptions<Input, Output, Failure, Services> = {
@@ -23,21 +28,31 @@ export const tool = <Input, Output, Failure, Services>(
   options: EffectToolOptions<Input, Output, Failure, Services>,
 ): EffectToolOptions<Input, Output, Failure, Services> => options;
 
+type FunctionToolDefinition = {
+  readonly inputSchema: Schema.ConstraintDecoder<unknown, unknown>;
+  readonly execute: (
+    ...args: never[]
+  ) => Effect.Effect<unknown, unknown, unknown>;
+};
+
+type ToolRequirements<Definition> =
+  Definition extends ProviderToolHandle<unknown, unknown, infer Services>
+    ? Services
+    : Definition extends FunctionToolDefinition
+      ? | Effect.Services<ReturnType<Definition['execute']>>
+        | Definition['inputSchema']['DecodingServices']
+      : never;
+
 export type EffectTools = Readonly<
   Record<
     string,
-    {
-      readonly inputSchema: Schema.ConstraintDecoder<unknown, unknown>;
-      readonly execute: (
-        ...args: never[]
-      ) => Effect.Effect<unknown, unknown, unknown>;
-    }
+    FunctionToolDefinition | ProviderToolHandle<unknown, unknown, unknown>
   >
 >;
 
-export type ToolServices<Tools extends EffectTools> =
-  | Effect.Services<ReturnType<Tools[keyof Tools]['execute']>>
-  | Tools[keyof Tools]['inputSchema']['DecodingServices'];
+export type ToolServices<Tools extends EffectTools> = ToolRequirements<
+  Tools[keyof Tools]
+>;
 
 // ToolSet accepts several SDK tool variants. Keep the compatible variants
 // without intersecting their typed arguments with the untyped index signature.
@@ -45,14 +60,21 @@ type CompatibleSdkTool<Native> = Native extends ToolSet[string]
   ? Native
   : never;
 
+type NativeTool<Definition> =
+  Definition extends ProviderToolHandle<infer Input, infer Output, unknown>
+    ? CompatibleSdkTool<Tool<Input, Output, unknown>>
+    : Definition extends FunctionToolDefinition
+      ? CompatibleSdkTool<
+          Tool<
+            Definition['inputSchema']['Type'],
+            Effect.Success<ReturnType<Definition['execute']>>,
+            unknown
+          >
+        >
+      : never;
+
 export type BoundTools<Tools extends EffectTools> = {
-  [Name in keyof Tools]: CompatibleSdkTool<
-    Tool<
-      Tools[Name]['inputSchema']['Type'],
-      Effect.Success<ReturnType<Tools[Name]['execute']>>,
-      unknown
-    >
-  >;
+  [Name in keyof Tools]: NativeTool<Tools[Name]>;
 };
 
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
@@ -63,6 +85,19 @@ export const bindTools = <Tools extends EffectTools>(
 ): BoundTools<Tools> =>
   Object.fromEntries(
     Object.entries(tools).map(([name, definition]) => {
+      if (isProviderTool(definition)) {
+        return [
+          name,
+          bindProviderTool(
+            definition as ProviderToolHandle<
+              unknown,
+              unknown,
+              ToolServices<Tools>
+            >,
+            owner,
+          ),
+        ];
+      }
       const { inputSchema, execute, ...options } =
         definition as EffectToolOptions<
           unknown,
