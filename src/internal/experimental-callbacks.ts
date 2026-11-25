@@ -1,6 +1,11 @@
 import { Effect } from 'effect';
 import type { EffectTelemetry } from '../integrations/internal/telemetry.js';
-import { unwrapTelemetry } from '../integrations/internal/telemetry.js';
+import type { Telemetry as NativeTelemetry } from 'ai';
+import {
+  rememberTelemetry,
+  unwrapTelemetry,
+  wrapTelemetryEvent,
+} from '../integrations/internal/telemetry.js';
 import { openOperation, runRequest } from './operation.js';
 
 const callbackNames = [
@@ -68,63 +73,73 @@ const bindTelemetry = <R>(telemetry: EffectTelemetry, owner: Owner<R>) => {
   const bound = Object.fromEntries(
     Object.entries(hooks).map(([name, hook]) => [
       name,
-      (event: never) => owner.runCallback(Effect.suspend(() => hook(event))),
+      (event: never) =>
+        owner.runCallback(
+          Effect.suspend(() => hook(wrapTelemetryEvent(event))),
+        ),
     ]),
   );
-  return {
-    ...bound,
-    ...(experimental_durable
-      ? {
-          experimental_durable: {
-            captureContext: (
-              event: Parameters<typeof experimental_durable.captureContext>[0],
+  return rememberTelemetry(
+    {
+      ...bound,
+      ...(experimental_durable
+        ? {
+            experimental_durable: {
+              captureContext: (
+                event: Parameters<
+                  typeof experimental_durable.captureContext
+                >[0],
+              ) =>
+                owner.runCallback(
+                  Effect.suspend(() =>
+                    experimental_durable.captureContext(
+                      wrapTelemetryEvent(event),
+                    ),
+                  ),
+                ),
+            },
+          }
+        : {}),
+      ...(executeTool
+        ? {
+            executeTool: <A>(
+              options: Omit<Parameters<typeof executeTool>[0], 'execute'> & {
+                execute: () => PromiseLike<A>;
+              },
             ) =>
               owner.runCallback(
-                Effect.suspend(() =>
-                  experimental_durable.captureContext(event),
-                ),
+                executeTool({
+                  ...wrapTelemetryEvent(options),
+                  execute: () =>
+                    runRequest('telemetry.executeTool', {}, options.execute),
+                }),
               ),
-          },
-        }
-      : {}),
-    ...(executeTool
-      ? {
-          executeTool: <A>(
-            options: Omit<Parameters<typeof executeTool>[0], 'execute'> & {
-              execute: () => PromiseLike<A>;
-            },
-          ) =>
-            owner.runCallback(
-              executeTool({
-                ...options,
-                execute: () =>
-                  runRequest('telemetry.executeTool', {}, options.execute),
-              }),
-            ),
-        }
-      : {}),
-    ...(executeLanguageModelCall
-      ? {
-          executeLanguageModelCall: <A>(
-            options: Omit<
-              Parameters<typeof executeLanguageModelCall>[0],
-              'execute'
-            > & { execute: () => PromiseLike<A> },
-          ) =>
-            owner.runCallback(
-              executeLanguageModelCall({
-                ...options,
-                execute: () =>
-                  runRequest(
-                    'telemetry.executeLanguageModelCall',
-                    {},
-                    options.execute,
-                  ),
-              }),
-            ),
-        }
-      : {}),
-  };
+          }
+        : {}),
+      ...(executeLanguageModelCall
+        ? {
+            executeLanguageModelCall: <A>(
+              options: Omit<
+                Parameters<typeof executeLanguageModelCall>[0],
+                'execute'
+              > & { execute: () => PromiseLike<A> },
+            ) =>
+              owner.runCallback(
+                executeLanguageModelCall({
+                  ...wrapTelemetryEvent(options),
+                  execute: () =>
+                    runRequest(
+                      'telemetry.executeLanguageModelCall',
+                      {},
+                      options.execute,
+                    ),
+                }),
+              ),
+          }
+        : {}),
+    } as NativeTelemetry,
+    telemetry,
+  );
 };
 
 export const bindExperimentalOptions = <Native, Model, R>(

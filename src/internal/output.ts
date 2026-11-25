@@ -34,7 +34,7 @@ export interface OutputSpecification<
 
 const outputs = new WeakMap<object, OutputInterface>();
 
-const wrapOutput = <Complete, Partial, Element>(
+export const wrapOutput = <Complete, Partial, Element>(
   sdk: OutputInterface<Complete, Partial, Element>,
 ): OutputSpecification<Complete, Partial, Element> => {
   const output: OutputSpecification<Complete, Partial, Element> = {
