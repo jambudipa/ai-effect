@@ -97,6 +97,8 @@ const transportHandle = (transport: SdkTransport, dispose: () => void) => ({
   dispose: syncMethod('RealtimeTransport.dispose', dispose),
 });
 
+export type RealtimeTransport = ReturnType<typeof transportHandle>;
+
 const scopedTransport =
   (create: NonNullable<SdkRealtimeModel['createTransport']>) =>
   <E, R>(options: RealtimeTransportOptions<E, R>) =>
