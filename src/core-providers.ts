@@ -504,16 +504,14 @@ const makeCustomProvider = <const Options extends CustomProviderOptions>(
           ...(fallbackProvider ? { fallbackProvider } : {}),
         }),
       );
-      return (
-        facade
-          ? withFallback(provider, facade, {
-              ...models,
-              decisionModels: options.decisionModels
-                ? decisionModels
-                : evaluationModels,
-            })
-          : provider
-      ) as unknown as CustomProvider<Options>;
+      return (facade
+        ? withFallback(provider, facade, {
+            ...models,
+            decisionModels: options.decisionModels
+              ? decisionModels
+              : evaluationModels,
+          })
+        : provider) as unknown as CustomProvider<Options>;
     });
   });
 
