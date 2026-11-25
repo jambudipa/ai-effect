@@ -15,6 +15,7 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
+import { runSync } from '../internal/operation.js';
 import {
   wrapEmbeddingModel,
   wrapImageModel,
@@ -39,6 +40,8 @@ export type {
   GoogleVertexVideoProviderOptions,
 } from '@ai-sdk/google-vertex';
 
+type InteractionInput = Parameters<SdkProvider['interactions']>[0];
+
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('googleVertex', sdk, wrapLanguageModel), {
     ...wrapProviderBase('googleVertex', sdk),
@@ -47,11 +50,10 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.languageModel.bind(sdk),
       wrapLanguageModel,
     ),
-    interactions: adaptMethod(
-      'googleVertex.interactions',
-      sdk.interactions.bind(sdk),
-      wrapLanguageModel,
-    ),
+    interactions: (input: InteractionInput) =>
+      runSync('googleVertex.interactions', () =>
+        wrapLanguageModel(sdk.interactions(input)),
+      ),
     image: adaptMethod(
       'googleVertex.image',
       sdk.image.bind(sdk),

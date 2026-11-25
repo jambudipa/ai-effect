@@ -13,31 +13,37 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
+import { runSync } from '../internal/operation.js';
 import { wrapFiles, wrapSkills } from '../internal/provider-resource.js';
 
 export { VERSION } from '@ai-sdk/anthropic-aws';
 export type { AnthropicAwsCredentials } from '@ai-sdk/anthropic-aws';
 
+type ModelId = Parameters<SdkProvider>[0];
+
 const wrapProvider = (sdk: SdkProvider) =>
-  Object.assign(adaptMethod('anthropicAws', sdk, wrapLanguageModel), {
-    ...wrapProviderBase('anthropicAws', sdk),
-    languageModel: adaptMethod(
-      'anthropicAws.languageModel',
-      sdk.languageModel.bind(sdk),
-      wrapLanguageModel,
-    ),
-    textEmbeddingModel: adaptUnsupportedMethod(
-      'anthropicAws.textEmbeddingModel',
-      sdk.textEmbeddingModel.bind(sdk),
-    ),
-    files: adaptMethod('anthropicAws.files', sdk.files.bind(sdk), wrapFiles),
-    skills: adaptMethod(
-      'anthropicAws.skills',
-      sdk.skills.bind(sdk),
-      wrapSkills,
-    ),
-    tools: wrapProviderTools('anthropicAws.tools', sdk.tools),
-  });
+  Object.assign(
+    (modelId: ModelId) =>
+      runSync('anthropicAws', () => wrapLanguageModel(sdk(modelId))),
+    {
+      ...wrapProviderBase('anthropicAws', sdk),
+      languageModel: (modelId: ModelId) =>
+        runSync('anthropicAws.languageModel', () =>
+          wrapLanguageModel(sdk.languageModel(modelId)),
+        ),
+      textEmbeddingModel: adaptUnsupportedMethod(
+        'anthropicAws.textEmbeddingModel',
+        sdk.textEmbeddingModel.bind(sdk),
+      ),
+      files: adaptMethod('anthropicAws.files', sdk.files.bind(sdk), wrapFiles),
+      skills: adaptMethod(
+        'anthropicAws.skills',
+        sdk.skills.bind(sdk),
+        wrapSkills,
+      ),
+      tools: wrapProviderTools('anthropicAws.tools', sdk.tools),
+    },
+  );
 export type AnthropicAwsProvider = ReturnType<typeof wrapProvider>;
 type ResolverKey = 'apiKey' | 'credentialProvider';
 export type AnthropicAwsProviderSettings<
