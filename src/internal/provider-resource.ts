@@ -48,12 +48,13 @@ export const wrapSkills = (skills: SkillsV4) => ({
     runRequest('SkillsV4.uploadSkill', {}, () => skills.uploadSkill(options)),
 });
 
+const nativeBatches = new WeakMap<object, Experimental_BatchV4>();
 export const wrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
   batch: Experimental_BatchV4<ModelIds>,
 ) => {
   const cancel = batch.doCancelBatch?.bind(batch);
   const list = batch.doListBatches?.bind(batch);
-  return {
+  const wrapped = {
     specificationVersion: batch.specificationVersion,
     provider: batch.provider,
     supportedUrls: runRequest('BatchV4.supportedUrls', {}, () =>
@@ -80,4 +81,15 @@ export const wrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
       : requestMethod('BatchV4.doCancelBatch', cancel),
     doListBatches: !list ? list : requestMethod('BatchV4.doListBatches', list),
   };
+  nativeBatches.set(wrapped, batch);
+  return wrapped;
 };
+
+export type BatchV4<
+  ModelIds extends Experimental_BatchV4ModelIds = Experimental_BatchV4ModelIds,
+> = ReturnType<typeof wrapBatch<ModelIds>>;
+
+export const unwrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
+  batch: object,
+): Experimental_BatchV4<ModelIds> | undefined =>
+  nativeBatches.get(batch) as Experimental_BatchV4<ModelIds> | undefined;
