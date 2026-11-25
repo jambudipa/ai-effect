@@ -167,61 +167,111 @@ type ToolOutput<
     : InferToolOutput<Definition>
   : InferToolOutput<Definition>;
 
-type AdaptedTool<Args extends unknown[], Tool extends NativeProviderTool> = <
-  Provided extends AdaptArguments<Args, unknown>,
->(
+type RetainedCallback<Native, Provided> = Native extends (
+  ...args: infer Args
+) => infer Result
+  ? (
+      ...args: AdaptSandboxArguments<Args>
+    ) => [CallbackEffect<Provided>] extends [never]
+      ? Effect.Effect<Awaited<Result>, unknown>
+      : CallbackEffect<Provided>
+  : Native extends boolean
+    ? Native
+    : never;
+
+type DescriptorCallbacks<Args extends unknown[], Provided extends unknown[]> = {
+  readonly [
+    Name in CallbackName as [
+      RetainedCallback<
+        Field<Args[number], Name>,
+        Field<Provided[number], Name>
+      >,
+    ] extends [never]
+      ? never
+      : Name
+  ]?: RetainedCallback<
+    Field<Args[number], Name>,
+    Field<Provided[number], Name>
+  >;
+};
+
+type AdaptedDescriptor<
+  Args extends unknown[],
+  Tool extends NativeProviderTool,
+  Provided extends unknown[],
+> = ProviderToolHandle<
+  InferToolInput<Tool>,
+  ToolOutput<Tool, Provided>,
+  ToolRequirements<Provided>
+> &
+  DescriptorCallbacks<Args, Provided>;
+
+const retainedCallbacks = (
+  preview: NativeProviderTool,
+  args: readonly unknown[],
+) => {
+  const descriptor = preview as unknown as Readonly<Record<string, unknown>>;
+  return Object.fromEntries(
+    args.flatMap((options) =>
+      options && typeof options === 'object'
+        ? Object.entries(options).filter(
+            ([name, value]) =>
+              callbackNames.includes(name) &&
+              (typeof value === 'function' ||
+                (name === 'needsApproval' && typeof value === 'boolean')) &&
+              // Preserve configured callbacks that the SDK copied unchanged.
+              descriptor[name] === value,
+          )
+        : [],
+    ),
+  );
+};
+
+export type AdaptedTool<
+  Args extends unknown[],
+  Tool extends NativeProviderTool,
+> = <Provided extends AdaptArguments<Args, unknown>>(
   ...args: Provided
 ) => Effect.Effect<
-  ProviderToolHandle<
-    InferToolInput<Tool>,
-    ToolOutput<Tool, Provided>,
-    ToolRequirements<Provided>
-  >,
+  AdaptedDescriptor<Args, Tool, Provided>,
   import('./operation.js').AiSdkError
 >;
 export const adaptProviderTool =
   <Args extends unknown[], Result extends NativeProviderTool>(
     operation: string,
     factory: (...args: Args) => Result,
-  ) =>
+  ): AdaptedTool<Args, Result> =>
   <Provided extends AdaptArguments<Args, unknown>>(...args: Provided) =>
-    runSync(
-      operation,
-      (): ProviderToolHandle<
-        InferToolInput<Result>,
-        ToolOutput<Result, Provided>,
-        ToolRequirements<Provided>
-      > => {
-        // Factories read options while building their descriptors. They do not
-        // execute user callbacks. Bind those callbacks to the owner for each run.
-        const preview = factory(...(args as unknown as Args));
-        const {
-          type,
-          id,
-          args: toolArgs,
-          isProviderExecuted,
-          supportsDeferredResults,
-        } = preview;
-        const handle = {
-          type,
-          id,
-          args: toolArgs,
-          isProviderExecuted,
-          ...(typeof supportsDeferredResults === 'boolean'
-            ? { supportsDeferredResults }
-            : {}),
-        };
-        providerTools.set(handle, (owner) =>
-          factory(
-            ...bindArguments<Args, ToolRequirements<Provided>>(
-              args as AdaptArguments<Args, ToolRequirements<Provided>>,
-              owner as Owner<ToolRequirements<Provided>>,
-            ),
+    runSync(operation, (): AdaptedDescriptor<Args, Result, Provided> => {
+      // Bind callbacks to the owner only when the SDK runs the tool.
+      const preview = factory(...(args as unknown as Args));
+      const {
+        type,
+        id,
+        args: toolArgs,
+        isProviderExecuted,
+        supportsDeferredResults,
+      } = preview;
+      const handle = {
+        type,
+        id,
+        args: toolArgs,
+        isProviderExecuted,
+        ...(typeof supportsDeferredResults === 'boolean'
+          ? { supportsDeferredResults }
+          : {}),
+        ...retainedCallbacks(preview, args),
+      };
+      providerTools.set(handle, (owner) =>
+        factory(
+          ...bindArguments<Args, ToolRequirements<Provided>>(
+            args as AdaptArguments<Args, ToolRequirements<Provided>>,
+            owner as Owner<ToolRequirements<Provided>>,
           ),
-        );
-        return handle;
-      },
-    );
+        ),
+      );
+      return handle as AdaptedDescriptor<Args, Result, Provided>;
+    });
 
 type BashToolName = 'bash_20241022' | 'bash_20250124';
 type BashInput = { command: string; restart?: boolean };
