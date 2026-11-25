@@ -9,6 +9,8 @@ import {
   experimental_runCodeMode,
 } from '../src/integrations/code-mode.js';
 import { tool } from '../src/internal/tool.js';
+import { createCodex } from '../src/integrations/harness-codex.js';
+import { harnessV1BridgeReadySchema } from '../src/integrations/harness.js';
 import { toUIMessageStream } from '../src/integrations/llamaindex.js';
 import { createMCPClient } from '../src/integrations/mcp.js';
 import { createTestServer } from '../src/integrations/test-server.js';
@@ -175,6 +177,33 @@ describe('Code mode integration', () => {
         });
         expect(result).toBe('confirmed');
       }
+    }),
+  );
+});
+
+describe('Harness declaration boundary', () => {
+  it.effect('retains the harness identity and validates a bridge frame', () =>
+    Effect.gen(function* () {
+      const harness = yield* createCodex();
+      expect(harness.harnessId).toBe('codex');
+      expect(
+        yield* harness.builtinTools.bash.inputSchema.validate({
+          command: 'printf fixture',
+        }),
+      ).toEqual({ command: 'printf fixture' });
+      expect(
+        yield* harnessV1BridgeReadySchema.validate({
+          type: 'bridge-ready',
+          port: 4321,
+        }),
+      ).toEqual({ type: 'bridge-ready', port: 4321 });
+      const error = yield* Effect.flip(
+        harnessV1BridgeReadySchema.validate({
+          type: 'bridge-ready',
+          port: 'x',
+        }),
+      );
+      expect(error._tag).toBe('AiSdkError');
     }),
   );
 });
