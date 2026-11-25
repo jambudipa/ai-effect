@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { format, resolveConfig } from 'prettier';
 import ts from 'typescript';
 import { generateJustBashContract } from './generate-just-bash-contract.mjs';
+import { zodDiscriminatorEdit } from './zod-discriminator-edits.mjs';
 
 const require = createRequire(import.meta.url);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -59,28 +60,8 @@ function normalize(filename, contents) {
   );
   const edits = [];
   const visit = (node) => {
-    if (
-      ts.isTypeReferenceNode(node) &&
-      /(?:^|\.)ZodDiscriminatedUnion$/u.test(node.typeName.getText(source))
-    ) {
-      const args = node.typeArguments;
-      if (args && args.length > 1) {
-        const [options, discriminator] = args;
-        if (
-          args.length !== 2 ||
-          !ts.isLiteralTypeNode(discriminator) ||
-          !ts.isStringLiteral(discriminator.literal)
-        ) {
-          throw new Error(`Unexpected Zod union shape in ${filename}`);
-        }
-        const key = discriminator.getText(source);
-        edits.push([
-          options.end,
-          node.end,
-          `> & { def: { discriminator: ${key} }; _zod: { def: { discriminator: ${key} } } }`,
-        ]);
-      }
-    }
+    const edit = zodDiscriminatorEdit(node, source);
+    if (edit) edits.push(edit);
     const parent = node.parent;
     if (
       ts.isStringLiteral(node) &&
