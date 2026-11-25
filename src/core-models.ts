@@ -1,3 +1,10 @@
+import { bindExperimentalOptions } from './internal/experimental-callbacks.js';
+import type {
+  ExperimentalOptions,
+  Owner,
+} from './internal/experimental-callbacks.js';
+import { wrapTelemetryEvent } from './integrations/internal/telemetry.js';
+import type { TelemetryEvent } from './integrations/internal/telemetry.js';
 import * as sdk from 'ai';
 import type * as native from '@ai-sdk/provider';
 import type { JSONObject } from '@ai-sdk/provider';
@@ -106,19 +113,55 @@ function modelRequest<
   });
 }
 
+const scopedModelRequest = <
+  Handle extends { readonly modelId: string },
+  Native,
+  R,
+  Result,
+>(
+  operation: string,
+  modelType: ModelType,
+  options: {
+    readonly model: string | Handle;
+    readonly abortSignal?: AbortSignal | undefined;
+  },
+  unwrap: (model: Handle) => Native | undefined,
+  invoke: (
+    model: string | Native,
+    abortSignal: AbortSignal,
+    owner: Owner<R>,
+  ) => PromiseLike<Result>,
+): Effect.Effect<Result, AiSdkError, R> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const owner = yield* openOperation<R>(options.abortSignal);
+      return yield* modelRequest(
+        operation,
+        modelType,
+        { ...options, abortSignal: owner.signal },
+        unwrap,
+        (model, abortSignal) => invoke(model, abortSignal, owner),
+      );
+    }),
+  );
+
 type Hooks<Start, End, Services> = {
-  readonly onStart?: (event: Start) => Effect.Effect<void, unknown, Services>;
-  readonly experimental_onStart?: (
-    event: Start,
+  readonly onStart?: (
+    event: TelemetryEvent<Start>,
   ) => Effect.Effect<void, unknown, Services>;
-  readonly onEnd?: (event: End) => Effect.Effect<void, unknown, Services>;
+  readonly experimental_onStart?: (
+    event: TelemetryEvent<Start>,
+  ) => Effect.Effect<void, unknown, Services>;
+  readonly onEnd?: (
+    event: TelemetryEvent<End>,
+  ) => Effect.Effect<void, unknown, Services>;
   readonly experimental_onEnd?: (
-    event: End,
+    event: TelemetryEvent<End>,
   ) => Effect.Effect<void, unknown, Services>;
 };
 
-function bindHooks<Start, End, Services, Options extends object>(
-  options: Options & Hooks<Start, End, Services>,
+function bindHooks<Start, End, Services, Native extends object>(
+  options: object & Hooks<Start, End, Services>,
   owner: Effect.Success<ReturnType<typeof openOperation<Services>>>,
 ) {
   const { onStart, experimental_onStart, onEnd, experimental_onEnd, ...rest } =
@@ -126,30 +169,50 @@ function bindHooks<Start, End, Services, Options extends object>(
   const start = onStart ?? experimental_onStart;
   const end = onEnd ?? experimental_onEnd;
   return {
-    ...rest,
+    ...bindExperimentalOptions<Record<string, unknown>, unknown, Services>(
+      rest,
+      owner,
+    ),
     ...(start
       ? {
           onStart: (event: Start) =>
-            owner.runCallback(Effect.suspend(() => start(event))),
+            owner.runCallback(
+              Effect.suspend(() => start(wrapTelemetryEvent(event))),
+            ),
         }
       : {}),
     ...(end
       ? {
           onEnd: (event: End) =>
-            owner.runCallback(Effect.suspend(() => end(event))),
+            owner.runCallback(
+              Effect.suspend(() => end(wrapTelemetryEvent(event))),
+            ),
         }
       : {}),
-  };
+  } as Native;
 }
 
-type Options<Native, Handle> = Omit<Native, 'model' | '_internal'> & {
-  readonly model: Handle;
+type VisibleOptions<Native> = {
+  [Key in keyof Native as Key extends '_internal' ? never : Key]: Native[Key];
 };
-type HookOptions<Native, Handle, Start, End, R> = Omit<
-  Options<Native, Handle>,
-  keyof Hooks<Start, End, R>
-> &
-  Hooks<Start, End, R>;
+type Options<Native, Handle, R = never> = ExperimentalOptions<
+  VisibleOptions<Native>,
+  Handle,
+  R
+>;
+
+type HookInput<Options, Start, End, R> = {
+  [
+    Key in keyof Options as Key extends keyof Hooks<Start, End, R> ? never : Key
+  ]: Options[Key];
+} & Hooks<Start, End, R>;
+
+type HookOptions<Native, Handle, Start, End, R> = HookInput<
+  Options<Native, Handle, R>,
+  Start,
+  End,
+  R
+>;
 
 export const embed = <R extends Runtime = Runtime, Services = never>(
   options: HookOptions<
@@ -160,28 +223,22 @@ export const embed = <R extends Runtime = Runtime, Services = never>(
     Services
   >,
 ) =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const owner = yield* openOperation<Services>(options.abortSignal);
-      const request = bindHooks<
-        sdk.EmbedStartEvent<R>,
-        sdk.EmbedEndEvent<R>,
-        Services,
-        typeof options
-      >(options, owner);
-      return yield* modelRequest(
-        'embed',
-        'embeddingModel',
-        { ...options, abortSignal: owner.signal },
-        getEmbeddingModel,
-        (model, abortSignal) =>
-          sdk.embed<R>({
-            ...request,
-            model,
-            abortSignal,
-          } as Parameters<typeof sdk.embed<R>>[0]),
-      );
-    }),
+  scopedModelRequest(
+    'embed',
+    'embeddingModel',
+    options,
+    getEmbeddingModel,
+    (model, abortSignal, owner: Owner<Services>) =>
+      sdk.embed<R>({
+        ...bindHooks<
+          sdk.EmbedStartEvent<R>,
+          sdk.EmbedEndEvent<R>,
+          Services,
+          Parameters<typeof sdk.embed<R>>[0]
+        >(options, owner),
+        model,
+        abortSignal,
+      }),
   );
 
 export const embedMany = <R extends Runtime = Runtime, Services = never>(
@@ -193,28 +250,22 @@ export const embedMany = <R extends Runtime = Runtime, Services = never>(
     Services
   >,
 ) =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const owner = yield* openOperation<Services>(options.abortSignal);
-      const request = bindHooks<
-        sdk.EmbedStartEvent<R>,
-        sdk.EmbedEndEvent<R>,
-        Services,
-        typeof options
-      >(options, owner);
-      return yield* modelRequest(
-        'embedMany',
-        'embeddingModel',
-        { ...options, abortSignal: owner.signal },
-        getEmbeddingModel,
-        (model, abortSignal) =>
-          sdk.embedMany<R>({
-            ...request,
-            model,
-            abortSignal,
-          } as Parameters<typeof sdk.embedMany<R>>[0]),
-      );
-    }),
+  scopedModelRequest(
+    'embedMany',
+    'embeddingModel',
+    options,
+    getEmbeddingModel,
+    (model, abortSignal, owner: Owner<Services>) =>
+      sdk.embedMany<R>({
+        ...bindHooks<
+          sdk.EmbedStartEvent<R>,
+          sdk.EmbedEndEvent<R>,
+          Services,
+          Parameters<typeof sdk.embedMany<R>>[0]
+        >(options, owner),
+        model,
+        abortSignal,
+      }),
   );
 
 export const rerank = <
@@ -230,63 +281,82 @@ export const rerank = <
     Services
   >,
 ) =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const owner = yield* openOperation<Services>(options.abortSignal);
-      const request = bindHooks<
-        sdk.RerankStartEvent<R>,
-        sdk.RerankEndEvent<R>,
-        Services,
-        typeof options
-      >(options, owner);
-      return yield* modelRequest(
-        'rerank',
-        'rerankingModel',
-        { ...options, abortSignal: owner.signal },
-        getRerankingModel,
-        (model, abortSignal) =>
-          sdk.rerank<Document, R>({
-            ...request,
-            model,
-            abortSignal,
-          } as Parameters<typeof sdk.rerank<Document, R>>[0]),
-      );
-    }),
+  scopedModelRequest(
+    'rerank',
+    'rerankingModel',
+    options,
+    getRerankingModel,
+    (model, abortSignal, owner: Owner<Services>) =>
+      sdk.rerank<Document, R>({
+        ...bindHooks<
+          sdk.RerankStartEvent<R>,
+          sdk.RerankEndEvent<R>,
+          Services,
+          Parameters<typeof sdk.rerank<Document, R>>[0]
+        >(options, owner),
+        model,
+        abortSignal,
+      }),
   );
 
-export const generateImage = (
-  options: Options<Parameters<typeof sdk.generateImage>[0], ImageModel>,
+export const generateImage = <R = never>(
+  options: Options<Parameters<typeof sdk.generateImage>[0], ImageModel, R>,
 ) =>
-  modelRequest(
+  scopedModelRequest(
     'generateImage',
     'imageModel',
     options,
     getImageModel,
-    (model, abortSignal) =>
-      sdk.generateImage({ ...options, model, abortSignal }),
+    (model, abortSignal, owner: Owner<R>) =>
+      sdk.generateImage({
+        ...bindExperimentalOptions<
+          Parameters<typeof sdk.generateImage>[0],
+          ImageModel,
+          R
+        >(options, owner),
+        model,
+        abortSignal,
+      }),
   );
 
-export const generateSpeech = (
-  options: Options<Parameters<typeof sdk.generateSpeech>[0], SpeechModel>,
+export const generateSpeech = <R = never>(
+  options: Options<Parameters<typeof sdk.generateSpeech>[0], SpeechModel, R>,
 ) =>
-  modelRequest(
+  scopedModelRequest(
     'generateSpeech',
     'speechModel',
     options,
     getSpeechModel,
-    (model, abortSignal) =>
-      sdk.generateSpeech({ ...options, model, abortSignal }),
+    (model, abortSignal, owner: Owner<R>) =>
+      sdk.generateSpeech({
+        ...bindExperimentalOptions<
+          Parameters<typeof sdk.generateSpeech>[0],
+          SpeechModel,
+          R
+        >(options, owner),
+        model,
+        abortSignal,
+      }),
   );
 
-export const transcribe = (
-  options: Options<Parameters<typeof sdk.transcribe>[0], TranscriptionModel>,
+export const transcribe = <R = never>(
+  options: Options<Parameters<typeof sdk.transcribe>[0], TranscriptionModel, R>,
 ) =>
-  modelRequest(
+  scopedModelRequest(
     'transcribe',
     'transcriptionModel',
     options,
     getTranscriptionModel,
-    (model, abortSignal) => sdk.transcribe({ ...options, model, abortSignal }),
+    (model, abortSignal, owner: Owner<R>) =>
+      sdk.transcribe({
+        ...bindExperimentalOptions<
+          Parameters<typeof sdk.transcribe>[0],
+          TranscriptionModel,
+          R
+        >(options, owner),
+        model,
+        abortSignal,
+      }),
   );
 
 export {
