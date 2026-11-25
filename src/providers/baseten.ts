@@ -91,13 +91,16 @@ export type BasetenProviderSettings<E = never, R = never> = Settings<
 const buildBaseten = (settings?: SdkSettings) =>
   wrapProvider(sdkCreateBaseten(settings));
 
-export function createBaseten(
-  options?: PlainBasetenSettings,
-): Effect.Effect<BasetenProvider, AiSdkError>;
-export function createBaseten<E, R>(
-  options: BasetenProviderSettings<E, R>,
-): Effect.Effect<BasetenProvider, AiSdkError, R | Scope.Scope>;
-export function createBaseten<E, R>(options?: BasetenProviderSettings<E, R>) {
+interface CreateBaseten {
+  (options?: PlainBasetenSettings): Effect.Effect<BasetenProvider, AiSdkError>;
+  <E, R>(
+    options: BasetenProviderSettings<E, R>,
+  ): Effect.Effect<BasetenProvider, AiSdkError, R | Scope.Scope>;
+}
+
+function createBasetenScoped<E, R>(
+  options?: BasetenProviderSettings<E, R>,
+): Effect.Effect<BasetenProvider, AiSdkError, R | Scope.Scope> {
   const Client = options?.performanceClient;
   if (!Client)
     return createWithProviderSettings<SdkSettings, R, BasetenProvider>(
@@ -131,5 +134,7 @@ export function createBaseten<E, R>(options?: BasetenProviderSettings<E, R>) {
     );
   });
 }
+
+export const createBaseten = createBasetenScoped as CreateBaseten;
 
 export const baseten: BasetenProvider = wrapProvider(sdkBaseten);

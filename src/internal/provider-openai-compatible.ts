@@ -22,25 +22,28 @@ const selectLanguageModel = <Id extends string>(
     options?: NativeLanguageModelOptions,
   ) => Parameters<typeof wrapLanguageModel>[0],
 ) => {
-  function selected(
-    modelId: Id,
-    config?: StaticCompatibleSettings<NativeLanguageModelOptions>,
-  ): Effect.Effect<LanguageModelV4, AiSdkError>;
-  function selected<E, R>(
-    modelId: Id,
-    config: CompatibleSettings<NativeLanguageModelOptions, E, R>,
-  ): Effect.Effect<LanguageModelV4, AiSdkError, R | Scope.Scope>;
-  function selected<E, R>(
+  interface Select {
+    (
+      modelId: Id,
+      config?: StaticCompatibleSettings<NativeLanguageModelOptions>,
+    ): Effect.Effect<LanguageModelV4, AiSdkError>;
+    <E, R>(
+      modelId: Id,
+      config: CompatibleSettings<NativeLanguageModelOptions, E, R>,
+    ): Effect.Effect<LanguageModelV4, AiSdkError, R | Scope.Scope>;
+  }
+
+  const selected = <E, R>(
     modelId: Id,
     config?: CompatibleSettings<NativeLanguageModelOptions, E, R>,
-  ) {
-    return buildWithCompatibleSettings<
-      NativeLanguageModelOptions,
-      R,
-      LanguageModelV4
-    >(name, config, (settings) => wrapLanguageModel(select(modelId, settings)));
-  }
-  return selected;
+  ): Effect.Effect<LanguageModelV4, AiSdkError, R | Scope.Scope> =>
+    buildWithCompatibleSettings<NativeLanguageModelOptions, R, LanguageModelV4>(
+      name,
+      config,
+      (settings) => wrapLanguageModel(select(modelId, settings)),
+    );
+
+  return selected as Select;
 };
 
 export const wrapOpenAICompatibleProvider = <

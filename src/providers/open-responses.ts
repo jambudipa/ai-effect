@@ -147,15 +147,16 @@ const bindCallbacks = <E, R>(
   return bound as NativeCallbacks;
 };
 
-export function createOpenResponses(
-  options: StaticSettings,
-): Effect.Effect<OpenResponsesProvider, AiSdkError>;
-export function createOpenResponses<E, R>(
+interface CreateOpenResponses {
+  (options: StaticSettings): Effect.Effect<OpenResponsesProvider, AiSdkError>;
+  <E, R>(
+    options: OpenResponsesProviderSettings<E, R>,
+  ): Effect.Effect<OpenResponsesProvider, AiSdkError, R | Scope.Scope>;
+}
+
+function createOpenResponsesScoped<E, R>(
   options: OpenResponsesProviderSettings<E, R>,
-): Effect.Effect<OpenResponsesProvider, AiSdkError, R | Scope.Scope>;
-export function createOpenResponses<E, R>(
-  options: OpenResponsesProviderSettings<E, R>,
-) {
+): Effect.Effect<OpenResponsesProvider, AiSdkError, R | Scope.Scope> {
   if (!options.failedResponseHandler && !options.experimental_extensions)
     return createWithProviderSettings<SdkSettings, R, OpenResponsesProvider>(
       'createOpenResponses',
@@ -174,3 +175,6 @@ export function createOpenResponses<E, R>(
     >('createOpenResponses', native, ['apiKey', 'headers'], build);
   });
 }
+
+export const createOpenResponses =
+  createOpenResponsesScoped as CreateOpenResponses;

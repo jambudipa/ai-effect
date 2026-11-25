@@ -52,39 +52,48 @@ export type OpenAICompatibleProviderSettings<
   R = never,
 > = CompatibleSettings<SdkSettings, E, R>;
 
-export function createOpenAICompatible<
-  Chat extends string,
-  Completion extends string,
-  Embedding extends string,
-  Image extends string,
->(
-  options: StaticCompatibleSettings<SdkSettings>,
-): Effect.Effect<
-  OpenAICompatibleProvider<Chat, Completion, Embedding, Image>,
-  AiSdkError
->;
-export function createOpenAICompatible<
-  Chat extends string,
-  Completion extends string,
-  Embedding extends string,
-  Image extends string,
-  E = never,
-  R = never,
->(
-  options: OpenAICompatibleProviderSettings<E, R>,
-): Effect.Effect<
-  OpenAICompatibleProvider<Chat, Completion, Embedding, Image>,
-  AiSdkError,
-  R | Scope.Scope
->;
-export function createOpenAICompatible<
+interface CreateOpenAICompatible {
+  <
+    Chat extends string,
+    Completion extends string,
+    Embedding extends string,
+    Image extends string,
+  >(
+    options: StaticCompatibleSettings<SdkSettings>,
+  ): Effect.Effect<
+    OpenAICompatibleProvider<Chat, Completion, Embedding, Image>,
+    AiSdkError
+  >;
+  <
+    Chat extends string,
+    Completion extends string,
+    Embedding extends string,
+    Image extends string,
+    E = never,
+    R = never,
+  >(
+    options: OpenAICompatibleProviderSettings<E, R>,
+  ): Effect.Effect<
+    OpenAICompatibleProvider<Chat, Completion, Embedding, Image>,
+    AiSdkError,
+    R | Scope.Scope
+  >;
+}
+
+function createOpenAICompatibleScoped<
   Chat extends string,
   Completion extends string,
   Embedding extends string,
   Image extends string,
   E,
   R,
->(options: OpenAICompatibleProviderSettings<E, R>) {
+>(
+  options: OpenAICompatibleProviderSettings<E, R>,
+): Effect.Effect<
+  OpenAICompatibleProvider<Chat, Completion, Embedding, Image>,
+  AiSdkError,
+  R | Scope.Scope
+> {
   return buildWithCompatibleSettings<
     SdkSettings,
     R,
@@ -98,6 +107,9 @@ export function createOpenAICompatible<
     ),
   );
 }
+
+export const createOpenAICompatible =
+  createOpenAICompatibleScoped as CreateOpenAICompatible;
 
 const wrapChatModel = (model: SdkChatModel) =>
   Object.assign(wrapLanguageModel(model), {

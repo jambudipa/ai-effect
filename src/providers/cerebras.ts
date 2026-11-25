@@ -61,15 +61,19 @@ type PlainCerebrasSettings = Omit<CerebrasProviderSettings, 'apiKey'> & {
   readonly apiKey?: string;
 };
 
-/** Create a provider with static settings. */
-export function createCerebras(
-  options?: PlainCerebrasSettings,
-): Effect.Effect<CerebrasProvider, AiSdkError>;
-/** Create a provider with credentials that resolve during each SDK request. */
-export function createCerebras<E, R>(
-  options: CerebrasProviderSettings<E, R>,
-): Effect.Effect<CerebrasProvider, AiSdkError, R | Scope.Scope>;
-export function createCerebras<E, R>(options?: CerebrasProviderSettings<E, R>) {
+/** Create Cerebras with static settings or an Effect credential. */
+interface CreateCerebras {
+  (
+    options?: PlainCerebrasSettings,
+  ): Effect.Effect<CerebrasProvider, AiSdkError>;
+  <E, R>(
+    options: CerebrasProviderSettings<E, R>,
+  ): Effect.Effect<CerebrasProvider, AiSdkError, R | Scope.Scope>;
+}
+
+function createCerebrasScoped<E, R>(
+  options?: CerebrasProviderSettings<E, R>,
+): Effect.Effect<CerebrasProvider, AiSdkError, R | Scope.Scope> {
   return createWithProviderSettings<SdkSettings, R, CerebrasProvider>(
     'createCerebras',
     options,
@@ -77,3 +81,5 @@ export function createCerebras<E, R>(options?: CerebrasProviderSettings<E, R>) {
     (settings) => wrapCerebras(sdkCreateCerebras(settings)),
   );
 }
+
+export const createCerebras = createCerebrasScoped as CreateCerebras;
