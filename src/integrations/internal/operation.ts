@@ -1,5 +1,10 @@
 import { Effect, Predicate } from 'effect';
-import { runRequest, runSync } from '../../internal/operation.js';
+import {
+  combineSignals,
+  runRequest,
+  runSync,
+  sdkError,
+} from '../../internal/operation.js';
 
 const isPromiseLike = <A>(value: A | PromiseLike<A>): value is PromiseLike<A> =>
   Predicate.isObject(value) &&
@@ -16,3 +21,16 @@ export const runValue = <A>(
       ? runRequest(operation, {}, () => value)
       : Effect.succeed(value),
   );
+
+/** Bridge synchronous or async calls that accept cancellation. */
+export const runResult = <A>(
+  operation: string,
+  invoke: (signal: AbortSignal) => A | PromiseLike<A>,
+  options: { readonly abortSignal?: AbortSignal } = {},
+) =>
+  Effect.suspend(() => {
+    const controller = new AbortController();
+    return runValue(operation, () =>
+      invoke(combineSignals(controller.signal, options.abortSignal)),
+    ).pipe(Effect.onInterrupt(() => Effect.sync(() => controller.abort())));
+  });
