@@ -80,6 +80,7 @@ export const abortable = <A, E, R>(
 /** Own the SDK signal and each callback fiber in the same scope. */
 export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
   Effect.gen(function* () {
+    const scope = yield* Effect.scope;
     const callbacks = yield* FiberSet.make();
     const runCallback = yield* FiberSet.runtimePromise(callbacks)<R>();
     const completed = yield* Ref.make(false);
@@ -95,6 +96,7 @@ export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
     const signal = combineSignals(controller.signal, callerSignal);
     return {
       signal,
+      scope,
       markComplete: Ref.set(completed, true),
       runCallback: <A, E>(
         effect: Effect.Effect<A, E, R>,
