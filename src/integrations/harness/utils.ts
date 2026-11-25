@@ -766,17 +766,28 @@ export class SandboxChannel<Out extends Frame, In extends Frame = Frame> {
     message: In,
     options: ChannelSendOptions<E, R>,
   ): Effect.Effect<void, AiSdkError, R | Scope.Scope>;
-  send<E, R>(message: In, options?: ChannelSendOptions<E, R>) {
+  send<E, R>(
+    message: In,
+    options?: ChannelSendOptions<E, R>,
+  ): Effect.Effect<void, AiSdkError, R | Scope.Scope> {
     const { onSent, ...rest } = options ?? {};
     if (!onSent)
       return runSync('SandboxChannel.send', () =>
         this.native.send(message, rest),
       );
+    return this.sendAcknowledged(message, rest, onSent);
+  }
+
+  private sendAcknowledged<E, R>(
+    message: In,
+    options: Omit<ChannelSendOptions<E, R>, 'onSent'>,
+    onSent: () => Effect.Effect<void, E, R>,
+  ): Effect.Effect<void, AiSdkError, R | Scope.Scope> {
     return Effect.gen({ self: this }, function* () {
       const owner = yield* openOperation<R>();
       return yield* runSync('SandboxChannel.send', () =>
         this.native.send(message, {
-          ...rest,
+          ...options,
           onSent: () => {
             void owner.runCallback(Effect.suspend(onSent)).catch(() => {});
           },
