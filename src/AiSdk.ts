@@ -19,15 +19,17 @@ const streamText = <
   Output = string,
   Partial = Output,
   Item = never,
+  Hook = never,
+  Provided extends object = {},
 >(
   options: Parameters<
-    typeof openTextStream<Tools, Runtime, Output, Partial, Item>
+    typeof openTextStream<Tools, Runtime, Output, Partial, Item, Hook, Provided>
   >[0],
 ) =>
   Stream.unwrap(
-    openTextStream<Tools, Runtime, Output, Partial, Item>(options).pipe(
-      Effect.map((result) => result.stream),
-    ),
+    openTextStream<Tools, Runtime, Output, Partial, Item, Hook, Provided>(
+      options,
+    ).pipe(Effect.map((result) => result.stream)),
   );
 
 interface AiSdkShape {
