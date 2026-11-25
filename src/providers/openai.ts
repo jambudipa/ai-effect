@@ -1,0 +1,245 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { OpenAIProviderSettings as SdkSettings } from '@ai-sdk/openai';
+import type { AdaptedTools } from '../internal/provider-tool.js';
+import type { AdaptedConstructor } from '../internal/provider-adapter.js';
+import { wrapRealtimeModel } from '../internal/provider-realtime.js';
+import { Experimental_OpenAISpeechTranslationModel as SdkExperimental_OpenAISpeechTranslationModel } from '@ai-sdk/openai';
+import { Experimental_OpenAIRealtimeModelLive as SdkExperimental_OpenAIRealtimeModelLive } from '@ai-sdk/openai';
+import { Experimental_OpenAIRealtimeModel as SdkExperimental_OpenAIRealtimeModel } from '@ai-sdk/openai';
+import { wrapProviderTools } from '../internal/provider-tool.js';
+import {
+  createOpenAI as sdkCreateOpenAI,
+  openai as sdkOpenai,
+} from '@ai-sdk/openai';
+import type {
+  OpenAIProvider as SdkProvider,
+  Experimental_OpenAIRealtimeOptions,
+} from '@ai-sdk/openai';
+import {
+  adaptMethod,
+  adaptModelConstructor,
+  wrapProviderBase,
+} from '../internal/provider-adapter.js';
+import { wrapLanguageModel } from '../internal/language-model.js';
+import {
+  wrapDecisionModel,
+  wrapEmbeddingModel,
+  wrapEvaluationModel,
+  wrapExtractionModel,
+  wrapImageModel,
+  wrapSpeechModel,
+  wrapSpeechTranslationModel,
+  wrapTranscriptionModel,
+} from '../internal/provider-model.js';
+import {
+  wrapBatch,
+  wrapFiles,
+  wrapSkills,
+} from '../internal/provider-resource.js';
+import { runRequest, runSync } from '../internal/operation.js';
+
+export { VERSION } from '@ai-sdk/openai';
+export type {
+  Experimental_OpenAIRealtimeModelConfig,
+  Experimental_OpenAIRealtimeModelLiveConfig,
+  Experimental_OpenAIRealtimeModelLiveId,
+  Experimental_OpenAIRealtimeModelLiveOptions,
+  Experimental_OpenAIRealtimeOptions,
+  Experimental_OpenAISpeechTranslationModelId,
+  Experimental_OpenAISpeechTranslationModelOptions,
+  Experimental_OpenAITranslationModelId,
+  Experimental_OpenAITranslationModelOptions,
+  OpenAIChatLanguageModelOptions,
+  OpenAIChatMessageProviderOptions,
+  OpenAIComputerAction,
+  OpenAIComputerSafetyCheck,
+  OpenAIDecisionModelId,
+  OpenAIDecisionModelOptions,
+  OpenAIEmbeddingModelOptions,
+  OpenAIFilesOptions,
+  OpenAIImageModelEditOptions,
+  OpenAIImageModelGenerationOptions,
+  OpenAIImageModelOptions,
+  OpenAILanguageModelChatOptions,
+  OpenAILanguageModelCompletionOptions,
+  OpenAILanguageModelResponsesOptions,
+  OpenAIResponsesProviderOptions,
+  OpenAIResponsesSystemMessageOptions,
+  OpenAIResponsesToolResultOptions,
+  OpenAISpeechModelOptions,
+  OpenAIToolOptions,
+  OpenAITranscriptionModelOptions,
+  OpenaiResponsesCompactionProviderMetadata,
+  OpenaiResponsesProviderMetadata,
+  OpenaiResponsesReasoningProviderMetadata,
+  OpenaiResponsesSourceDocumentProviderMetadata,
+  OpenaiResponsesTextProviderMetadata,
+  OpenaiResponsesToolCallProviderMetadata,
+} from '@ai-sdk/openai';
+
+type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
+
+const wrapOpenAIRealtime = (factory: SdkRealtimeFactory) =>
+  Object.assign(
+    (
+      modelId: Parameters<SdkRealtimeFactory>[0],
+      options?: Experimental_OpenAIRealtimeOptions,
+    ) =>
+      runSync('openai.experimental_realtime', () =>
+        wrapRealtimeModel(factory(modelId, options)),
+      ),
+    {
+      getToken: (options: Parameters<SdkRealtimeFactory['getToken']>[0]) =>
+        runRequest('openai.experimental_realtime.getToken', {}, () =>
+          factory.getToken(options),
+        ),
+    },
+  );
+
+export type Experimental_OpenAIRealtimeFactory = ReturnType<
+  typeof wrapOpenAIRealtime
+>;
+
+const wrapTools = (
+  tools: SdkProvider['tools'],
+): AdaptedTools<SdkProvider['tools']> =>
+  wrapProviderTools('openai.tools', tools);
+
+const wrapProviderMethods = (sdk: SdkProvider) =>
+  Object.assign(adaptMethod('openai', sdk, wrapLanguageModel), {
+    ...wrapProviderBase('openai', sdk),
+    decisionModel: adaptMethod(
+      'openai.decisionModel',
+      sdk.decisionModel.bind(sdk),
+      wrapDecisionModel,
+    ),
+    evaluationModel: adaptMethod(
+      'openai.evaluationModel',
+      sdk.evaluationModel.bind(sdk),
+      wrapEvaluationModel,
+    ),
+    extractionModel: adaptMethod(
+      'openai.extractionModel',
+      sdk.extractionModel.bind(sdk),
+      wrapExtractionModel,
+    ),
+    languageModel: adaptMethod(
+      'openai.languageModel',
+      sdk.languageModel.bind(sdk),
+      wrapLanguageModel,
+    ),
+    chat: adaptMethod('openai.chat', sdk.chat.bind(sdk), wrapLanguageModel),
+    responses: adaptMethod(
+      'openai.responses',
+      sdk.responses.bind(sdk),
+      wrapLanguageModel,
+    ),
+    completion: adaptMethod(
+      'openai.completion',
+      sdk.completion.bind(sdk),
+      wrapLanguageModel,
+    ),
+    embedding: adaptMethod(
+      'openai.embedding',
+      sdk.embedding.bind(sdk),
+      wrapEmbeddingModel,
+    ),
+    embeddingModel: adaptMethod(
+      'openai.embeddingModel',
+      sdk.embeddingModel.bind(sdk),
+      wrapEmbeddingModel,
+    ),
+    textEmbedding: adaptMethod(
+      'openai.textEmbedding',
+      sdk.textEmbedding.bind(sdk),
+      wrapEmbeddingModel,
+    ),
+    textEmbeddingModel: adaptMethod(
+      'openai.textEmbeddingModel',
+      sdk.textEmbeddingModel.bind(sdk),
+      wrapEmbeddingModel,
+    ),
+    image: adaptMethod('openai.image', sdk.image.bind(sdk), wrapImageModel),
+    imageModel: adaptMethod(
+      'openai.imageModel',
+      sdk.imageModel.bind(sdk),
+      wrapImageModel,
+    ),
+    transcription: adaptMethod(
+      'openai.transcription',
+      sdk.transcription.bind(sdk),
+      wrapTranscriptionModel,
+    ),
+    translation: adaptMethod(
+      'openai.translation',
+      sdk.translation.bind(sdk),
+      wrapSpeechTranslationModel,
+    ),
+    speechTranslationModel: adaptMethod(
+      'openai.speechTranslationModel',
+      sdk.speechTranslationModel.bind(sdk),
+      wrapSpeechTranslationModel,
+    ),
+    speech: adaptMethod('openai.speech', sdk.speech.bind(sdk), wrapSpeechModel),
+    files: adaptMethod('openai.files', sdk.files.bind(sdk), wrapFiles),
+    skills: adaptMethod('openai.skills', sdk.skills.bind(sdk), wrapSkills),
+    experimental_batch: adaptMethod(
+      'openai.experimental_batch',
+      sdk.experimental_batch.bind(sdk),
+      wrapBatch,
+    ),
+    experimental_realtime: wrapOpenAIRealtime(sdk.experimental_realtime),
+  });
+export type OpenAIProvider = ReturnType<typeof wrapProviderMethods> & {
+  tools: AdaptedTools<SdkProvider['tools']>;
+};
+
+const wrapProvider = (sdk: SdkProvider): OpenAIProvider =>
+  Object.assign(wrapProviderMethods(sdk), {
+    tools: wrapTools(sdk.tools),
+  });
+type ResolverKey = 'apiKey';
+export type OpenAIProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createOpenAI = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  OpenAIProvider
+>('createOpenAI', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateOpenAI(settings)),
+);
+export const openai: OpenAIProvider = wrapProvider(sdkOpenai);
+export const Experimental_OpenAIRealtimeModel = adaptModelConstructor(
+  'Experimental_OpenAIRealtimeModel',
+  SdkExperimental_OpenAIRealtimeModel,
+  wrapRealtimeModel,
+);
+export type Experimental_OpenAIRealtimeModel = ReturnType<
+  typeof wrapRealtimeModel
+>;
+export const Experimental_OpenAIRealtimeModelLive = adaptModelConstructor(
+  'Experimental_OpenAIRealtimeModelLive',
+  SdkExperimental_OpenAIRealtimeModelLive,
+  wrapRealtimeModel,
+);
+export type Experimental_OpenAIRealtimeModelLive = ReturnType<
+  typeof wrapRealtimeModel
+>;
+export const Experimental_OpenAISpeechTranslationModel: AdaptedConstructor<
+  typeof SdkExperimental_OpenAISpeechTranslationModel,
+  Experimental_OpenAISpeechTranslationModel
+> = adaptModelConstructor(
+  'Experimental_OpenAISpeechTranslationModel',
+  SdkExperimental_OpenAISpeechTranslationModel,
+  wrapSpeechTranslationModel,
+);
+export type Experimental_OpenAISpeechTranslationModel = ReturnType<
+  typeof wrapSpeechTranslationModel
+>;
+export const Experimental_OpenAITranslationModel =
+  Experimental_OpenAISpeechTranslationModel;
+export type Experimental_OpenAITranslationModel =
+  Experimental_OpenAISpeechTranslationModel;
