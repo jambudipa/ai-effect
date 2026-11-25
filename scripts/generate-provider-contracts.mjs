@@ -106,8 +106,12 @@ for (const [provider, expected] of replacements) {
   const header = [
     `// Generated from ${upstream}@${version}. Do not edit.`,
     `// Original license: ${licenseFile}.`,
-    '// Preserve discriminator literals with the Zod 3.25.76 bridge.',
-    '/* eslint-disable effect/no-zod-use-schema -- Pinned SDK declaration types use Zod. */',
+    ...(edits.length > 0
+      ? [
+          '// Preserve discriminator literals with the Zod 3.25.76 bridge.',
+          '/* eslint-disable effect/no-zod-use-schema -- Pinned SDK declaration types use Zod. */',
+        ]
+      : []),
     '',
   ].join('\n');
   const filepath = join(sourceDirectory, filename);

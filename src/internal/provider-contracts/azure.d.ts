@@ -1,7 +1,5 @@
 // Generated from @ai-sdk/azure@4.0.131. Do not edit.
 // Original license: openai.LICENSE.
-// Preserve discriminator literals with the Zod 3.25.76 bridge.
-/* eslint-disable effect/no-zod-use-schema -- Pinned SDK declaration types use Zod. */
 import type {
   OpenAIProvider,
   OpenaiResponsesProviderMetadata as ResponsesProviderMetadata,
