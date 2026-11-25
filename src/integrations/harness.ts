@@ -410,8 +410,9 @@ export const isHarnessV1BuiltinToolIncluded = (
   ...args: Parameters<typeof sdk.isHarnessV1BuiltinToolIncluded>
 ) => sdk.isHarnessV1BuiltinToolIncluded(...args);
 
+export type HarnessV1MintBridgeTokenCallback = (sandboxId: string) => string;
+
 export type {
-  HarnessV1MintBridgeTokenCallback,
   HarnessV1RequestTransformation,
   HarnessV1RequestTransformationSources,
   HarnessV1SandboxSessionResumeOptions,
