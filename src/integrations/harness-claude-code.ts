@@ -3,10 +3,10 @@ import {
   claudeCode as nativeClaudeCode,
   createClaudeCode as nativeCreateClaudeCode,
 } from '@ai-sdk/harness-claude-code';
+import { Effect } from 'effect';
 import type * as SDKContract from './internal/harness-contracts/harness-claude-code.js';
-import { runSync } from '../internal/operation.js';
+import { openOperation, runSync } from '../internal/operation.js';
 import {
-  makeWithCredentialForwarding,
   type WithCredentialForwarding,
   wrapHarness,
 } from './internal/harness.js';
@@ -20,16 +20,49 @@ export type {
 export type ClaudeCodeHarnessSettings<
   R = never,
   E = never,
-> = WithCredentialForwarding<SDKContract.ClaudeCodeHarnessSettings, R, E>;
+> = WithCredentialForwarding<
+  Omit<SDKContract.ClaudeCodeHarnessSettings, 'onDebug'>,
+  R,
+  E
+> & {
+  /** Observe a channel event in the harness scope. */
+  readonly onDebug?: (
+    ...args: Parameters<
+      NonNullable<SDKContract.ClaudeCodeHarnessSettings['onDebug']>
+    >
+  ) => Effect.Effect<void, E, R>;
+};
 
 export const VERSION = nativeVersion;
 export const createClaudeCode = <R = never, E = never>(
   settings?: ClaudeCodeHarnessSettings<R, E>,
 ) =>
-  makeWithCredentialForwarding(
-    nativeCreateClaudeCode as unknown as typeof SDKContract.createClaudeCode,
-    settings,
-  );
+  Effect.gen(function* () {
+    const owner = yield* openOperation<R>();
+    const { credentialForwarding, onDebug, ...rest } = settings ?? {};
+    const create =
+      nativeCreateClaudeCode as unknown as typeof SDKContract.createClaudeCode;
+    return yield* runSync('ClaudeCode.create', () =>
+      wrapHarness(
+        create({
+          ...rest,
+          ...(credentialForwarding && {
+            credentialForwarding: (input) =>
+              owner.runCallback(
+                Effect.suspend(() => credentialForwarding(input)),
+              ),
+          }),
+          ...(onDebug && {
+            onDebug: (event) => {
+              void owner
+                .runCallback(Effect.suspend(() => onDebug(event)))
+                .catch(() => {});
+            },
+          }),
+        }),
+      ),
+    );
+  });
 export const claudeCode = runSync('ClaudeCode.default', () =>
   wrapHarness(nativeClaudeCode as unknown as typeof SDKContract.claudeCode),
 );
