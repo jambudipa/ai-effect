@@ -40,45 +40,65 @@ type Provider = Omit<ProviderV4, 'imageModel'> & {
   imageModel(modelId: string): SdkImageModelInput;
 };
 
-export const wrapProviderBase = (name: string, sdk: Provider) => ({
-  specificationVersion: sdk.specificationVersion,
-  languageModel: adaptMethod(
-    `${name}.languageModel`,
-    sdk.languageModel.bind(sdk),
-    wrapLanguageModel,
-  ),
-  embeddingModel: adaptMethod(
-    `${name}.embeddingModel`,
-    sdk.embeddingModel.bind(sdk),
-    wrapEmbeddingModel,
-  ),
-  imageModel: adaptMethod(
-    `${name}.imageModel`,
-    sdk.imageModel.bind(sdk),
-    wrapImageModel,
-  ),
-  transcriptionModel: adaptOptionalMethod(
-    `${name}.transcriptionModel`,
-    sdk.transcriptionModel?.bind(sdk),
-    wrapTranscriptionModel,
-  ),
-  speechModel: adaptOptionalMethod(
-    `${name}.speechModel`,
-    sdk.speechModel?.bind(sdk),
-    wrapSpeechModel,
-  ),
-  rerankingModel: adaptOptionalMethod(
-    `${name}.rerankingModel`,
-    sdk.rerankingModel?.bind(sdk),
-    wrapRerankingModel,
-  ),
-  files: adaptOptionalMethod(`${name}.files`, sdk.files?.bind(sdk), wrapFiles),
-  skills: adaptOptionalMethod(
-    `${name}.skills`,
-    sdk.skills?.bind(sdk),
-    wrapSkills,
-  ),
-});
+const providerIdentity = Symbol('provider identity');
+const nativeProviders = new WeakMap<object, ProviderV4>();
+
+export const unwrapProvider = (value: object): ProviderV4 | undefined => {
+  const token: unknown = Reflect.get(value, providerIdentity);
+  if (!token || typeof token !== 'object') return;
+  return nativeProviders.get(token);
+};
+export const wrapProviderBase = (name: string, sdk: Provider) => {
+  const wrapped = {
+    specificationVersion: sdk.specificationVersion,
+    languageModel: adaptMethod(
+      `${name}.languageModel`,
+      sdk.languageModel.bind(sdk),
+      wrapLanguageModel,
+    ),
+    embeddingModel: adaptMethod(
+      `${name}.embeddingModel`,
+      sdk.embeddingModel.bind(sdk),
+      wrapEmbeddingModel,
+    ),
+    imageModel: adaptMethod(
+      `${name}.imageModel`,
+      sdk.imageModel.bind(sdk),
+      wrapImageModel,
+    ),
+    transcriptionModel: adaptOptionalMethod(
+      `${name}.transcriptionModel`,
+      sdk.transcriptionModel?.bind(sdk),
+      wrapTranscriptionModel,
+    ),
+    speechModel: adaptOptionalMethod(
+      `${name}.speechModel`,
+      sdk.speechModel?.bind(sdk),
+      wrapSpeechModel,
+    ),
+    rerankingModel: adaptOptionalMethod(
+      `${name}.rerankingModel`,
+      sdk.rerankingModel?.bind(sdk),
+      wrapRerankingModel,
+    ),
+    files: adaptOptionalMethod(
+      `${name}.files`,
+      sdk.files?.bind(sdk),
+      wrapFiles,
+    ),
+    skills: adaptOptionalMethod(
+      `${name}.skills`,
+      sdk.skills?.bind(sdk),
+      wrapSkills,
+    ),
+  };
+  const identity = {};
+  nativeProviders.set(identity, sdk as ProviderV4);
+  return Object.defineProperty(wrapped, providerIdentity, {
+    value: identity,
+    enumerable: true,
+  });
+};
 
 export const wrapLegacySpeech = (legacy: {
   speech: Parameters<typeof wrapSpeechModel>[0];
