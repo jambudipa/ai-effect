@@ -77,6 +77,17 @@ export type BoundTools<Tools extends EffectTools> = {
   [Name in keyof Tools]: NativeTool<Tools[Name]>;
 };
 
+const deferredTools = new WeakMap<object, (owner: Owner<never>) => Tool>();
+
+export function rememberFunctionTool<
+  Handle extends object,
+  Services,
+  Native extends Tool,
+>(handle: Handle, bind: (owner: Owner<Services>) => Native): Handle {
+  deferredTools.set(handle, bind as unknown as (owner: Owner<never>) => Tool);
+  return handle;
+}
+
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
 export const bindTools = <Tools extends EffectTools>(
@@ -85,6 +96,8 @@ export const bindTools = <Tools extends EffectTools>(
 ): BoundTools<Tools> =>
   Object.fromEntries(
     Object.entries(tools).map(([name, definition]) => {
+      const bound = deferredTools.get(definition);
+      if (bound) return [name, bound(owner)];
       if (isProviderTool(definition)) {
         return [
           name,
