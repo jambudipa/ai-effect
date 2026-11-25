@@ -73,28 +73,32 @@ export type Experimental_VideoModelV3 =
   LegacyModel<sdk.Experimental_VideoModelV3>;
 export type ProviderV4 = ReturnType<typeof wrapProviderBase>;
 
-type ModelSelection<Model, R> = (
-  modelId: string,
-) => Effect.Effect<Model, import('../internal/operation.js').AiSdkError, R>;
+type ModelSelection<Model, R> = Effect.Effect<
+  Model,
+  import('../internal/operation.js').AiSdkError,
+  R
+>;
 
-export type ProviderV2<R = never> = {
-  readonly languageModel: ModelSelection<LanguageModelV2, R>;
-  readonly textEmbeddingModel: ModelSelection<EmbeddingModelV2<string>, R>;
-  readonly imageModel: ModelSelection<ImageModelV2, R>;
-  readonly transcriptionModel?: ModelSelection<TranscriptionModelV2, R>;
-  readonly speechModel?: ModelSelection<SpeechModelV2, R>;
-};
+export interface ProviderV2<R = never> {
+  languageModel(modelId: string): ModelSelection<LanguageModelV2, R>;
+  textEmbeddingModel(
+    modelId: string,
+  ): ModelSelection<EmbeddingModelV2<string>, R>;
+  imageModel(modelId: string): ModelSelection<ImageModelV2, R>;
+  transcriptionModel?(modelId: string): ModelSelection<TranscriptionModelV2, R>;
+  speechModel?(modelId: string): ModelSelection<SpeechModelV2, R>;
+}
 
-export type ProviderV3<R = never> = {
+export interface ProviderV3<R = never> {
   readonly specificationVersion: 'v3';
-  readonly languageModel: ModelSelection<LanguageModelV3, R>;
-  readonly embeddingModel: ModelSelection<EmbeddingModelV3, R>;
-  readonly textEmbeddingModel?: ModelSelection<EmbeddingModelV3, R>;
-  readonly imageModel: ModelSelection<ImageModelV3, R>;
-  readonly transcriptionModel?: ModelSelection<TranscriptionModelV3, R>;
-  readonly speechModel?: ModelSelection<SpeechModelV3, R>;
-  readonly rerankingModel?: ModelSelection<RerankingModelV3, R>;
-};
+  languageModel(modelId: string): ModelSelection<LanguageModelV3, R>;
+  embeddingModel(modelId: string): ModelSelection<EmbeddingModelV3, R>;
+  textEmbeddingModel?(modelId: string): ModelSelection<EmbeddingModelV3, R>;
+  imageModel(modelId: string): ModelSelection<ImageModelV3, R>;
+  transcriptionModel?(modelId: string): ModelSelection<TranscriptionModelV3, R>;
+  speechModel?(modelId: string): ModelSelection<SpeechModelV3, R>;
+  rerankingModel?(modelId: string): ModelSelection<RerankingModelV3, R>;
+}
 
 type MiddlewareArguments<Arguments, Model> = {
   [Name in keyof Arguments]: Name extends 'model'
