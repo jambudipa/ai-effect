@@ -1,18 +1,33 @@
-import * as sdk from '@ai-sdk/ui-utils/test';
 import { Effect } from 'effect';
 import { runRequest, runSync } from '../internal/operation.js';
 
+type SDK = typeof import('@ai-sdk/ui-utils/test');
+const load = runRequest(
+  'legacy.loadTestUtilities',
+  {},
+  () => import('@ai-sdk/ui-utils/test'),
+);
+
 export const mockFetchTextStream = (
-  ...args: Parameters<typeof sdk.mockFetchTextStream>
+  ...args: Parameters<SDK['mockFetchTextStream']>
 ) =>
-  runSync('legacy.mockFetchTextStream', () => sdk.mockFetchTextStream(...args));
+  load.pipe(
+    Effect.flatMap((sdk) =>
+      runSync('legacy.mockFetchTextStream', () =>
+        sdk.mockFetchTextStream(...args),
+      ),
+    ),
+  );
 
 export const mockFetchDataStream = (
-  ...args: Parameters<typeof sdk.mockFetchDataStream>
+  ...args: Parameters<SDK['mockFetchDataStream']>
 ) =>
-  runSync('legacy.mockFetchDataStream', () =>
-    sdk.mockFetchDataStream(...args),
-  ).pipe(
+  load.pipe(
+    Effect.flatMap((sdk) =>
+      runSync('legacy.mockFetchDataStream', () =>
+        sdk.mockFetchDataStream(...args),
+      ),
+    ),
     Effect.map(({ requestBody }) => ({
       requestBody: runRequest(
         'legacy.mockFetchDataStream.requestBody',
@@ -23,11 +38,14 @@ export const mockFetchDataStream = (
   );
 
 export const mockFetchDataStreamWithGenerator = (
-  ...args: Parameters<typeof sdk.mockFetchDataStreamWithGenerator>
+  ...args: Parameters<SDK['mockFetchDataStreamWithGenerator']>
 ) =>
-  runSync('legacy.mockFetchDataStreamWithGenerator', () =>
-    sdk.mockFetchDataStreamWithGenerator(...args),
-  ).pipe(
+  load.pipe(
+    Effect.flatMap((sdk) =>
+      runSync('legacy.mockFetchDataStreamWithGenerator', () =>
+        sdk.mockFetchDataStreamWithGenerator(...args),
+      ),
+    ),
     Effect.map(({ requestBody }) => ({
       requestBody: runRequest(
         'legacy.mockFetchDataStreamWithGenerator.requestBody',
@@ -37,6 +55,9 @@ export const mockFetchDataStreamWithGenerator = (
     })),
   );
 
-export const mockFetchError = (
-  ...args: Parameters<typeof sdk.mockFetchError>
-) => runSync('legacy.mockFetchError', () => sdk.mockFetchError(...args));
+export const mockFetchError = (...args: Parameters<SDK['mockFetchError']>) =>
+  load.pipe(
+    Effect.flatMap((sdk) =>
+      runSync('legacy.mockFetchError', () => sdk.mockFetchError(...args)),
+    ),
+  );

@@ -1,10 +1,12 @@
 import * as sdk from '@ai-sdk/ui-utils';
 import { Effect } from 'effect';
+import { guardedFetch } from '../internal/fetch.js';
 import {
   abortable,
   openOperation,
   runRequest,
   runSync,
+  sdkError,
   type AiSdkError,
 } from '../internal/operation.js';
 import { ownReadable } from '../internal/readable.js';
@@ -194,4 +196,170 @@ export const updateToolCallResult = (
 ) =>
   runSync('legacy.updateToolCallResult', () =>
     sdk.updateToolCallResult(...args),
+  );
+
+type LegacyJsonSchema = Parameters<typeof sdk.jsonSchema>[0];
+type Validated<A> =
+  { success: true; value: A } | { success: false; error: Error };
+type LegacyZodSchema<A> = Parameters<typeof sdk.zodSchema<A>>[0];
+
+declare const schemaFamily: unique symbol;
+
+/** A schema for the legacy AI SDK 4 protocol. */
+export type Schema<A = unknown, R = never> = {
+  readonly [schemaFamily]: A;
+  readonly jsonSchema: LegacyJsonSchema;
+  readonly validate?: (
+    value: unknown,
+  ) => Effect.Effect<Validated<A>, AiSdkError, R>;
+};
+
+const wrapSchema = <A>(schema: sdk.Schema<A>): Schema<A> => {
+  const validate = schema.validate;
+  return {
+    jsonSchema: schema.jsonSchema,
+    ...(validate
+      ? {
+          validate: (value: unknown) =>
+            runSync('legacy.Schema.validate', () => {
+              const result = validate(value);
+              return result.success
+                ? result
+                : {
+                    success: false,
+                    error: sdkError('legacy.Schema.validate', result.error),
+                  };
+            }),
+        }
+      : {}),
+  } as Schema<A>;
+};
+
+export const jsonSchema = <A = unknown, R = never>(
+  definition: LegacyJsonSchema,
+  options?: {
+    readonly validate?: (
+      value: unknown,
+    ) => Effect.Effect<Validated<A>, AiSdkError, R>;
+  },
+): Effect.Effect<Schema<A, R>, AiSdkError> =>
+  runSync('legacy.jsonSchema', () => {
+    const schema = sdk.jsonSchema<A>(definition);
+    return {
+      ...wrapSchema(schema),
+      ...(options?.validate ? { validate: options.validate } : {}),
+    };
+  });
+
+export const zodSchema = <A>(...args: Parameters<typeof sdk.zodSchema<A>>) =>
+  runSync('legacy.zodSchema', () => wrapSchema(sdk.zodSchema<A>(...args)));
+
+export const asSchema = <A, R = never>(
+  schema: LegacyZodSchema<A> | Schema<A, R>,
+): Effect.Effect<Schema<A, R>, AiSdkError> =>
+  runSync('legacy.asSchema', () =>
+    'jsonSchema' in schema ? schema : wrapSchema(sdk.asSchema(schema)),
+  );
+
+type RequestOwner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
+type EffectCallback<Fn, R> = Fn extends (...args: infer Args) => infer A
+  ? (...args: Args) => Effect.Effect<Awaited<A>, unknown, R>
+  : Fn;
+
+type ChatOptions = Parameters<typeof sdk.callChatApi>[0];
+type CompletionOptions = Parameters<typeof sdk.callCompletionApi>[0];
+type ScopedRequestOptions<Options, Callback extends keyof Options, R> = {
+  [K in keyof Options]: K extends Callback
+    ? EffectCallback<Options[K], R>
+    : Options[K];
+} & { readonly abortSignal?: AbortSignal };
+
+const scopedRequest = <A, R>(
+  operation: string,
+  signal: AbortSignal | undefined,
+  request: (owner: RequestOwner<R>) => Promise<A>,
+) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const owner = yield* openOperation<R>(signal);
+      return yield* abortable(
+        operation,
+        owner.signal,
+        runRequest(operation, {}, () => request(owner)),
+      );
+    }),
+  );
+
+export const callChatApi = <R = never>(
+  options: ScopedRequestOptions<ChatOptions, 'onResponse' | 'onToolCall', R>,
+) =>
+  scopedRequest<void, R>('legacy.callChatApi', options.abortSignal, (owner) => {
+    const { abortSignal, onResponse, onToolCall, ...request } = options;
+    return sdk.callChatApi({
+      ...request,
+      fetch: guardedFetch(owner.signal, request.fetch),
+      onUpdate: (update) => {
+        if (!owner.signal.aborted) request.onUpdate(update);
+      },
+      onFinish:
+        request.onFinish &&
+        ((...args) => {
+          if (!owner.signal.aborted) request.onFinish?.(...args);
+        }),
+      restoreMessagesOnFailure: () => {
+        if (!owner.signal.aborted) request.restoreMessagesOnFailure();
+      },
+      onResponse:
+        onResponse &&
+        ((response) =>
+          owner.runCallback(Effect.suspend(() => onResponse(response)))),
+      onToolCall:
+        onToolCall &&
+        ((toolCall) =>
+          owner.runCallback(Effect.suspend(() => onToolCall(toolCall)))),
+    });
+  });
+
+export const callCompletionApi = <R = never>(
+  options: ScopedRequestOptions<CompletionOptions, 'onResponse', R>,
+) =>
+  scopedRequest<string | null | undefined, R>(
+    'legacy.callCompletionApi',
+    options.abortSignal,
+    (owner) => {
+      const { abortSignal, onResponse, ...request } = options;
+      return sdk.callCompletionApi({
+        ...request,
+        fetch: guardedFetch(owner.signal, request.fetch),
+        setCompletion: (value) => {
+          if (!owner.signal.aborted) request.setCompletion(value);
+        },
+        onData:
+          request.onData &&
+          ((value) => {
+            if (!owner.signal.aborted) request.onData?.(value);
+          }),
+        onFinish:
+          request.onFinish &&
+          ((...args) => {
+            if (!owner.signal.aborted) request.onFinish?.(...args);
+          }),
+        onResponse:
+          onResponse &&
+          ((response) =>
+            owner.runCallback(Effect.suspend(() => onResponse(response)))),
+        setError: (cause) => {
+          if (!owner.signal.aborted)
+            request.setError(
+              cause && sdkError('legacy.callCompletionApi', cause),
+            );
+        },
+        onError:
+          request.onError &&
+          ((cause) => {
+            if (!owner.signal.aborted)
+              request.onError?.(sdkError('legacy.callCompletionApi', cause));
+          }),
+      });
+    },
   );

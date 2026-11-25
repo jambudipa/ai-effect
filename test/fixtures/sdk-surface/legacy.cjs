@@ -8,3 +8,10 @@ assert.equal(
   Effect.runSync(formatDataStreamPart('text', 'legacy')),
   '0:"legacy"\n',
 );
+const fixtures = require('@jambudipa/ai-effect/ui-utils/test');
+assert.equal(typeof fixtures.mockFetchError, 'function');
+assert(
+  Effect.isEffect(
+    fixtures.mockFetchError({ statusCode: 400, errorMessage: 'fixture' }),
+  ),
+);
