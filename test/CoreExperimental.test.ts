@@ -132,6 +132,9 @@ describe('experimental Core adapters', () => {
           integrations: [nativeTelemetry],
         });
 
+        if (!event.output) {
+          return yield* Effect.die('Expected a wrapped text format');
+        }
         expect(Effect.isEffect(event.output.responseFormat)).toBe(true);
         expect(unwrapOutput(event.output)).toBe(nativeOutput);
         const [integration] = event.integrations;
