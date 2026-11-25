@@ -5,7 +5,7 @@ import type {
 } from '@ai-sdk/provider';
 import { bindTools } from './internal/tool.js';
 import type { BoundTools, EffectTools, ToolServices } from './internal/tool.js';
-import { unwrapOutput } from './internal/output.js';
+import { bindOutput } from './internal/output.js';
 import type { OutputSpecification } from './internal/output.js';
 import { unwrapBatch } from './internal/provider-resource.js';
 import type { BatchV4 } from './internal/provider-resource.js';
@@ -52,7 +52,9 @@ import type {
 } from './internal/provider-model.js';
 import { ownReadable } from './internal/readable.js';
 
-type NativeOutput<A, P, I> = ReturnType<typeof unwrapOutput<A, P, I>>;
+type NativeOutput<A, P, I> = NonNullable<
+  ReturnType<typeof bindOutput<A, P, I, never>>
+>;
 
 export type Experimental_DecisionModel = string | DecisionModelV4;
 export type Experimental_ExtractionModel = string | ExtractionModelV4;
@@ -657,13 +659,14 @@ type AdaptStartBatchOptions<
   A,
   P,
   I,
+  R,
 > = {
   [Key in keyof Native]: Key extends 'provider'
     ? Experimental_BatchProvider<Ids>
     : Key extends 'requests'
       ? ReadonlyArray<BatchInput<Native['requests'][number], Tools>>
       : Key extends 'output'
-        ? OutputSpecification<A, P, I>
+        ? OutputSpecification<A, P, I, R>
         : Native[Key];
 };
 
@@ -673,13 +676,15 @@ type StartBatchOptions<
   A,
   P,
   I,
+  R,
 > = AdaptStartBatchOptions<
   NativeStartBatchOptions<Ids, Tools>,
   Ids,
   Tools,
   A,
   P,
-  I
+  I,
+  R
 >;
 
 export const experimental_startBatch = <
@@ -688,13 +693,14 @@ export const experimental_startBatch = <
   A = string,
   P = string,
   I = never,
+  R = never,
 >(
-  options: StartBatchOptions<Ids, Tools, A, P, I>,
+  options: StartBatchOptions<Ids, Tools, A, P, I, R>,
 ) =>
   getNativeBatch<Ids>('experimental_startBatch', options.provider).pipe(
     Effect.flatMap((provider) =>
       scopedRequest<
-        ToolServices<Tools>,
+        ToolServices<Tools> | R,
         Awaited<
           ReturnType<
             typeof sdk.experimental_startBatch<
@@ -705,6 +711,7 @@ export const experimental_startBatch = <
         >
       >('experimental_startBatch', options, (owner, abortSignal) => {
         const { provider: _, output, requests, ...data } = options;
+        const nativeOutput = output && bindOutput(output, owner);
         const nativeRequests = requests.map((request) => {
           if (request.type !== 'text') return request;
           const { tools, ...data } = request;
@@ -714,7 +721,7 @@ export const experimental_startBatch = <
           {
             ...data,
             ...(provider ? { provider } : {}),
-            ...(output ? { output: unwrapOutput(output) } : {}),
+            ...(nativeOutput ? { output: nativeOutput } : {}),
             requests: nativeRequests,
             abortSignal,
           },
@@ -730,13 +737,13 @@ type NativeBatchResultsOptions<Tools extends EffectTools, A, P, I> = Parameters<
   >
 >[0];
 
-type AdaptBatchResultsOptions<Native, Tools extends EffectTools, A, P, I> = {
+type AdaptBatchResultsOptions<Native, Tools extends EffectTools, A, P, I, R> = {
   [Key in keyof Native]: Key extends 'provider'
     ? BatchLookupProvider
     : Key extends 'tools'
       ? Tools
       : Key extends 'output'
-        ? OutputSpecification<A, P, I>
+        ? OutputSpecification<A, P, I, R>
         : Native[Key];
 };
 
@@ -745,12 +752,14 @@ type BatchResultsOptions<
   A,
   P,
   I,
+  R,
 > = AdaptBatchResultsOptions<
   NativeBatchResultsOptions<Tools, A, P, I>,
   Tools,
   A,
   P,
-  I
+  I,
+  R
 >;
 
 export const experimental_getBatchResults = <
@@ -758,8 +767,9 @@ export const experimental_getBatchResults = <
   A = string,
   P = string,
   I = never,
+  R = never,
 >(
-  options: BatchResultsOptions<Tools, A, P, I>,
+  options: BatchResultsOptions<Tools, A, P, I, R>,
 ) =>
   Stream.unwrap(
     Effect.gen(function* () {
@@ -767,22 +777,23 @@ export const experimental_getBatchResults = <
         'experimental_getBatchResults',
         options.provider,
       );
-      const owner = yield* openOperation<ToolServices<Tools>>(
+      const owner = yield* openOperation<ToolServices<Tools> | R>(
         options.abortSignal,
       );
       const { provider: _, output, tools, ...data } = options;
-      return ownedStream('experimental_getBatchResults', () =>
-        sdk.experimental_getBatchResults<
+      return ownedStream('experimental_getBatchResults', () => {
+        const nativeOutput = output && bindOutput(output, owner);
+        return sdk.experimental_getBatchResults<
           BoundTools<Tools>,
           NativeOutput<A, P, I> | undefined
         >({
           ...data,
           ...(provider ? { provider } : {}),
-          ...(output ? { output: unwrapOutput(output) } : {}),
+          ...(nativeOutput ? { output: nativeOutput } : {}),
           ...(tools ? { tools: bindTools(tools, owner) } : {}),
           abortSignal: owner.signal,
-        }),
-      );
+        });
+      });
     }),
   );
 
@@ -799,12 +810,14 @@ type ProviderModelIds<Provider> =
 export type Experimental_StartBatchOptions<
   Tools extends EffectTools = {},
   Provider = Experimental_BatchProvider,
+  R = never,
 > = StartBatchOptions<
   ProviderModelIds<Provider>,
   Tools,
   unknown,
   unknown,
-  unknown
+  unknown,
+  R
 >;
 
 export type Experimental_BatchRequest<
@@ -818,14 +831,14 @@ export type Experimental_TextBatchRequest<
 > = BatchInput<sdk.Experimental_TextBatchRequest<Id, BoundTools<Tools>>, Tools>;
 
 type AppliedOutput<Output> =
-  Output extends OutputSpecification<infer A, infer P, infer I>
+  Output extends OutputSpecification<infer A, infer P, infer I, infer _R>
     ? NativeOutput<A, P, I>
     : undefined;
 
 type SelectedOutput<Output> =
-  Output extends OutputSpecification<infer A, infer P, infer I>
-    ? [A, P, I]
-    : [string, string, never];
+  Output extends OutputSpecification<infer A, infer P, infer I, infer R>
+    ? [A, P, I, R]
+    : [string, string, never, never];
 
 export type Experimental_GetBatchResultsOptions<
   Tools extends EffectTools = {},
@@ -834,7 +847,8 @@ export type Experimental_GetBatchResultsOptions<
   Tools,
   SelectedOutput<Output>[0],
   SelectedOutput<Output>[1],
-  SelectedOutput<Output>[2]
+  SelectedOutput<Output>[2],
+  SelectedOutput<Output>[3]
 >;
 
 export type Experimental_BatchItemResult<
