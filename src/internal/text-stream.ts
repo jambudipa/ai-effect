@@ -4,12 +4,29 @@ import type {
   ToolSet,
   OutputInterface,
   UIMessage,
-  UIMessageStreamOptions,
   InferUIMessageChunk,
 } from 'ai';
-import { Effect, Stream } from 'effect';
+import { Effect, Option, Stream, type Scope } from 'effect';
+import type { ServerResponse } from 'node:http';
+import { invoke, type CallbackResult } from './chat-boundary.js';
+import {
+  bindUiOptions,
+  createTextStreamResponse,
+  createUIMessageStreamResponse,
+  pipeTextStreamToResponse,
+  pipeUIMessageStreamToResponse,
+  scopedStream,
+  type UIMessageStreamOptions,
+  type UiHostOptions,
+} from './chat-ui-stream.js';
 import { AiSdkStreamAborted } from './stream-aborted.js';
-import { runRequest, runSync, sdkError, type AiSdkError } from './operation.js';
+import {
+  openOperation,
+  runRequest,
+  runSync,
+  sdkError,
+  type AiSdkError,
+} from './operation.js';
 
 type NativeResult<
   Tools extends ToolSet,
@@ -33,6 +50,27 @@ type Metadata<Value> = {
   [K in AsyncFieldKeys<Value>]-?: Effect.Effect<Resolved<Value[K]>, AiSdkError>;
 };
 type Resolved<Value> = Value extends PromiseLike<infer A> ? A : Value;
+
+type ConsumerOptions<R> = {
+  readonly onError?: (cause: AiSdkError) => CallbackResult<void, R>;
+};
+
+type UiResponseOptions<Message extends UIMessage, R> = UIMessageStreamOptions<
+  Message,
+  R
+> &
+  Omit<UiHostOptions<never, R>, 'stream'>;
+
+interface UiResponse {
+  <Message extends UIMessage = UIMessage, R = never>(
+    options?: UiResponseOptions<Message, R> & {
+      readonly consumeSseStream?: never;
+    },
+  ): Effect.Effect<Response, AiSdkError, R>;
+  <Message extends UIMessage = UIMessage, R = never>(
+    options: UiResponseOptions<Message, R>,
+  ): Effect.Effect<Response, AiSdkError, R | Scope.Scope>;
+}
 
 export type TextStreamResult<
   Tools extends ToolSet,
@@ -65,23 +103,29 @@ export type TextStreamResult<
     StreamValue<Native['elementStream']>,
     AiSdkError
   >;
-  readonly consumeStream: (
-    ...args: Parameters<Native['consumeStream']>
-  ) => Effect.Effect<void, AiSdkError>;
-  readonly toUIMessageStream: <Message extends UIMessage>(
-    options?: UIMessageStreamOptions<Message>,
-  ) => Stream.Stream<InferUIMessageChunk<Message>, AiSdkError>;
-  readonly pipeUIMessageStreamToResponse: (
-    ...args: Parameters<Native['pipeUIMessageStreamToResponse']>
-  ) => Effect.Effect<void, AiSdkError>;
+  readonly consumeStream: <R = never>(
+    options?: ConsumerOptions<R>,
+  ) => Effect.Effect<void, AiSdkError, R>;
+  readonly toUIMessageStream: <
+    Message extends UIMessage = UIMessage,
+    R = never,
+  >(
+    options?: UIMessageStreamOptions<Message, R>,
+  ) => Stream.Stream<InferUIMessageChunk<Message>, AiSdkError, R>;
+  readonly pipeUIMessageStreamToResponse: <
+    Message extends UIMessage = UIMessage,
+    R = never,
+  >(
+    response: ServerResponse,
+    options?: UiResponseOptions<Message, R>,
+  ) => Effect.Effect<void, AiSdkError, R>;
   readonly pipeTextStreamToResponse: (
-    ...args: Parameters<Native['pipeTextStreamToResponse']>
+    response: ServerResponse,
+    options?: ResponseInit,
   ) => Effect.Effect<void, AiSdkError>;
-  readonly toUIMessageStreamResponse: (
-    ...args: Parameters<Native['toUIMessageStreamResponse']>
-  ) => Effect.Effect<Response, AiSdkError>;
+  readonly toUIMessageStreamResponse: UiResponse;
   readonly toTextStreamResponse: (
-    ...args: Parameters<Native['toTextStreamResponse']>
+    options?: ResponseInit,
   ) => Effect.Effect<Response, AiSdkError>;
 };
 
@@ -121,6 +165,52 @@ export const wrapTextStream = <
       ),
       Stream.onEnd(markComplete),
     );
+  const textStream = parts(() => sdk.textStream).pipe(
+    Stream.onEnd(markComplete),
+  );
+  const uiStream = <Message extends UIMessage = UIMessage, R = never>(
+    options: UIMessageStreamOptions<Message, R> = {},
+  ) =>
+    Stream.unwrap(
+      Effect.gen(function* () {
+        const owner = yield* openOperation<R>();
+        const source = yield* runSync(operation, () =>
+          sdk.toUIMessageStream<Message>(
+            bindUiOptions(operation, owner, options),
+          ),
+        );
+        return yield* scopedStream(operation, source);
+      }),
+    ).pipe(Stream.onEnd(markComplete));
+
+  function uiResponse<Message extends UIMessage, R>(
+    options?: UiResponseOptions<Message, R> & {
+      readonly consumeSseStream?: never;
+    },
+  ): Effect.Effect<Response, AiSdkError, R>;
+  function uiResponse<Message extends UIMessage, R>(
+    options: UiResponseOptions<Message, R>,
+  ): Effect.Effect<Response, AiSdkError, R | Scope.Scope>;
+  function uiResponse<Message extends UIMessage, R>({
+    headers,
+    status,
+    statusText,
+    keepAliveMs,
+    consumeSseStream,
+    ...options
+  }: UiResponseOptions<Message, R> = {}) {
+    const settings = {
+      ...(headers ? { headers } : {}),
+      ...(status === undefined ? {} : { status }),
+      ...(statusText === undefined ? {} : { statusText }),
+      ...(keepAliveMs === undefined ? {} : { keepAliveMs }),
+      stream: uiStream(options),
+    };
+    return consumeSseStream
+      ? createUIMessageStreamResponse({ ...settings, consumeSseStream })
+      : createUIMessageStreamResponse(settings);
+  }
+
   return {
     content: read(() => sdk.content),
     text: read(() => sdk.text),
@@ -146,7 +236,7 @@ export const wrapTextStream = <
     response: read(() => sdk.response),
     responseMessages: read(() => sdk.responseMessages),
     providerMetadata: read(() => sdk.providerMetadata),
-    textStream: parts(() => sdk.textStream),
+    textStream,
     stream: events(() => sdk.stream),
     fullStream: events(() => sdk.fullStream),
     experimental_partialOutputStream: parts(
@@ -155,22 +245,35 @@ export const wrapTextStream = <
     partialOutputStream: parts(() => sdk.partialOutputStream),
     elementStream: parts(() => sdk.elementStream),
     output: read(() => sdk.output),
-    consumeStream: (...args: Parameters<typeof sdk.consumeStream>) =>
-      read(() => sdk.consumeStream(...args)),
-    toUIMessageStream: <Message extends import('ai').UIMessage>(
-      ...args: Parameters<typeof sdk.toUIMessageStream<Message>>
-    ) => parts(() => sdk.toUIMessageStream<Message>(...args)),
-    pipeUIMessageStreamToResponse: (
-      ...args: Parameters<typeof sdk.pipeUIMessageStreamToResponse>
-    ) => read(() => sdk.pipeUIMessageStreamToResponse(...args)),
-    pipeTextStreamToResponse: (
-      ...args: Parameters<typeof sdk.pipeTextStreamToResponse>
-    ) => read(() => sdk.pipeTextStreamToResponse(...args)),
-    toUIMessageStreamResponse: (
-      ...args: Parameters<typeof sdk.toUIMessageStreamResponse>
-    ) => runSync(operation, () => sdk.toUIMessageStreamResponse(...args)),
-    toTextStreamResponse: (
-      ...args: Parameters<typeof sdk.toTextStreamResponse>
-    ) => runSync(operation, () => sdk.toTextStreamResponse(...args)),
+    consumeStream: ({ onError } = {}) =>
+      Effect.gen(function* () {
+        let failure = Option.none<AiSdkError>();
+        yield* read(() =>
+          sdk.consumeStream({
+            onError: (cause) => {
+              failure = Option.some(sdkError(operation, cause));
+            },
+          }),
+        );
+        if (Option.isNone(failure)) {
+          yield* markComplete;
+        } else if (onError) {
+          yield* invoke(operation, () =>
+            onError(Option.getOrThrow(failure)),
+          ).pipe(Effect.mapError((cause) => sdkError(operation, cause)));
+        }
+      }),
+    toUIMessageStream: uiStream,
+    pipeUIMessageStreamToResponse: (response, options = {}) =>
+      pipeUIMessageStreamToResponse({
+        ...options,
+        response,
+        stream: uiStream(options),
+      }),
+    pipeTextStreamToResponse: (response, init) =>
+      pipeTextStreamToResponse({ ...init, response, stream: textStream }),
+    toUIMessageStreamResponse: uiResponse,
+    toTextStreamResponse: (init) =>
+      createTextStreamResponse({ ...init, stream: textStream }),
   };
 };
