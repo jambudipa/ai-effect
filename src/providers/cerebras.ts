@@ -5,9 +5,13 @@ import {
   type CerebrasProvider as SdkCerebrasProvider,
   type CerebrasProviderSettings,
 } from '@ai-sdk/cerebras';
-import { Effect } from 'effect';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runRequest, runSync } from '../internal/operation.js';
+import { runSync } from '../internal/operation.js';
+import {
+  adaptMethod,
+  adaptUnsupportedMethod,
+  wrapProviderBase,
+} from '../internal/provider-adapter.js';
 
 export { VERSION };
 export type {
@@ -22,74 +26,23 @@ export type {
   LanguageModelV4StreamPart,
 } from '@ai-sdk/provider';
 
-type ModelId = Parameters<SdkCerebrasProvider>[0];
-
 /** The callable Cerebras provider and its model selectors. */
 export type CerebrasProvider = ReturnType<typeof wrapCerebras>;
 
 const wrapCerebras = (sdk: SdkCerebrasProvider) =>
-  Object.assign(
-    (modelId: ModelId) =>
-      runSync('cerebras', () => wrapLanguageModel(sdk(modelId))),
-    {
-      specificationVersion: sdk.specificationVersion,
-      languageModel: (modelId: ModelId) =>
-        runSync('cerebras.languageModel', () =>
-          wrapLanguageModel(sdk.languageModel(modelId)),
-        ),
-      chat: (modelId: ModelId) =>
-        runSync('cerebras.chat', () => wrapLanguageModel(sdk.chat(modelId))),
-      embeddingModel: (modelId: string) =>
-        runSync('cerebras.embeddingModel', () =>
-          sdk.embeddingModel(modelId),
-        ).pipe(
-          Effect.map((model) => ({
-            specificationVersion: model.specificationVersion,
-            provider: model.provider,
-            modelId: model.modelId,
-            maxEmbeddingsPerCall: runRequest(
-              'cerebras.embeddingModel.maxEmbeddingsPerCall',
-              {},
-              () => Promise.resolve(model.maxEmbeddingsPerCall),
-            ),
-            supportsParallelCalls: runRequest(
-              'cerebras.embeddingModel.supportsParallelCalls',
-              {},
-              () => Promise.resolve(model.supportsParallelCalls),
-            ),
-            doEmbed: (options: Parameters<typeof model.doEmbed>[0]) =>
-              runRequest(
-                'cerebras.embeddingModel.doEmbed',
-                options,
-                (abortSignal) => model.doEmbed({ ...options, abortSignal }),
-              ),
-          })),
-        ),
-      imageModel: (modelId: string) =>
-        runSync('cerebras.imageModel', () => sdk.imageModel(modelId)).pipe(
-          Effect.map((model) => ({
-            specificationVersion: model.specificationVersion,
-            provider: model.provider,
-            modelId: model.modelId,
-            maxImagesPerCall: runRequest(
-              'cerebras.imageModel.maxImagesPerCall',
-              {},
-              () => Promise.resolve(model.maxImagesPerCall),
-            ),
-            doGenerate: (options: Parameters<typeof model.doGenerate>[0]) =>
-              runRequest(
-                'cerebras.imageModel.doGenerate',
-                options,
-                (abortSignal) => model.doGenerate({ ...options, abortSignal }),
-              ),
-          })),
-        ),
-      textEmbeddingModel: (modelId: string) =>
-        runSync('cerebras.textEmbeddingModel', () =>
-          sdk.textEmbeddingModel(modelId),
-        ),
-    },
-  );
+  Object.assign(adaptMethod('cerebras', sdk, wrapLanguageModel), {
+    ...wrapProviderBase('cerebras', sdk),
+    languageModel: adaptMethod(
+      'cerebras.languageModel',
+      sdk.languageModel.bind(sdk),
+      wrapLanguageModel,
+    ),
+    chat: adaptMethod('cerebras.chat', sdk.chat.bind(sdk), wrapLanguageModel),
+    textEmbeddingModel: adaptUnsupportedMethod(
+      'cerebras.textEmbeddingModel',
+      sdk.textEmbeddingModel.bind(sdk),
+    ),
+  });
 
 /** Use Cerebras with its default settings. Requests start on execution. */
 export const cerebras = wrapCerebras(sdkCerebras);
