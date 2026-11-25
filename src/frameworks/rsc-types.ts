@@ -2,36 +2,51 @@ import type { Effect } from 'effect';
 import type { ReactElement, ReactNode } from 'react';
 import type { AiSdkError } from '../internal/operation.js';
 
-export type {
-  InferAIState,
-  InferActions,
-  InferUIState,
-  JSONValue,
-  StreamableValue,
-  ValueOrUpdater,
-} from '@ai-sdk/rsc';
+export type { JSONValue, StreamableValue } from '@ai-sdk/rsc';
 
 export type EffectAction = (
   ...args: never[]
 ) => Effect.Effect<unknown, unknown, unknown>;
-export type AIActions = Record<string, EffectAction>;
 export type AIAction<
-  Arguments extends unknown[],
-  Result,
+  Argument = unknown,
+  Result = unknown,
   Failure = never,
   Services = never,
-> = (...args: Arguments) => Effect.Effect<Result, Failure, Services>;
+> = (...args: Argument[]) => Effect.Effect<Result, Failure, Services>;
+export type AIActions<
+  Argument = never,
+  Result = unknown,
+  Failure = unknown,
+  Services = unknown,
+> = Record<string, AIAction<Argument, Result, Failure, Services>>;
 
-export type AIProviderProps<State, UI, Actions> = {
+export type AIProviderProps<
+  State = unknown,
+  UI = unknown,
+  Actions = AIActions,
+> = {
   readonly children: ReactNode;
   readonly initialAIState?: State;
   readonly initialUIState?: UI;
   readonly $ActionTypes?: Actions;
 };
 
-export type AIProvider<State, UI, Actions> = (
+export type AIProvider<State = unknown, UI = unknown, Actions = AIActions> = (
   props: AIProviderProps<State, UI, Actions>,
 ) => Promise<ReactElement>;
+
+export type ProviderComponent = (props: never) => Promise<ReactElement>;
+export type InferAIState<T, Fallback> =
+  T extends AIProvider<infer State, infer _UI, infer _Actions>
+    ? State
+    : Fallback;
+export type InferUIState<T, Fallback> =
+  T extends AIProvider<infer _State, infer UI, infer _Actions> ? UI : Fallback;
+export type InferActions<T, Fallback> =
+  T extends AIProvider<infer _State, infer _UI, infer Actions>
+    ? Actions
+    : Fallback;
+export type ValueOrUpdater<State> = State | ((current: State) => State);
 
 export type ServerWrappedAction<State = unknown> = (
   aiState: State,
@@ -46,7 +61,7 @@ export type ServerWrappedActions<State = unknown> = Record<
   ServerWrappedAction<State>
 >;
 
-export type InternalAIProviderProps<State, UI> = {
+export type InternalAIProviderProps<State = unknown, UI = unknown> = {
   readonly children: ReactNode;
   readonly initialUIState: UI;
   readonly initialAIState: State;
@@ -60,7 +75,7 @@ export type OnSetAIState<State, Services = never> = (
 ) => Effect.Effect<void, unknown, Services>;
 
 export type OnGetUIState<State, Services = never> = AIAction<
-  [],
+  void,
   State | undefined,
   unknown,
   Services
@@ -73,7 +88,7 @@ export type InternalAIStateStorageOptions = {
 export type MutableAIState<State> = {
   readonly get: () => Effect.Effect<State, AiSdkError>;
   readonly update: (
-    next: import('@ai-sdk/rsc').ValueOrUpdater<State>,
+    next: ValueOrUpdater<State>,
   ) => Effect.Effect<void, AiSdkError>;
   readonly done: (
     ...args: [] | [next: State]

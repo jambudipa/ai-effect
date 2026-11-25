@@ -1,5 +1,6 @@
 import * as sdk from '@ai-sdk/rsc';
-import { Effect, Stream } from 'effect';
+import type { LanguageModelCallOptions, Prompt } from 'ai';
+import { Effect, Schema, Stream } from 'effect';
 import type { ReactNode } from 'react';
 import {
   unwrapLanguageModel,
@@ -13,12 +14,15 @@ import {
   type AiSdkError,
 } from '../internal/operation.js';
 import { ownReadable } from '../internal/readable.js';
+import { toSdkSchema } from '../internal/schema.js';
 import type {
   AIActions,
   AIProvider,
+  InferAIState,
   MutableAIState,
   OnGetUIState,
   OnSetAIState,
+  ProviderComponent,
 } from './rsc-types.js';
 
 export type * from './rsc-types.js';
@@ -84,47 +88,39 @@ export const createAI = <State, UI, Actions extends AIActions, R = never>(
     });
   });
 
-export function getAIState<AI extends sdk.AIProvider>(): Effect.Effect<
-  Readonly<sdk.InferAIState<AI, unknown>>,
+export function getAIState<AI extends ProviderComponent>(): Effect.Effect<
+  Readonly<InferAIState<AI, unknown>>,
   AiSdkError
 >;
 export function getAIState<
-  AI extends sdk.AIProvider,
-  Key extends keyof sdk.InferAIState<AI, unknown> = keyof sdk.InferAIState<
-    AI,
-    unknown
-  >,
+  AI extends ProviderComponent,
+  Key extends keyof InferAIState<AI, unknown> = keyof InferAIState<AI, unknown>,
 >(
   key: Key,
-): Effect.Effect<Readonly<sdk.InferAIState<AI, unknown>[Key]>, AiSdkError>;
-export function getAIState<AI extends sdk.AIProvider>(
+): Effect.Effect<Readonly<InferAIState<AI, unknown>[Key]>, AiSdkError>;
+export function getAIState(
   key?: PropertyKey,
 ): Effect.Effect<unknown, AiSdkError> {
   return runSync('getAIState', () =>
-    key === undefined
-      ? sdk.getAIState<AI>()
-      : sdk.getAIState<AI>(key as keyof sdk.InferAIState<AI, unknown>),
+    key === undefined ? sdk.getAIState() : sdk.getAIState(key),
   );
 }
 
-type AIState<AI extends sdk.AIProvider> = sdk.InferAIState<AI, unknown>;
+type AIState<AI extends ProviderComponent> = InferAIState<AI, unknown>;
 
-export function getMutableAIState<AI extends sdk.AIProvider>(): Effect.Effect<
-  MutableAIState<AIState<AI>>,
-  AiSdkError
->;
 export function getMutableAIState<
-  AI extends sdk.AIProvider,
+  AI extends ProviderComponent,
+>(): Effect.Effect<MutableAIState<AIState<AI>>, AiSdkError>;
+export function getMutableAIState<
+  AI extends ProviderComponent,
   Key extends keyof AIState<AI> = keyof AIState<AI>,
 >(key: Key): Effect.Effect<MutableAIState<AIState<AI>[Key]>, AiSdkError>;
-export function getMutableAIState<AI extends sdk.AIProvider>(
+export function getMutableAIState(
   key?: PropertyKey,
 ): Effect.Effect<unknown, AiSdkError> {
   return runSync('getMutableAIState', () => {
     const state =
-      key === undefined
-        ? sdk.getMutableAIState<AI>()
-        : sdk.getMutableAIState<AI>(key as keyof AIState<AI>);
+      key === undefined ? sdk.getMutableAIState() : sdk.getMutableAIState(key);
     const handle: MutableAIState<ReturnType<typeof state.get>> = {
       get: () => runSync('MutableAIState.get', state.get),
       update: (next) =>
@@ -221,23 +217,119 @@ export const createStreamableValue = <A, E = unknown>(
     sdk.createStreamableValue<A, E>(initialValue),
   );
 
-type NativeStreamUIOptions = Parameters<typeof sdk.streamUI>[0];
-type StreamUIOptions<Options> = Options extends unknown
-  ? Omit<Options, 'model'> & { readonly model: LanguageModelV4 }
-  : never;
+type RenderSchemas = Readonly<
+  Record<string, Schema.ConstraintDecoder<unknown>>
+>;
+type BoundSchemas<Tools extends RenderSchemas> = {
+  [K in keyof Tools]: ReturnType<typeof toSdkSchema<Tools[K]['Type'], never>>;
+};
+type NativeStreamUIOptions<Tools extends RenderSchemas> = Parameters<
+  typeof sdk.streamUI<BoundSchemas<Tools>>
+>[0];
+type RenderNode = ReactNode | Promise<ReactNode>;
+type HostRenderer<Args extends unknown[], R> = (
+  ...args: Args
+) =>
+  | RenderNode
+  | Generator<RenderNode, RenderNode, void>
+  | AsyncGenerator<RenderNode, RenderNode, void>
+  | Effect.Effect<ReactNode, unknown, R>;
+type FinishEvent = Parameters<
+  NonNullable<NativeStreamUIOptions<{}>['onFinish']>
+>[0];
+type StreamUIOptions<
+  Tools extends RenderSchemas,
+  R,
+> = LanguageModelCallOptions &
+  Prompt & {
+    readonly model: LanguageModelV4;
+    readonly tools?: {
+      [K in keyof Tools]: {
+        readonly description?: string;
+        readonly inputSchema: Tools[K];
+        readonly generate?: HostRenderer<
+          [Tools[K]['Type'], { toolName: string; toolCallId: string }],
+          R
+        >;
+      };
+    };
+    readonly toolChoice?: Exclude<
+      NativeStreamUIOptions<Tools>['toolChoice'],
+      undefined
+    >;
+    readonly initial?: ReactNode;
+    readonly providerOptions?: Exclude<
+      NativeStreamUIOptions<Tools>['providerOptions'],
+      undefined
+    >;
+    readonly maxRetries?: number;
+    readonly headers?: Record<string, string | undefined>;
+    readonly abortSignal?: AbortSignal;
+    readonly text?: HostRenderer<
+      [{ content: string; delta: string; done: boolean }],
+      R
+    >;
+    readonly onFinish?: (event: FinishEvent) => Effect.Effect<void, unknown, R>;
+  };
 
-export const streamUI = (options: StreamUIOptions<NativeStreamUIOptions>) =>
+export const streamUI = <Tools extends RenderSchemas = {}, R = never>(
+  options: StreamUIOptions<Tools, R>,
+) =>
   Effect.gen(function* () {
     const operation = 'streamUI';
-    const owner = yield* openOperation(options.abortSignal);
+    const owner = yield* openOperation<R>(options.abortSignal);
     const model = unwrapLanguageModel(options.model);
     if (!model)
       return yield* sdkError(operation, 'Invalid language model handle');
+    const renderer =
+      <Args extends unknown[], A>(
+        callback: (...args: Args) => A | Effect.Effect<ReactNode, unknown, R>,
+      ) =>
+      (...args: Args): A | Promise<ReactNode> => {
+        if (owner.signal.aborted) {
+          return owner.runCallback(
+            Effect.fail(sdkError(operation, owner.signal.reason)),
+          );
+        }
+        const rendered = callback(...args);
+        return Effect.isEffect(rendered)
+          ? owner.runCallback(rendered as Effect.Effect<ReactNode, unknown, R>)
+          : rendered;
+      };
+    const { text, onFinish, tools, ...settings } = options;
     const { stream, ...result } = yield* runRequest(
       operation,
       { abortSignal: owner.signal },
-      (abortSignal) =>
-        sdk.streamUI(Object.assign({}, options, { model, abortSignal })),
+      (abortSignal) => {
+        const boundTools =
+          tools &&
+          Object.fromEntries(
+            Object.entries(tools).map(([name, tool]) => {
+              const { generate, inputSchema, ...toolOptions } = tool;
+              return [
+                name,
+                {
+                  ...toolOptions,
+                  inputSchema: toSdkSchema(inputSchema),
+                  ...(generate ? { generate: renderer(generate) } : {}),
+                },
+              ];
+            }),
+          );
+        return sdk.streamUI<BoundSchemas<Tools>>({
+          ...settings,
+          model,
+          abortSignal,
+          ...(boundTools ? { tools: boundTools } : {}),
+          ...(text ? { text: renderer(text) } : {}),
+          ...(onFinish
+            ? {
+                onFinish: (event: FinishEvent) =>
+                  owner.runCallback(Effect.suspend(() => onFinish(event))),
+              }
+            : {}),
+        } as unknown as NativeStreamUIOptions<Tools>);
+      },
     );
     const readable = yield* ownReadable(operation, stream);
     return {

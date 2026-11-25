@@ -5,6 +5,13 @@ import { Effect, Stream } from 'effect';
 import { useEffect, useMemo } from 'react';
 import { runSync, sdkError, type AiSdkError } from '../internal/operation.js';
 import { ViewLifetime } from './lifetime.js';
+import type {
+  InferActions,
+  InferAIState,
+  InferUIState,
+  ProviderComponent,
+  ValueOrUpdater,
+} from './rsc-types.js';
 
 export type * from './rsc-types.js';
 
@@ -39,25 +46,27 @@ export function useStreamableValue<A, E = unknown>(
   ];
 }
 
-export function useUIState<AI extends sdk.AIProvider>(): ReturnType<
-  typeof sdk.useUIState<AI>
+export function useUIState<AI extends ProviderComponent>(): StateHook<
+  InferUIState<AI, unknown>
 > {
-  const [state, set] = sdk.useUIState<AI>();
-  return [state, (...args: Parameters<typeof set>) => set(...args)];
+  const [state, set] = sdk.useUIState();
+  return [state as InferUIState<AI, unknown>, (next) => set(next)];
 }
 
-type AIState<AI extends sdk.AIProvider> = sdk.InferAIState<AI, unknown>;
+type AIState<AI extends ProviderComponent> = InferAIState<AI, unknown>;
 type StateHook<State> = [
   state: State,
-  set: (next: sdk.ValueOrUpdater<State>) => void,
+  set: (next: ValueOrUpdater<State>) => void,
 ];
 
-export function useAIState<AI extends sdk.AIProvider>(): StateHook<AIState<AI>>;
+export function useAIState<AI extends ProviderComponent>(): StateHook<
+  AIState<AI>
+>;
 export function useAIState<
-  AI extends sdk.AIProvider,
+  AI extends ProviderComponent,
   Key extends keyof AIState<AI> = keyof AIState<AI>,
 >(key: Key): StateHook<AIState<AI>[Key]>;
-export function useAIState<AI extends sdk.AIProvider>(
+export function useAIState(
   key?: PropertyKey,
 ): [state: unknown, set: (next: never) => void] {
   const hook = sdk.useAIState as (
@@ -80,10 +89,13 @@ type PublicActions<Actions> = {
     : never;
 };
 
-export function useActions<AI extends sdk.AIProvider>(): PublicActions<
-  sdk.InferActions<AI, sdk.AIActions>
+export function useActions<AI extends ProviderComponent>(): PublicActions<
+  InferActions<AI, Record<string, (...args: unknown[]) => Promise<unknown>>>
 > {
-  const actions = sdk.useActions<AI>() as sdk.AIActions;
+  const actions = sdk.useActions() as Record<
+    string,
+    (...args: unknown[]) => Promise<unknown>
+  >;
   const view = useView();
   return Object.fromEntries(
     Object.entries(actions).map(([name, action]) => [
@@ -91,7 +103,9 @@ export function useActions<AI extends sdk.AIProvider>(): PublicActions<
       (...args: unknown[]) =>
         view.command(`useActions.${name}`, () => action(...args)),
     ]),
-  ) as PublicActions<sdk.InferActions<AI, sdk.AIActions>>;
+  ) as PublicActions<
+    InferActions<AI, Record<string, (...args: unknown[]) => Promise<unknown>>>
+  >;
 }
 
 export function useSyncUIState() {
