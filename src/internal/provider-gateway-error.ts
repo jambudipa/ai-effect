@@ -76,6 +76,7 @@ const adaptError = <
     {
       isInstance: (error: unknown): error is SpecificError<Kind, Details> =>
         GatewayError.isInstance(error) && error.type === type,
+      hasMarker: GatewayError.hasMarker,
     },
   );
 
