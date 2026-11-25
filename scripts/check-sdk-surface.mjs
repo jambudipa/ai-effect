@@ -1,0 +1,403 @@
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual, parseArgs } from 'node:util';
+import ts from 'typescript';
+import { openArchives } from './sdk-archives.mjs';
+
+const project = fileURLToPath(new URL('..', import.meta.url));
+const inventoryPath = join(project, '_bmad-output/sdk-upstream-inventory.json');
+const surfacePath = join(project, 'docs/sdk-surface.json');
+
+const contexts = {
+  'node-import': ['node', 'node-addons', 'import'],
+  'node-require': ['node', 'node-addons', 'require', 'module-sync'],
+  'bundler-import': ['browser', 'module', 'import'],
+  'legacy-module': ['node', 'require', 'module'],
+  svelte: ['browser', 'module', 'import', 'svelte'],
+  'react-server': ['node', 'import', 'react-server'],
+};
+
+function targetLeaves(branch, conditions = []) {
+  if (typeof branch === 'string') return [{ conditions, target: branch }];
+  assert.ok(
+    branch && typeof branch === 'object' && !Array.isArray(branch),
+    'Unsupported export target',
+  );
+  return Object.entries(branch).flatMap(([condition, child]) =>
+    targetLeaves(child, [...conditions, condition]),
+  );
+}
+
+function select(leaves, conditions) {
+  return leaves.find((leaf) =>
+    leaf.conditions.every(
+      (condition) => condition === 'default' || conditions.includes(condition),
+    ),
+  );
+}
+
+function isDeclaration(target) {
+  return /\.d\.[cm]?ts$/u.test(target);
+}
+
+function describePaths({ pin, root, manifest }) {
+  if (!manifest.exports) {
+    assert.ok(
+      !manifest.main &&
+        !manifest.module &&
+        !manifest.types &&
+        !manifest.typings &&
+        !['index.js', 'index.json', 'index.node', 'index.d.ts'].some((file) =>
+          existsSync(join(root, file)),
+        ),
+      `Review implicit exports for ${pin.name}`,
+    );
+  }
+  const exports = manifest.exports ?? {};
+  const publicPaths = Object.keys(exports).filter(
+    (path) =>
+      path !== './package.json' &&
+      path !== './internal' &&
+      !path.startsWith('./internal/'),
+  );
+  assert.deepEqual(
+    publicPaths.toSorted(),
+    pin.publicPaths.toSorted(),
+    `Public paths for ${pin.name}`,
+  );
+  return publicPaths.toSorted().map((path) => {
+    assert.ok(
+      path === '.' || /^\.\/[\w/-]+$/u.test(path),
+      `Unsupported export path ${pin.name} ${path}`,
+    );
+    const branches = exports[path];
+    assert.deepEqual(
+      branches,
+      pin.exports[path],
+      `Export targets for ${pin.name} ${path}`,
+    );
+    const leaves = targetLeaves(branches);
+    const reached = new Set();
+    const resolvers = Object.fromEntries(
+      Object.entries(contexts).map(([context, flags]) => {
+        const runtime = select(leaves, flags);
+        const types = select(leaves, ['types', ...flags]);
+        if (runtime) reached.add(runtime);
+        if (types && isDeclaration(types.target)) reached.add(types);
+        return [
+          context,
+          {
+            runtime: runtime?.target ?? null,
+            types: types && isDeclaration(types.target) ? types.target : null,
+          },
+        ];
+      }),
+    );
+    const upstream = `${pin.name}${path.slice(1)}`;
+    return {
+      upstream,
+      wrapper: `./${upstream.replace(/^@ai-sdk\//u, '')}`,
+      root,
+      type: manifest.type,
+      manifestOrderDiffers: !isDeepStrictEqual(
+        leaves,
+        targetLeaves(pin.exports[path]),
+      ),
+      resolvers,
+      leaves: leaves.map((leaf) => ({ ...leaf, reached: reached.has(leaf) })),
+    };
+  });
+}
+
+function nameOf(node) {
+  assert.ok(
+    node && (ts.isIdentifier(node) || ts.isStringLiteral(node)),
+    'Unsupported export name',
+  );
+  return node.text;
+}
+
+function esmNames(source) {
+  const names = new Set();
+  for (const statement of source.statements) {
+    if (ts.isExportDeclaration(statement)) {
+      assert.ok(
+        statement.exportClause,
+        `Review runtime star export in ${source.fileName}`,
+      );
+      if (ts.isNamespaceExport(statement.exportClause))
+        names.add(nameOf(statement.exportClause.name));
+      else
+        for (const element of statement.exportClause.elements)
+          names.add(nameOf(element.name));
+    } else if (ts.isExportAssignment(statement)) {
+      assert.ok(
+        !statement.isExportEquals,
+        `Unexpected export assignment in ${source.fileName}`,
+      );
+      names.add('default');
+    } else if (
+      ts
+        .getModifiers(statement)
+        ?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      if (
+        ts
+          .getModifiers(statement)
+          .some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)
+      ) {
+        names.add('default');
+      } else if (ts.isVariableStatement(statement)) {
+        for (const declaration of statement.declarationList.declarations)
+          names.add(nameOf(declaration.name));
+      } else {
+        assert.ok(
+          statement.name,
+          `Missing exported name in ${source.fileName}`,
+        );
+        names.add(nameOf(statement.name));
+      }
+    }
+  }
+  return [...names].sort();
+}
+
+function cjsNames(source) {
+  const names = new Set();
+  for (const statement of source.statements) {
+    if (
+      !ts.isExpressionStatement(statement) ||
+      !ts.isBinaryExpression(statement.expression)
+    )
+      continue;
+    const { left, operatorToken, right } = statement.expression;
+    if (
+      operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isPropertyAccessExpression(left) &&
+      left.expression.getText(source) === 'exports'
+    )
+      names.add(nameOf(left.name));
+    // esbuild emits this unreachable assignment so Node can discover named exports.
+    if (
+      operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
+      left.getText(source) === '0' &&
+      ts.isParenthesizedExpression(right) &&
+      ts.isBinaryExpression(right.expression) &&
+      right.expression.left.getText(source) === 'module.exports' &&
+      right.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isObjectLiteralExpression(right.expression.right)
+    ) {
+      for (const property of right.expression.right.properties)
+        names.add(nameOf(property.name));
+    }
+  }
+  assert.ok(names.size, `Review CommonJS export syntax in ${source.fileName}`);
+  return [...names].sort();
+}
+
+function declarationNames(files) {
+  const options = {
+    module: ts.ModuleKind.NodeNext,
+    types: [],
+    skipLibCheck: true,
+  };
+  const host = ts.createCompilerHost(options);
+  // The one external declaration star export in the pins is @standard-schema/spec.
+  // Resolve it from the locked tool install, because archives are opened in a temp directory.
+  host.resolveModuleNameLiterals = (literals, file, _, opts) =>
+    literals.map(({ text }) =>
+      ts.resolveModuleName(
+        text,
+        text === '@standard-schema/spec'
+          ? join(project, 'archive-probe.mts')
+          : file,
+        opts,
+        host,
+      ),
+    );
+  const program = ts.createProgram(files, options, host);
+  const checker = program.getTypeChecker();
+  return new Map(
+    files.map((file) => {
+      const source = program.getSourceFile(file);
+      assert.ok(source, `Missing declaration ${file}`);
+      for (const statement of source.statements) {
+        if (ts.isExportDeclaration(statement) && !statement.exportClause) {
+          assert.ok(
+            checker.getSymbolAtLocation(statement.moduleSpecifier),
+            `Unresolved declaration export in ${file}: ${statement.getText(source)}`,
+          );
+        }
+      }
+      const namespace = checker.getSymbolAtLocation(source);
+      assert.ok(
+        namespace,
+        `Declaration does not have an export namespace: ${file}`,
+      );
+      return [
+        file,
+        checker
+          .getExportsOfModule(namespace)
+          .map((symbol) => symbol.name)
+          .sort(),
+      ];
+    }),
+  );
+}
+
+async function describeTargets(paths) {
+  const declarations = new Set();
+  const names = new Map();
+  for (const { root, type, leaves } of paths) {
+    for (const { target } of leaves) {
+      assert.match(
+        target,
+        /^\.\/[\w./-]+$/u,
+        `Unsupported export target ${target}`,
+      );
+      assert.ok(
+        !target.split('/').includes('..'),
+        `Export target escapes package ${target}`,
+      );
+      const file = join(root, target);
+      if (isDeclaration(target)) {
+        declarations.add(file);
+      } else if (!names.has(file)) {
+        const source = ts.createSourceFile(
+          file,
+          await readFile(file, 'utf8'),
+          ts.ScriptTarget.Latest,
+          false,
+          ts.ScriptKind.JS,
+        );
+        assert.equal(
+          source.parseDiagnostics.length,
+          0,
+          `Invalid JavaScript in ${file}`,
+        );
+        const esm =
+          target.endsWith('.mjs') ||
+          (target.endsWith('.js') && type === 'module');
+        const exports = esm ? esmNames(source) : cjsNames(source);
+        names.set(file, { format: esm ? 'esm' : 'cjs', names: exports });
+      }
+    }
+  }
+  for (const [file, exports] of declarationNames([...declarations])) {
+    names.set(file, { format: 'declaration', names: exports });
+  }
+  return paths.map(({ root, type: _type, ...path }) => ({
+    ...path,
+    targets: Object.fromEntries(
+      [...new Set(path.leaves.map(({ target }) => target))].map((target) => [
+        target,
+        names.get(join(root, target)),
+      ]),
+    ),
+  }));
+}
+
+async function collect(inventory, archiveDirectory, cache) {
+  const archives = await openArchives(
+    inventory.packages,
+    archiveDirectory,
+    cache,
+  );
+  const paths = await describeTargets(archives.flatMap(describePaths));
+  assert.equal(
+    new Set(paths.map((path) => path.wrapper)).size,
+    paths.length,
+    'Duplicate wrapper import path',
+  );
+  const noImportPackages = archives
+    .filter(({ pin }) => !pin.publicPaths.length)
+    .map(({ pin, manifest }) => ({
+      name: pin.name,
+      reason: manifest.bin ? 'cli-only' : 'no-entry-point',
+    }));
+  const emptyPaths = paths
+    .filter((path) =>
+      Object.values(path.targets).every(({ names }) => !names.length),
+    )
+    .map(({ upstream }) => upstream);
+  const leaves = paths.flatMap((path) => path.leaves);
+  const targets = new Set(
+    paths.flatMap(({ upstream, targets }) =>
+      Object.keys(targets).map(
+        (target) => `${upstream.match(/^(@[^/]+\/[^/]+|[^/]+)/u)[0]}:${target}`,
+      ),
+    ),
+  );
+  return {
+    inventoryRevision: inventory.revision,
+    counts: {
+      packages: archives.length,
+      publicPaths: paths.length,
+      declaredLeaves: leaves.length,
+      reachedLeaves: leaves.filter(({ reached }) => reached).length,
+      shadowedLeaves: leaves.filter(({ reached }) => !reached).length,
+      uniqueTargets: targets.size,
+      emptyPaths: emptyPaths.length,
+      noImportPackages: noImportPackages.length,
+    },
+    noImportPackages,
+    emptyPaths,
+    paths,
+  };
+}
+
+function compareBaseline(actual, expected) {
+  const expectedPaths = new Map(
+    expected.paths.map((path) => [path.upstream, path]),
+  );
+  for (const path of actual.paths) {
+    const previous = expectedPaths.get(path.upstream);
+    assert.ok(previous, `New SDK path ${path.upstream}`);
+    for (const [target, exports] of Object.entries(path.targets)) {
+      const old = previous.targets[target];
+      assert.ok(old, `New target ${path.upstream}: ${target}`);
+      const added = exports.names.filter((name) => !old.names.includes(name));
+      const removed = old.names.filter((name) => !exports.names.includes(name));
+      assert.ok(
+        !added.length && !removed.length,
+        [
+          `${path.upstream} ${target} export drift`,
+          `Added: ${added.join(', ') || 'none'}`,
+          `Removed: ${removed.join(', ') || 'none'}`,
+        ].join('\n'),
+      );
+    }
+    assert.deepEqual(path, previous, `Changed resolution for ${path.upstream}`);
+    expectedPaths.delete(path.upstream);
+  }
+  assert.deepEqual([...expectedPaths.keys()], [], 'Removed SDK paths');
+  assert.deepEqual(
+    { ...actual, paths: [] },
+    { ...expected, paths: [] },
+    'Changed SDK baseline summary',
+  );
+}
+
+const { values } = parseArgs({
+  options: { write: { type: 'boolean' }, cache: { type: 'string' } },
+});
+const inventory = JSON.parse(await readFile(inventoryPath, 'utf8'));
+const scratch = await mkdtemp(join(tmpdir(), 'ai-effect-sdk-surface-'));
+try {
+  const baseline = await collect(
+    inventory,
+    scratch,
+    values.cache ?? join(tmpdir(), 'ai-effect-sdk-archives'),
+  );
+  const computed = `${JSON.stringify(baseline, null, 2)}\n`;
+  if (values.write) await writeFile(surfacePath, computed);
+  else
+    compareBaseline(baseline, JSON.parse(await readFile(surfacePath, 'utf8')));
+  console.log(JSON.stringify(baseline.counts));
+} finally {
+  await rm(scratch, { recursive: true, force: true });
+}
