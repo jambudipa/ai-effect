@@ -25,6 +25,39 @@ export function readConsumerLock(fixture, archive) {
     lock.packages[`node_modules/${manifest.name}`]?.integrity,
     integrity,
   );
+  const { packages: inventory } = JSON.parse(
+    readFileSync(
+      new URL('../_bmad-output/sdk-upstream-inventory.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const direct = lock.packages[''].dependencies;
+  for (const { name, version, integrity, publicPaths } of inventory) {
+    assert.ok(
+      !Object.hasOwn(direct, name),
+      `Consumer declares SDK dependency ${name}`,
+    );
+    if (publicPaths.length === 0) continue;
+    assert.equal(
+      manifest.dependencies[name],
+      version,
+      `Tarball does not own ${name}@${version}`,
+    );
+    const path = `node_modules/${name}`;
+    const resolved =
+      lock.packages[`node_modules/${manifest.name}/${path}`] ??
+      lock.packages[path];
+    assert.equal(
+      resolved?.version,
+      version,
+      `Consumer version differs for ${name}`,
+    );
+    assert.equal(
+      resolved?.integrity,
+      integrity,
+      `Consumer archive differs for ${name}`,
+    );
+  }
   return lock;
 }
 
