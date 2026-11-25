@@ -48,6 +48,8 @@ try {
   const hostPackages = [
     '@sveltejs/vite-plugin-svelte',
     '@types/node',
+    '@types/react',
+    '@types/react-dom',
     'jsdom',
     'svelte',
     'typescript',
