@@ -1,6 +1,7 @@
 import type { JSONSchema7, JSONValue } from '@ai-sdk/provider';
 import * as sdk from '@ai-sdk/provider-utils';
 import { Effect, Option, Schema as EffectSchema } from 'effect';
+import type { Scope } from 'effect/Scope';
 import {
   openOperation,
   runRequest,
@@ -176,10 +177,12 @@ export function parseJSON(
 ): Effect.Effect<JSONValue, AiSdkError>;
 export function parseJSON<A, R = never>(
   options: TypedParseOptions<A, R>,
-): Effect.Effect<A, AiSdkError, R>;
+): Effect.Effect<A, AiSdkError, Exclude<R, Scope>>;
 export function parseJSON<A, R>(
   options: ParseOptions | TypedParseOptions<A, R>,
-) {
+): Effect.Effect<A | JSONValue, AiSdkError, Exclude<R, Scope>> {
+  // The diagnostic compares the overload's R with the implementation's R.
+  // @effect-diagnostics-next-line effect/missingEffectContext:off
   return 'schema' in options
     ? withSchema('parseJSON', options.schema, (schema) =>
         sdk.parseJSON({ ...options, schema }),
@@ -208,11 +211,13 @@ export function safeParseJSON(
 ): Effect.Effect<ParseResult<JSONValue>, AiSdkError>;
 export function safeParseJSON<A, R = never>(
   options: TypedParseOptions<A, R>,
-): Effect.Effect<ParseResult<A>, AiSdkError, R>;
+): Effect.Effect<ParseResult<A>, AiSdkError, Exclude<R, Scope>>;
 export function safeParseJSON<A, R>(
   options: ParseOptions | TypedParseOptions<A, R>,
-) {
+): Effect.Effect<ParseResult<A | JSONValue>, AiSdkError, Exclude<R, Scope>> {
   const operation = 'safeParseJSON';
+  // The diagnostic compares the overload's R with the implementation's R.
+  // @effect-diagnostics-next-line effect/missingEffectContext:off
   return 'schema' in options
     ? withSchema(operation, options.schema, (schema) =>
         sdk.safeParseJSON({ ...options, schema }),

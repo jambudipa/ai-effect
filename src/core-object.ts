@@ -127,19 +127,33 @@ export type GenerateObjectResult<A> = Omit<
 
 export function generateObject<A, R = never>(
   options: ObjectInput<A, R>,
-): Effect.Effect<GenerateObjectResult<A>, AiSdkError, R>;
+): Effect.Effect<GenerateObjectResult<A>, AiSdkError, Exclude<R, Scope.Scope>>;
 export function generateObject<A, R = never>(
   options: ArrayInput<A, R>,
-): Effect.Effect<GenerateObjectResult<A[]>, AiSdkError, R>;
+): Effect.Effect<
+  GenerateObjectResult<A[]>,
+  AiSdkError,
+  Exclude<R, Scope.Scope>
+>;
 export function generateObject<const A extends string, R = never>(
   options: EnumInput<A, R>,
-): Effect.Effect<GenerateObjectResult<A>, AiSdkError, R>;
+): Effect.Effect<GenerateObjectResult<A>, AiSdkError, Exclude<R, Scope.Scope>>;
 export function generateObject<R = never>(
   options: UntypedInput<R>,
-): Effect.Effect<GenerateObjectResult<JSONValue>, AiSdkError, R>;
+): Effect.Effect<
+  GenerateObjectResult<JSONValue>,
+  AiSdkError,
+  Exclude<R, Scope.Scope>
+>;
 export function generateObject<A, R>(
   options: Input<A, R>,
-): Effect.Effect<GenerateObjectResult<unknown>, AiSdkError, R> {
+): Effect.Effect<
+  GenerateObjectResult<unknown>,
+  AiSdkError,
+  Exclude<R, Scope.Scope>
+> {
+  // The diagnostic compares the overload's R with the implementation's R.
+  // @effect-diagnostics-next-line effect/missingEffectContext:off
   return Effect.scoped(
     Effect.gen(function* () {
       const operation = 'generateObject';
@@ -273,13 +287,9 @@ export function streamObject<R = never>(
   AiSdkError,
   Scope.Scope | R
 >;
-export function streamObject<A, R>(
-  options: Input<A, R>,
-): Effect.Effect<
-  StreamObjectResult<unknown, unknown, unknown>,
-  AiSdkError,
-  Scope.Scope | R
-> {
+export function streamObject<A, R>(options: Input<A, R>) {
+  // The diagnostic compares the overload's R with the implementation's R.
+  // @effect-diagnostics-next-line effect/missingEffectContext:off
   return Effect.gen(function* () {
     const operation = 'streamObject';
     const owner = yield* openOperation<R>(options.abortSignal);
