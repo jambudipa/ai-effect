@@ -12,6 +12,10 @@ Use Node.js 22.19 or later from a supported release line. Configure the model
 through the [Vercel AI SDK](https://ai-sdk.dev/docs/ai-sdk-core/overview).
 The example uses the AI Gateway and requires its credentials.
 
+Import SDK operations and SDK types through `@jambudipa/ai-effect`. The package
+installs the pinned SDK dependencies. Install the host libraries for framework
+entries that you use, such as React for `@jambudipa/ai-effect/react`.
+
 ```ts
 import { AiSdk } from '@jambudipa/ai-effect';
 import { Effect } from 'effect';
@@ -60,6 +64,25 @@ const program = Effect.gen(function* () {
 | `@jambudipa/ai-effect/ui-utils`      | Legacy stream utilities                            |
 | `@jambudipa/ai-effect/ui-utils/test` | Legacy Vitest fixtures                             |
 | `@jambudipa/ai-effect/svelte`        | Svelte 5 component adapters                        |
+
+The [SDK inventory](docs/sdk-surface.json) lists wrapper paths and their import
+conditions. Use `@jambudipa/ai-effect/provider` for protocol types and
+`@jambudipa/ai-effect/provider-utils` for protocol utilities.
+
+Create model mocks inside an Effect scope. The mock is a model handle, and its
+call history is available on the same object.
+
+```ts
+import { MockLanguageModelV4 } from '@jambudipa/ai-effect/ai/test';
+import { Effect } from 'effect';
+
+const test = Effect.scoped(
+  Effect.gen(function* () {
+    const model = yield* MockLanguageModelV4();
+    return model.doGenerateCalls.length;
+  }),
+);
+```
 
 | Method                                          | Return value                    |
 | ----------------------------------------------- | ------------------------------- |
