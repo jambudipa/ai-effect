@@ -558,9 +558,14 @@ export const defaultEmbeddingSettingsMiddleware = (
   return wrapped;
 };
 
-export const addToolInputExamplesMiddleware = (
-  options?: Parameters<typeof sdk.addToolInputExamplesMiddleware>[0],
-) => languageBuiltin(sdk.addToolInputExamplesMiddleware(options));
+export const addToolInputExamplesMiddleware = (options?: {
+  readonly prefix?: string;
+  readonly format?: (
+    example: { input: native.JSONObject },
+    index: number,
+  ) => string;
+  readonly remove?: boolean;
+}) => languageBuiltin(sdk.addToolInputExamplesMiddleware(options));
 
 export const defaultInstructionsMiddleware = (
   options: Parameters<typeof sdk.defaultInstructionsMiddleware>[0],
@@ -570,9 +575,9 @@ export const defaultSettingsMiddleware = (
   options: Parameters<typeof sdk.defaultSettingsMiddleware>[0],
 ) => languageBuiltin(sdk.defaultSettingsMiddleware(options));
 
-export const extractJsonMiddleware = (
-  options?: Parameters<typeof sdk.extractJsonMiddleware>[0],
-) => languageBuiltin(sdk.extractJsonMiddleware(options));
+export const extractJsonMiddleware = (options?: {
+  readonly transform?: (text: string) => string;
+}) => languageBuiltin(sdk.extractJsonMiddleware(options));
 
 export const extractReasoningMiddleware = (
   options: Parameters<typeof sdk.extractReasoningMiddleware>[0],
