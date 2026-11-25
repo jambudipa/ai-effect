@@ -195,7 +195,9 @@ const sdkModel = <
 ): Native | undefined =>
   model.specificationVersion === 'v4'
     ? unwrap(model as Extract<Handle, { specificationVersion: 'v4' }>)
-    : unwrapLegacyModel<Native & { specificationVersion: 'v2' | 'v3' }>(model);
+    : unwrapLegacyModel<Native & { specificationVersion: 'v2' | 'v3' }>(
+        model as Handle & { specificationVersion: 'v2' | 'v3' },
+      );
 
 const modelMap = <Handle extends ResourceIdentity, Native>(
   models: Readonly<Record<string, string | Handle>> | undefined,
