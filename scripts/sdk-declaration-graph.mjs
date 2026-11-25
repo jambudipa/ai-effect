@@ -9,7 +9,9 @@ function hasSdkOrigin(declaration) {
   return (
     /\/node_modules\/(?:ai|@ai-sdk\/[^/]+)\//u.test(path) ||
     path.endsWith('/integrations/internal/mcp-contract.d.ts') ||
-    /\/integrations\/internal\/harness-contracts\/.*\.d\.ts$/u.test(path)
+    /\/(?:integrations\/internal\/harness-contracts|internal\/provider-contracts)\/.*\.d\.ts$/u.test(
+      path,
+    )
   );
 }
 
