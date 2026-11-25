@@ -25,14 +25,548 @@
       "import": "./dist/testing.js",
       "default": "./dist/testing.js"
     },
+    "./alibaba": {
+      "types": "./dist/providers/alibaba.d.ts",
+      "import": "./dist/providers/alibaba.js",
+      "default": "./dist/providers/alibaba.js"
+    },
+    "./amazon-bedrock": {
+      "types": "./dist/providers/amazon-bedrock.d.ts",
+      "import": "./dist/providers/amazon-bedrock.js",
+      "default": "./dist/providers/amazon-bedrock.js"
+    },
+    "./amazon-bedrock/anthropic": {
+      "types": "./dist/providers/amazon-bedrock/anthropic.d.ts",
+      "import": "./dist/providers/amazon-bedrock/anthropic.js",
+      "default": "./dist/providers/amazon-bedrock/anthropic.js"
+    },
+    "./amazon-bedrock/mantle": {
+      "import": {
+        "types": "./dist/providers/amazon-bedrock/mantle.d.ts",
+        "import": "./dist/providers/amazon-bedrock/mantle.js",
+        "default": "./dist/providers/amazon-bedrock/mantle.js"
+      },
+      "require": {
+        "types": "./dist/providers/amazon-bedrock/mantle.d.cts",
+        "default": "./dist/providers/amazon-bedrock/mantle.cjs"
+      }
+    },
+    "./angular": {
+      "types": "./dist/frameworks/angular.d.ts",
+      "import": "./dist/frameworks/angular.js",
+      "default": "./dist/frameworks/angular.js"
+    },
+    "./anthropic": {
+      "types": "./dist/providers/anthropic.d.ts",
+      "import": "./dist/providers/anthropic.js",
+      "default": "./dist/providers/anthropic.js"
+    },
+    "./anthropic-aws": {
+      "types": "./dist/providers/anthropic-aws.d.ts",
+      "import": "./dist/providers/anthropic-aws.js",
+      "default": "./dist/providers/anthropic-aws.js"
+    },
+    "./assemblyai": {
+      "types": "./dist/providers/assemblyai.d.ts",
+      "import": "./dist/providers/assemblyai.js",
+      "default": "./dist/providers/assemblyai.js"
+    },
+    "./azure": {
+      "types": "./dist/providers/azure.d.ts",
+      "import": "./dist/providers/azure.js",
+      "default": "./dist/providers/azure.js"
+    },
+    "./baseten": {
+      "types": "./dist/providers/baseten.d.ts",
+      "import": "./dist/providers/baseten.js",
+      "default": "./dist/providers/baseten.js"
+    },
+    "./black-forest-labs": {
+      "types": "./dist/providers/black-forest-labs.d.ts",
+      "import": "./dist/providers/black-forest-labs.js",
+      "default": "./dist/providers/black-forest-labs.js"
+    },
+    "./bytedance": {
+      "types": "./dist/providers/bytedance.d.ts",
+      "import": "./dist/providers/bytedance.js",
+      "default": "./dist/providers/bytedance.js"
+    },
+    "./cartesia": {
+      "types": "./dist/providers/cartesia.d.ts",
+      "import": "./dist/providers/cartesia.js",
+      "default": "./dist/providers/cartesia.js"
+    },
     "./cerebras": {
       "types": "./dist/providers/cerebras.d.ts",
       "import": "./dist/providers/cerebras.js",
       "default": "./dist/providers/cerebras.js"
     },
+    "./code-mode": {
+      "types": "./dist/integrations/code-mode.d.ts",
+      "import": "./dist/integrations/code-mode.js",
+      "default": "./dist/integrations/code-mode.js"
+    },
+    "./cohere": {
+      "types": "./dist/providers/cohere.d.ts",
+      "import": "./dist/providers/cohere.js",
+      "default": "./dist/providers/cohere.js"
+    },
+    "./deepgram": {
+      "types": "./dist/providers/deepgram.d.ts",
+      "import": "./dist/providers/deepgram.js",
+      "default": "./dist/providers/deepgram.js"
+    },
+    "./deepinfra": {
+      "types": "./dist/providers/deepinfra.d.ts",
+      "import": "./dist/providers/deepinfra.js",
+      "default": "./dist/providers/deepinfra.js"
+    },
+    "./deepseek": {
+      "types": "./dist/providers/deepseek.d.ts",
+      "import": "./dist/providers/deepseek.js",
+      "default": "./dist/providers/deepseek.js"
+    },
+    "./devtools": {
+      "types": "./dist/integrations/devtools.d.ts",
+      "import": "./dist/integrations/devtools.js",
+      "default": "./dist/integrations/devtools.js"
+    },
+    "./durable-agent": {
+      "import": {
+        "types": "./dist/integrations/durable-agent.d.ts",
+        "import": "./dist/integrations/durable-agent.js",
+        "default": "./dist/integrations/durable-agent.js"
+      },
+      "require": {
+        "types": "./dist/integrations/durable-agent.d.cts",
+        "default": "./dist/integrations/durable-agent.cjs"
+      }
+    },
+    "./elevenlabs": {
+      "types": "./dist/providers/elevenlabs.d.ts",
+      "import": "./dist/providers/elevenlabs.js",
+      "default": "./dist/providers/elevenlabs.js"
+    },
+    "./fal": {
+      "types": "./dist/providers/fal.d.ts",
+      "import": "./dist/providers/fal.js",
+      "default": "./dist/providers/fal.js"
+    },
+    "./fireworks": {
+      "types": "./dist/providers/fireworks.d.ts",
+      "import": "./dist/providers/fireworks.js",
+      "default": "./dist/providers/fireworks.js"
+    },
+    "./fish-audio": {
+      "types": "./dist/providers/fish-audio.d.ts",
+      "import": "./dist/providers/fish-audio.js",
+      "default": "./dist/providers/fish-audio.js"
+    },
+    "./gateway": {
+      "types": "./dist/providers/gateway.d.ts",
+      "import": "./dist/providers/gateway.js",
+      "default": "./dist/providers/gateway.js"
+    },
+    "./gladia": {
+      "types": "./dist/providers/gladia.d.ts",
+      "import": "./dist/providers/gladia.js",
+      "default": "./dist/providers/gladia.js"
+    },
+    "./gmicloud": {
+      "types": "./dist/providers/gmicloud.d.ts",
+      "import": "./dist/providers/gmicloud.js",
+      "default": "./dist/providers/gmicloud.js"
+    },
+    "./google": {
+      "types": "./dist/providers/google.d.ts",
+      "import": "./dist/providers/google.js",
+      "default": "./dist/providers/google.js"
+    },
+    "./google-vertex": {
+      "types": "./dist/providers/google-vertex.d.ts",
+      "import": "./dist/providers/google-vertex.js",
+      "default": "./dist/providers/google-vertex.js"
+    },
+    "./google-vertex/anthropic": {
+      "types": "./dist/providers/google-vertex/anthropic.d.ts",
+      "import": "./dist/providers/google-vertex/anthropic.js",
+      "default": "./dist/providers/google-vertex/anthropic.js"
+    },
+    "./google-vertex/anthropic/edge": {
+      "types": "./dist/providers/google-vertex/anthropic/edge.d.ts",
+      "import": "./dist/providers/google-vertex/anthropic/edge.js",
+      "default": "./dist/providers/google-vertex/anthropic/edge.js"
+    },
+    "./google-vertex/edge": {
+      "types": "./dist/providers/google-vertex/edge.d.ts",
+      "import": "./dist/providers/google-vertex/edge.js",
+      "default": "./dist/providers/google-vertex/edge.js"
+    },
+    "./google-vertex/maas": {
+      "types": "./dist/providers/google-vertex/maas.d.ts",
+      "import": "./dist/providers/google-vertex/maas.js",
+      "default": "./dist/providers/google-vertex/maas.js"
+    },
+    "./google-vertex/maas/edge": {
+      "types": "./dist/providers/google-vertex/maas/edge.d.ts",
+      "import": "./dist/providers/google-vertex/maas/edge.js",
+      "default": "./dist/providers/google-vertex/maas/edge.js"
+    },
+    "./google-vertex/xai": {
+      "types": "./dist/providers/google-vertex/xai.d.ts",
+      "import": "./dist/providers/google-vertex/xai.js",
+      "default": "./dist/providers/google-vertex/xai.js"
+    },
+    "./google-vertex/xai/edge": {
+      "types": "./dist/providers/google-vertex/xai/edge.d.ts",
+      "import": "./dist/providers/google-vertex/xai/edge.js",
+      "default": "./dist/providers/google-vertex/xai/edge.js"
+    },
+    "./groq": {
+      "types": "./dist/providers/groq.d.ts",
+      "import": "./dist/providers/groq.js",
+      "default": "./dist/providers/groq.js"
+    },
+    "./harness": {
+      "types": "./dist/integrations/harness.d.ts",
+      "import": "./dist/integrations/harness.js",
+      "default": "./dist/integrations/harness.js"
+    },
+    "./harness/agent": {
+      "types": "./dist/integrations/harness/agent.d.ts",
+      "import": "./dist/integrations/harness/agent.js",
+      "default": "./dist/integrations/harness/agent.js"
+    },
+    "./harness/bridge": {
+      "types": "./dist/integrations/harness/bridge.d.ts",
+      "import": "./dist/integrations/harness/bridge.js",
+      "default": "./dist/integrations/harness/bridge.js"
+    },
+    "./harness/utils": {
+      "types": "./dist/integrations/harness/utils.d.ts",
+      "import": "./dist/integrations/harness/utils.js",
+      "default": "./dist/integrations/harness/utils.js"
+    },
+    "./harness-acp": {
+      "types": "./dist/integrations/harness-acp.d.ts",
+      "import": "./dist/integrations/harness-acp.js",
+      "default": "./dist/integrations/harness-acp.js"
+    },
+    "./harness-claude-code": {
+      "types": "./dist/integrations/harness-claude-code.d.ts",
+      "import": "./dist/integrations/harness-claude-code.js",
+      "default": "./dist/integrations/harness-claude-code.js"
+    },
+    "./harness-cline": {
+      "types": "./dist/integrations/harness-cline.d.ts",
+      "import": "./dist/integrations/harness-cline.js",
+      "default": "./dist/integrations/harness-cline.js"
+    },
+    "./harness-codex": {
+      "types": "./dist/integrations/harness-codex.d.ts",
+      "import": "./dist/integrations/harness-codex.js",
+      "default": "./dist/integrations/harness-codex.js"
+    },
+    "./harness-cursor": {
+      "types": "./dist/integrations/harness-cursor.d.ts",
+      "import": "./dist/integrations/harness-cursor.js",
+      "default": "./dist/integrations/harness-cursor.js"
+    },
+    "./harness-deepagents": {
+      "types": "./dist/integrations/harness-deepagents.d.ts",
+      "import": "./dist/integrations/harness-deepagents.js",
+      "default": "./dist/integrations/harness-deepagents.js"
+    },
+    "./harness-fx": {
+      "types": "./dist/integrations/harness-fx.d.ts",
+      "import": "./dist/integrations/harness-fx.js",
+      "default": "./dist/integrations/harness-fx.js"
+    },
+    "./harness-github-copilot": {
+      "types": "./dist/integrations/harness-github-copilot.d.ts",
+      "import": "./dist/integrations/harness-github-copilot.js",
+      "default": "./dist/integrations/harness-github-copilot.js"
+    },
+    "./harness-grok-build": {
+      "types": "./dist/integrations/harness-grok-build.d.ts",
+      "import": "./dist/integrations/harness-grok-build.js",
+      "default": "./dist/integrations/harness-grok-build.js"
+    },
+    "./harness-opencode": {
+      "types": "./dist/integrations/harness-opencode.d.ts",
+      "import": "./dist/integrations/harness-opencode.js",
+      "default": "./dist/integrations/harness-opencode.js"
+    },
+    "./harness-pi": {
+      "types": "./dist/integrations/harness-pi.d.ts",
+      "import": "./dist/integrations/harness-pi.js",
+      "default": "./dist/integrations/harness-pi.js"
+    },
+    "./heygen": {
+      "types": "./dist/providers/heygen.d.ts",
+      "import": "./dist/providers/heygen.js",
+      "default": "./dist/providers/heygen.js"
+    },
+    "./huggingface": {
+      "types": "./dist/providers/huggingface.d.ts",
+      "import": "./dist/providers/huggingface.js",
+      "default": "./dist/providers/huggingface.js"
+    },
+    "./hume": {
+      "types": "./dist/providers/hume.d.ts",
+      "import": "./dist/providers/hume.js",
+      "default": "./dist/providers/hume.js"
+    },
+    "./inception": {
+      "types": "./dist/providers/inception.d.ts",
+      "import": "./dist/providers/inception.js",
+      "default": "./dist/providers/inception.js"
+    },
+    "./klingai": {
+      "types": "./dist/providers/klingai.d.ts",
+      "import": "./dist/providers/klingai.js",
+      "default": "./dist/providers/klingai.js"
+    },
+    "./langchain": {
+      "types": "./dist/integrations/langchain.d.ts",
+      "import": "./dist/integrations/langchain.js",
+      "default": "./dist/integrations/langchain.js"
+    },
+    "./liquid": {
+      "types": "./dist/providers/liquid.d.ts",
+      "import": "./dist/providers/liquid.js",
+      "default": "./dist/providers/liquid.js"
+    },
+    "./llamaindex": {
+      "types": "./dist/integrations/llamaindex.d.ts",
+      "import": "./dist/integrations/llamaindex.js",
+      "default": "./dist/integrations/llamaindex.js"
+    },
+    "./lmnt": {
+      "types": "./dist/providers/lmnt.d.ts",
+      "import": "./dist/providers/lmnt.js",
+      "default": "./dist/providers/lmnt.js"
+    },
+    "./luma": {
+      "types": "./dist/providers/luma.d.ts",
+      "import": "./dist/providers/luma.js",
+      "default": "./dist/providers/luma.js"
+    },
+    "./mcp": {
+      "types": "./dist/integrations/mcp.d.ts",
+      "import": "./dist/integrations/mcp.js",
+      "default": "./dist/integrations/mcp.js"
+    },
+    "./mcp/mcp-stdio": {
+      "types": "./dist/integrations/mcp/mcp-stdio.d.ts",
+      "import": "./dist/integrations/mcp/mcp-stdio.js",
+      "default": "./dist/integrations/mcp/mcp-stdio.js"
+    },
+    "./minimax": {
+      "types": "./dist/providers/minimax.d.ts",
+      "import": "./dist/providers/minimax.js",
+      "default": "./dist/providers/minimax.js"
+    },
+    "./mistral": {
+      "types": "./dist/providers/mistral.d.ts",
+      "import": "./dist/providers/mistral.js",
+      "default": "./dist/providers/mistral.js"
+    },
+    "./moonshotai": {
+      "types": "./dist/providers/moonshotai.d.ts",
+      "import": "./dist/providers/moonshotai.js",
+      "default": "./dist/providers/moonshotai.js"
+    },
+    "./open-responses": {
+      "types": "./dist/providers/open-responses.d.ts",
+      "import": "./dist/providers/open-responses.js",
+      "default": "./dist/providers/open-responses.js"
+    },
+    "./openai": {
+      "types": "./dist/providers/openai.d.ts",
+      "import": "./dist/providers/openai.js",
+      "default": "./dist/providers/openai.js"
+    },
+    "./openai-compatible": {
+      "types": "./dist/providers/openai-compatible.d.ts",
+      "import": "./dist/providers/openai-compatible.js",
+      "default": "./dist/providers/openai-compatible.js"
+    },
+    "./otel": {
+      "types": "./dist/integrations/otel.d.ts",
+      "import": "./dist/integrations/otel.js",
+      "default": "./dist/integrations/otel.js"
+    },
+    "./parallel": {
+      "types": "./dist/providers/parallel.d.ts",
+      "import": "./dist/providers/parallel.js",
+      "default": "./dist/providers/parallel.js"
+    },
+    "./perplexity": {
+      "types": "./dist/providers/perplexity.d.ts",
+      "import": "./dist/providers/perplexity.js",
+      "default": "./dist/providers/perplexity.js"
+    },
+    "./policy-opa": {
+      "types": "./dist/integrations/policy-opa.d.ts",
+      "import": "./dist/integrations/policy-opa.js",
+      "default": "./dist/integrations/policy-opa.js"
+    },
+    "./prodia": {
+      "types": "./dist/providers/prodia.d.ts",
+      "import": "./dist/providers/prodia.js",
+      "default": "./dist/providers/prodia.js"
+    },
+    "./provider": {
+      "types": "./dist/protocols/provider.d.ts",
+      "import": "./dist/protocols/provider.js",
+      "default": "./dist/protocols/provider.js"
+    },
+    "./provider-utils": {
+      "types": "./dist/protocols/provider-utils.d.ts",
+      "import": "./dist/protocols/provider-utils.js",
+      "default": "./dist/protocols/provider-utils.js"
+    },
+    "./provider-utils/experimental-decision": {
+      "types": "./dist/protocols/provider-utils/experimental-decision.d.ts",
+      "import": "./dist/protocols/provider-utils/experimental-decision.js",
+      "default": "./dist/protocols/provider-utils/experimental-decision.js"
+    },
+    "./provider-utils/experimental-evaluation": {
+      "types": "./dist/protocols/provider-utils/experimental-evaluation.d.ts",
+      "import": "./dist/protocols/provider-utils/experimental-evaluation.js",
+      "default": "./dist/protocols/provider-utils/experimental-evaluation.js"
+    },
+    "./provider-utils/experimental-extraction": {
+      "types": "./dist/protocols/provider-utils/experimental-extraction.d.ts",
+      "import": "./dist/protocols/provider-utils/experimental-extraction.js",
+      "default": "./dist/protocols/provider-utils/experimental-extraction.js"
+    },
+    "./provider-utils/test": {
+      "types": "./dist/protocols/provider-utils/test.d.ts",
+      "import": "./dist/protocols/provider-utils/test.js",
+      "default": "./dist/protocols/provider-utils/test.js"
+    },
+    "./quiverai": {
+      "types": "./dist/providers/quiverai.d.ts",
+      "import": "./dist/providers/quiverai.js",
+      "default": "./dist/providers/quiverai.js"
+    },
+    "./react": {
+      "types": "./dist/frameworks/react.d.ts",
+      "import": "./dist/frameworks/react.js",
+      "default": "./dist/frameworks/react.js"
+    },
+    "./replicate": {
+      "types": "./dist/providers/replicate.d.ts",
+      "import": "./dist/providers/replicate.js",
+      "default": "./dist/providers/replicate.js"
+    },
+    "./revai": {
+      "types": "./dist/providers/revai.d.ts",
+      "import": "./dist/providers/revai.js",
+      "default": "./dist/providers/revai.js"
+    },
+    "./rsc": {
+      "react-server": {
+        "types": "./dist/frameworks/rsc-server.d.ts",
+        "import": "./dist/frameworks/rsc-server.js",
+        "default": "./dist/frameworks/rsc-server.js"
+      },
+      "types": "./dist/frameworks/rsc-client.d.ts",
+      "import": "./dist/frameworks/rsc-client.js",
+      "default": "./dist/frameworks/rsc-client.js"
+    },
+    "./sandbox-just-bash": {
+      "types": "./dist/integrations/sandbox-just-bash.d.ts",
+      "import": "./dist/integrations/sandbox-just-bash.js",
+      "default": "./dist/integrations/sandbox-just-bash.js"
+    },
+    "./sandbox-vercel": {
+      "types": "./dist/integrations/sandbox-vercel.d.ts",
+      "import": "./dist/integrations/sandbox-vercel.js",
+      "default": "./dist/integrations/sandbox-vercel.js"
+    },
+    "./scaledown": {
+      "types": "./dist/providers/scaledown.d.ts",
+      "import": "./dist/providers/scaledown.js",
+      "default": "./dist/providers/scaledown.js"
+    },
+    "./solid": {
+      "import": {
+        "types": "./dist/frameworks/solid.d.ts",
+        "import": "./dist/frameworks/solid.js",
+        "default": "./dist/frameworks/solid.js"
+      },
+      "require": {
+        "types": "./dist/frameworks/solid.d.cts",
+        "default": "./dist/frameworks/solid.cjs"
+      }
+    },
     "./svelte": {
       "types": "./dist/frameworks/svelte.d.ts",
       "svelte": "./dist/frameworks/svelte.js"
+    },
+    "./swarm": {
+      "import": {
+        "types": "./dist/integrations/swarm.d.ts",
+        "import": "./dist/integrations/swarm.js",
+        "default": "./dist/integrations/swarm.js"
+      },
+      "require": {
+        "types": "./dist/integrations/swarm.d.cts",
+        "default": "./dist/integrations/swarm.cjs"
+      }
+    },
+    "./tencent": {
+      "types": "./dist/providers/tencent.d.ts",
+      "import": "./dist/providers/tencent.js",
+      "default": "./dist/providers/tencent.js"
+    },
+    "./test-server": {
+      "types": "./dist/integrations/test-server.d.ts",
+      "import": "./dist/integrations/test-server.js",
+      "default": "./dist/integrations/test-server.js"
+    },
+    "./test-server/with-vitest": {
+      "types": "./dist/integrations/test-server/with-vitest.d.ts",
+      "import": "./dist/integrations/test-server/with-vitest.js",
+      "default": "./dist/integrations/test-server/with-vitest.js"
+    },
+    "./togetherai": {
+      "types": "./dist/providers/togetherai.d.ts",
+      "import": "./dist/providers/togetherai.js",
+      "default": "./dist/providers/togetherai.js"
+    },
+    "./tool-bash": {
+      "types": "./dist/integrations/tool-bash.d.ts",
+      "import": "./dist/integrations/tool-bash.js",
+      "default": "./dist/integrations/tool-bash.js"
+    },
+    "./tool-web-fetch": {
+      "types": "./dist/integrations/tool-web-fetch.d.ts",
+      "import": "./dist/integrations/tool-web-fetch.js",
+      "default": "./dist/integrations/tool-web-fetch.js"
+    },
+    "./tools": {
+      "types": "./dist/integrations/tools.d.ts",
+      "import": "./dist/integrations/tools.js",
+      "default": "./dist/integrations/tools.js"
+    },
+    "./topaz": {
+      "types": "./dist/providers/topaz.d.ts",
+      "import": "./dist/providers/topaz.js",
+      "default": "./dist/providers/topaz.js"
+    },
+    "./tui": {
+      "types": "./dist/integrations/tui.d.ts",
+      "import": "./dist/integrations/tui.js",
+      "default": "./dist/integrations/tui.js"
+    },
+    "./typesafe-ai": {
+      "types": "./dist/integrations/typesafe-ai.d.ts",
+      "import": "./dist/integrations/typesafe-ai.js",
+      "default": "./dist/integrations/typesafe-ai.js"
     },
     "./ui-utils": {
       "import": {
@@ -61,6 +595,56 @@
         "default": "./dist/integrations/ui-utils-test.cjs"
       }
     },
+    "./valibot": {
+      "types": "./dist/integrations/valibot.d.ts",
+      "import": "./dist/integrations/valibot.js",
+      "default": "./dist/integrations/valibot.js"
+    },
+    "./vercel": {
+      "types": "./dist/providers/vercel.d.ts",
+      "import": "./dist/providers/vercel.js",
+      "default": "./dist/providers/vercel.js"
+    },
+    "./voyage": {
+      "types": "./dist/providers/voyage.d.ts",
+      "import": "./dist/providers/voyage.js",
+      "default": "./dist/providers/voyage.js"
+    },
+    "./vue": {
+      "types": "./dist/frameworks/vue.d.ts",
+      "import": "./dist/frameworks/vue.js",
+      "default": "./dist/frameworks/vue.js"
+    },
+    "./workflow": {
+      "types": "./dist/integrations/workflow.d.ts",
+      "import": "./dist/integrations/workflow.js",
+      "default": "./dist/integrations/workflow.js"
+    },
+    "./workflow/client": {
+      "types": "./dist/integrations/workflow/client.d.ts",
+      "import": "./dist/integrations/workflow/client.js",
+      "default": "./dist/integrations/workflow/client.js"
+    },
+    "./workflow/video": {
+      "types": "./dist/integrations/workflow/video.d.ts",
+      "import": "./dist/integrations/workflow/video.js",
+      "default": "./dist/integrations/workflow/video.js"
+    },
+    "./workflow-harness": {
+      "types": "./dist/integrations/workflow-harness.d.ts",
+      "import": "./dist/integrations/workflow-harness.js",
+      "default": "./dist/integrations/workflow-harness.js"
+    },
+    "./xai": {
+      "types": "./dist/providers/xai.d.ts",
+      "import": "./dist/providers/xai.js",
+      "default": "./dist/providers/xai.js"
+    },
+    "./zai": {
+      "types": "./dist/providers/zai.d.ts",
+      "import": "./dist/providers/zai.js",
+      "default": "./dist/providers/zai.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -87,8 +671,11 @@
   },
   "peerDependencies": {
     "effect": "^4.1.5",
+    "react": "^18 || ~19.0.1 || ~19.1.2 || ^19.2.1",
+    "solid-js": "^1.7.7",
     "svelte": "^5.31.0",
-    "vitest": ">=5 <6"
+    "vitest": ">=5 <6",
+    "vue": "^3.3.4"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
@@ -211,6 +798,8 @@
     "@langchain/core": "1.5.1",
     "@langchain/langgraph": "1.3.0",
     "@langfuse/otel": "5.10.1",
+    "@open-policy-agent/opa": "1.7.11",
+    "@open-policy-agent/opa-wasm": "1.10.0",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/context-async-hooks": "2.7.1",
     "@opentelemetry/core": "2.7.1",
@@ -222,10 +811,19 @@
     "zod": "3.25.76"
   },
   "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    },
     "svelte": {
       "optional": true
     },
     "vitest": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   }
