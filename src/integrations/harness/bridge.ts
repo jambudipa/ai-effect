@@ -1,5 +1,5 @@
 import * as sdk from '@ai-sdk/harness/bridge';
-import { Effect, Stream } from 'effect';
+import { Deferred, Effect, Stream } from 'effect';
 import {
   type AiSdkError,
   openOperation,
@@ -101,11 +101,13 @@ type Start = { readonly type: 'start' };
 
 export type RunBridgeOptions<T extends Start, E = never, R = never> = Omit<
   sdk.RunBridgeOptions<T>,
-  'onStart' | 'onStop' | 'onDestroy'
+  'onStart' | 'onStop' | 'onDestroy' | 'onListening' | 'onExit'
 > & {
   readonly onStart: (start: T, turn: BridgeTurn) => Effect.Effect<void, E, R>;
   readonly onStop?: () => Effect.Effect<unknown, E, R>;
   readonly onDestroy?: () => Effect.Effect<void, E, R>;
+  readonly onListening?: (port: number) => Effect.Effect<void, E, R>;
+  readonly onExit?: () => Effect.Effect<void, E, R>;
 };
 
 const wrapBridge = (native: sdk.BridgeHandle) => ({
@@ -120,8 +122,10 @@ export const runBridge = <T extends Start, E = never, R = never>(
   options: RunBridgeOptions<T, E, R>,
 ) =>
   Effect.gen(function* () {
-    const { onStart, onStop, onDestroy, ...rest } = options;
+    const { onStart, onStop, onDestroy, onListening, onExit, ...rest } =
+      options;
     const owner = yield* openOperation<R>();
+    const listening = onListening && (yield* Deferred.make<void, E>());
     const bridge = yield* scopedResource(
       'HarnessBridge.start',
       { abortSignal: owner.signal },
@@ -129,11 +133,36 @@ export const runBridge = <T extends Start, E = never, R = never>(
         sdk.runBridge<T>({
           ...rest,
           onStart: (start, turn) =>
-            owner.runCallback(onStart(start, wrapTurn(turn)), turn.abortSignal),
-          ...(onStop && { onStop: () => owner.runCallback(onStop()) }),
-          ...(onDestroy && { onDestroy: () => owner.runCallback(onDestroy()) }),
+            owner.runCallback(
+              Effect.suspend(() => onStart(start, wrapTurn(turn))),
+              turn.abortSignal,
+            ),
+          ...(onStop && {
+            onStop: () => owner.runCallback(Effect.suspend(onStop)),
+          }),
+          ...(onDestroy && {
+            onDestroy: () => owner.runCallback(Effect.suspend(onDestroy)),
+          }),
+          ...(onListening &&
+            listening && {
+              onListening: (port: number) => {
+                void owner
+                  .runCallback(
+                    Effect.suspend(() => onListening(port)).pipe(
+                      Effect.onExit((exit) => Deferred.done(listening, exit)),
+                    ),
+                  )
+                  .catch(() => {});
+              },
+            }),
+          ...(onExit && {
+            onExit: () => {
+              void owner.runCleanup(Effect.suspend(onExit)).catch(() => {});
+            },
+          }),
         }),
       (bridge) => bridge.close(),
     );
+    if (listening) yield* Deferred.await(listening);
     return wrapBridge(bridge);
   });
