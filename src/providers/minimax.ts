@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { MiniMaxProviderSettings as SdkSettings } from '@ai-sdk/minimax';
 import {
   createMiniMax as sdkCreateMiniMax,
   minimax as sdkMinimax,
@@ -10,7 +13,6 @@ import {
 } from '../internal/provider-adapter.js';
 import { wrapImageModel, wrapVideoModel } from '../internal/provider-model.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/minimax';
 export type {
@@ -21,7 +23,6 @@ export type {
   MiniMaxImagePartOptions,
   MiniMaxLanguageModelOptions,
   MiniMaxProviderOptions,
-  MiniMaxProviderSettings,
   MiniMaxVideoModelId,
   MiniMaxVideoModelOptions,
   MiniMaxVideoPartOptions,
@@ -54,6 +55,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type MiniMaxProvider = ReturnType<typeof wrapProvider>;
-export const createMiniMax = (...args: Parameters<typeof sdkCreateMiniMax>) =>
-  runSync('createMiniMax', () => wrapProvider(sdkCreateMiniMax(...args)));
+type ResolverKey = 'apiKey';
+export type MiniMaxProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createMiniMax = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  MiniMaxProvider
+>('createMiniMax', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateMiniMax(settings)),
+);
 export const minimax: MiniMaxProvider = wrapProvider(sdkMinimax);

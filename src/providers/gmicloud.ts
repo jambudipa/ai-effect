@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { GmicloudProviderSettings as SdkSettings } from '@ai-sdk/gmicloud';
 import {
   createGmicloud as sdkCreateGmicloud,
   gmicloud as sdkGmicloud,
@@ -9,13 +12,9 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/gmicloud';
-export type {
-  GmicloudErrorData,
-  GmicloudProviderSettings,
-} from '@ai-sdk/gmicloud';
+export type { GmicloudErrorData } from '@ai-sdk/gmicloud';
 
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('gmicloud', sdk, wrapLanguageModel), {
@@ -32,6 +31,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type GmicloudProvider = ReturnType<typeof wrapProvider>;
-export const createGmicloud = (...args: Parameters<typeof sdkCreateGmicloud>) =>
-  runSync('createGmicloud', () => wrapProvider(sdkCreateGmicloud(...args)));
+type ResolverKey = 'apiKey';
+export type GmicloudProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createGmicloud = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  GmicloudProvider
+>('createGmicloud', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateGmicloud(settings)),
+);
 export const gmicloud: GmicloudProvider = wrapProvider(sdkGmicloud);

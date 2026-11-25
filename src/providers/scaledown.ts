@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { ScaleDownProviderSettings as SdkSettings } from '@ai-sdk/scaledown';
 import {
   createScaleDown as sdkCreateScaleDown,
   scaleDown as sdkScaleDown,
@@ -9,7 +12,6 @@ import {
   wrapDecisionModel,
   wrapExtractionModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/scaledown';
 export type {
@@ -17,7 +19,6 @@ export type {
   Experimental_ScaleDownExtractionModelId,
   Experimental_ScaleDownExtractionModelOptions,
   ScaleDownDecisionProviderMetadata,
-  ScaleDownProviderSettings,
 } from '@ai-sdk/scaledown';
 
 const wrapProvider = (sdk: SdkProvider) => ({
@@ -34,9 +35,17 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type ScaleDownProvider = ReturnType<typeof wrapProvider>;
-export const createScaleDown = (
-  ...args: Parameters<typeof sdkCreateScaleDown>
-) =>
-  runSync('createScaleDown', () => wrapProvider(sdkCreateScaleDown(...args)));
+type ResolverKey = 'apiKey';
+export type ScaleDownProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createScaleDown = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  ScaleDownProvider
+>('createScaleDown', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateScaleDown(settings)),
+);
 export const scaleDown: ScaleDownProvider = wrapProvider(sdkScaleDown);
 export const scaledown: ScaleDownProvider = wrapProvider(sdkScaledown);

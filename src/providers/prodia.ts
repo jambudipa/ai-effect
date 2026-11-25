@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { ProdiaProviderSettings as SdkSettings } from '@ai-sdk/prodia';
 import {
   createProdia as sdkCreateProdia,
   prodia as sdkProdia,
@@ -10,7 +13,6 @@ import {
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import { wrapImageModel, wrapVideoModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/prodia';
 export type {
@@ -19,7 +21,6 @@ export type {
   ProdiaImageProviderOptions,
   ProdiaLanguageModelId,
   ProdiaLanguageModelOptions,
-  ProdiaProviderSettings,
   ProdiaVideoModelId,
   ProdiaVideoModelOptions,
 } from '@ai-sdk/prodia';
@@ -49,6 +50,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type ProdiaProvider = ReturnType<typeof wrapProvider>;
-export const createProdia = (...args: Parameters<typeof sdkCreateProdia>) =>
-  runSync('createProdia', () => wrapProvider(sdkCreateProdia(...args)));
+type ResolverKey = 'apiKey';
+export type ProdiaProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createProdia = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  ProdiaProvider
+>('createProdia', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateProdia(settings)),
+);
 export const prodia: ProdiaProvider = wrapProvider(sdkProdia);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { ZaiProviderSettings as SdkSettings } from '@ai-sdk/zai';
 import { createZai as sdkCreateZai, zai as sdkZai } from '@ai-sdk/zai';
 import type { ZaiProvider as SdkProvider } from '@ai-sdk/zai';
 import {
@@ -6,14 +9,12 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/zai';
 export type {
   ZaiChatModelId,
   ZaiErrorData,
   ZaiLanguageModelChatOptions,
-  ZaiProviderSettings,
 } from '@ai-sdk/zai';
 
 const wrapProvider = (sdk: SdkProvider) =>
@@ -31,6 +32,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type ZaiProvider = ReturnType<typeof wrapProvider>;
-export const createZai = (...args: Parameters<typeof sdkCreateZai>) =>
-  runSync('createZai', () => wrapProvider(sdkCreateZai(...args)));
+type ResolverKey = 'apiKey';
+export type ZaiProviderSettings<E = never, R = never> = EffectProviderSettings<
+  SdkSettings,
+  ResolverKey,
+  E,
+  R
+>;
+export const createZai = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  ZaiProvider
+>('createZai', ['apiKey'], (settings) => wrapProvider(sdkCreateZai(settings)));
 export const zai: ZaiProvider = wrapProvider(sdkZai);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { ReplicateProviderSettings as SdkSettings } from '@ai-sdk/replicate';
 import {
   createReplicate as sdkCreateReplicate,
   replicate as sdkReplicate,
@@ -9,13 +12,11 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapImageModel, wrapVideoModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/replicate';
 export type {
   ReplicateImageModelOptions,
   ReplicateImageProviderOptions,
-  ReplicateProviderSettings,
   ReplicateVideoModelId,
   ReplicateVideoModelOptions,
   ReplicateVideoProviderOptions,
@@ -41,8 +42,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type ReplicateProvider = ReturnType<typeof wrapProvider>;
-export const createReplicate = (
-  ...args: Parameters<typeof sdkCreateReplicate>
-) =>
-  runSync('createReplicate', () => wrapProvider(sdkCreateReplicate(...args)));
+type ResolverKey = 'apiToken';
+export type ReplicateProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createReplicate = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  ReplicateProvider
+>('createReplicate', ['apiToken'], (settings) =>
+  wrapProvider(sdkCreateReplicate(settings)),
+);
 export const replicate: ReplicateProvider = wrapProvider(sdkReplicate);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { FalProviderSettings as SdkSettings } from '@ai-sdk/fal';
 import { createFal as sdkCreateFal, fal as sdkFal } from '@ai-sdk/fal';
 import type { FalProvider as SdkProvider } from '@ai-sdk/fal';
 import {
@@ -11,13 +14,11 @@ import {
   wrapTranscriptionModel,
   wrapVideoModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/fal';
 export type {
   FalImageModelOptions,
   FalImageProviderOptions,
-  FalProviderSettings,
   FalSpeechModelOptions,
   FalTranscriptionModelOptions,
   FalVideoModelId,
@@ -51,6 +52,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type FalProvider = ReturnType<typeof wrapProvider>;
-export const createFal = (...args: Parameters<typeof sdkCreateFal>) =>
-  runSync('createFal', () => wrapProvider(sdkCreateFal(...args)));
+type ResolverKey = 'apiKey';
+export type FalProviderSettings<E = never, R = never> = EffectProviderSettings<
+  SdkSettings,
+  ResolverKey,
+  E,
+  R
+>;
+export const createFal = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  FalProvider
+>('createFal', ['apiKey'], (settings) => wrapProvider(sdkCreateFal(settings)));
 export const fal: FalProvider = wrapProvider(sdkFal);

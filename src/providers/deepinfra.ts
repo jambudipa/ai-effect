@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { DeepInfraProviderSettings as SdkSettings } from '@ai-sdk/deepinfra';
 import {
   createDeepInfra as sdkCreateDeepInfra,
   deepInfra as sdkDeepInfra,
@@ -9,13 +12,11 @@ import {
   wrapEmbeddingModel,
   wrapImageModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/deepinfra';
 export type {
   DeepInfraErrorData,
   DeepInfraImageModelOptions,
-  DeepInfraProviderSettings,
 } from '@ai-sdk/deepinfra';
 
 const wrapProvider = (sdk: SdkProvider) =>
@@ -54,9 +55,17 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type DeepInfraProvider = ReturnType<typeof wrapProvider>;
-export const createDeepInfra = (
-  ...args: Parameters<typeof sdkCreateDeepInfra>
-) =>
-  runSync('createDeepInfra', () => wrapProvider(sdkCreateDeepInfra(...args)));
+type ResolverKey = 'apiKey';
+export type DeepInfraProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createDeepInfra = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  DeepInfraProvider
+>('createDeepInfra', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateDeepInfra(settings)),
+);
 export const deepInfra: DeepInfraProvider = wrapProvider(sdkDeepInfra);
 export const deepinfra: DeepInfraProvider = deepInfra;

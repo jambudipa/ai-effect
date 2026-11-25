@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { PerplexityProviderSettings as SdkSettings } from '@ai-sdk/perplexity';
 import {
   createPerplexity as sdkCreatePerplexity,
   perplexity as sdkPerplexity,
@@ -9,7 +12,6 @@ import {
   wrapEmbeddingModel,
 } from '../internal/provider-model.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/perplexity';
 export type {
@@ -20,7 +22,6 @@ export type {
   PerplexityEmbeddingModelOptions,
   PerplexityLanguageModelId,
   PerplexityLanguageModelOptions,
-  PerplexityProviderSettings,
 } from '@ai-sdk/perplexity';
 
 const wrapProvider = (sdk: SdkProvider) =>
@@ -53,8 +54,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type PerplexityProvider = ReturnType<typeof wrapProvider>;
-export const createPerplexity = (
-  ...args: Parameters<typeof sdkCreatePerplexity>
-) =>
-  runSync('createPerplexity', () => wrapProvider(sdkCreatePerplexity(...args)));
+type ResolverKey = 'apiKey';
+export type PerplexityProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createPerplexity = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  PerplexityProvider
+>('createPerplexity', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreatePerplexity(settings)),
+);
 export const perplexity: PerplexityProvider = wrapProvider(sdkPerplexity);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { KlingAIProviderSettings as SdkSettings } from '@ai-sdk/klingai';
 import {
   createKlingAI as sdkCreateKlingAI,
   klingai as sdkKlingai,
@@ -5,11 +8,9 @@ import {
 import type { KlingAIProvider as SdkProvider } from '@ai-sdk/klingai';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapVideoModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/klingai';
 export type {
-  KlingAIProviderSettings,
   KlingAIVideoModelId,
   KlingAIVideoModelOptions,
   KlingAIVideoProviderOptions,
@@ -25,6 +26,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type KlingAIProvider = ReturnType<typeof wrapProvider>;
-export const createKlingAI = (...args: Parameters<typeof sdkCreateKlingAI>) =>
-  runSync('createKlingAI', () => wrapProvider(sdkCreateKlingAI(...args)));
+type ResolverKey = 'apiKey';
+export type KlingAIProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createKlingAI = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  KlingAIProvider
+>('createKlingAI', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateKlingAI(settings)),
+);
 export const klingai: KlingAIProvider = wrapProvider(sdkKlingai);

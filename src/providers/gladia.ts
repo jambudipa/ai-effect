@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { GladiaProviderSettings as SdkSettings } from '@ai-sdk/gladia';
 import {
   createGladia as sdkCreateGladia,
   gladia as sdkGladia,
@@ -10,11 +13,9 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapTranscriptionModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/gladia';
 export type {
-  GladiaProviderSettings,
   GladiaTranscriptionModelId,
   GladiaTranscriptionModelOptions,
 } from '@ai-sdk/gladia';
@@ -33,6 +34,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type GladiaProvider = ReturnType<typeof wrapProvider>;
-export const createGladia = (...args: Parameters<typeof sdkCreateGladia>) =>
-  runSync('createGladia', () => wrapProvider(sdkCreateGladia(...args)));
+type ResolverKey = 'apiKey';
+export type GladiaProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createGladia = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  GladiaProvider
+>('createGladia', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateGladia(settings)),
+);
 export const gladia: GladiaProvider = wrapProvider(sdkGladia);

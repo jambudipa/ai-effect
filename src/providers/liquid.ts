@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { LiquidProviderSettings as SdkSettings } from '@ai-sdk/liquid';
 import {
   createLiquid as sdkCreateLiquid,
   liquid as sdkLiquid,
@@ -5,13 +8,11 @@ import {
 import type { LiquidProvider as SdkProvider } from '@ai-sdk/liquid';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapDecisionModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/liquid';
 export type {
   LiquidDecisionModelId,
   LiquidDecisionModelOptions,
-  LiquidProviderSettings,
 } from '@ai-sdk/liquid';
 
 const wrapProvider = (sdk: SdkProvider) => ({
@@ -23,6 +24,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type LiquidProvider = ReturnType<typeof wrapProvider>;
-export const createLiquid = (...args: Parameters<typeof sdkCreateLiquid>) =>
-  runSync('createLiquid', () => wrapProvider(sdkCreateLiquid(...args)));
+type ResolverKey = 'apiKey';
+export type LiquidProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createLiquid = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  LiquidProvider
+>('createLiquid', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateLiquid(settings)),
+);
 export const liquid: LiquidProvider = wrapProvider(sdkLiquid);

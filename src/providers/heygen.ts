@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { HeyGenProviderSettings as SdkSettings } from '@ai-sdk/heygen';
 import {
   createHeyGen as sdkCreateHeyGen,
   heygen as sdkHeygen,
@@ -8,13 +11,11 @@ import {
   wrapDecisionModel,
   wrapVideoModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/heygen';
 export type {
   HeyGenDecisionModelId,
   HeyGenDecisionModelOptions,
-  HeyGenProviderSettings,
   HeyGenVideoAsset,
   HeyGenVideoModelId,
   HeyGenVideoModelOptions,
@@ -35,6 +36,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type HeyGenProvider = ReturnType<typeof wrapProvider>;
-export const createHeyGen = (...args: Parameters<typeof sdkCreateHeyGen>) =>
-  runSync('createHeyGen', () => wrapProvider(sdkCreateHeyGen(...args)));
+type ResolverKey = 'apiKey';
+export type HeyGenProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createHeyGen = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  HeyGenProvider
+>('createHeyGen', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateHeyGen(settings)),
+);
 export const heygen: HeyGenProvider = wrapProvider(sdkHeygen);

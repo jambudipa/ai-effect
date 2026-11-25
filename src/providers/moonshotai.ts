@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { MoonshotAIProviderSettings as SdkSettings } from '@ai-sdk/moonshotai';
 import {
   createMoonshotAI as sdkCreateMoonshotAI,
   moonshotai as sdkMoonshotai,
@@ -5,7 +8,6 @@ import {
 import type { MoonshotAIProvider as SdkProvider } from '@ai-sdk/moonshotai';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/moonshotai';
 export type {
@@ -14,7 +16,6 @@ export type {
   MoonshotAILanguageModelOptions,
   MoonshotAIMessageProviderOptions,
   MoonshotAIProviderOptions,
-  MoonshotAIProviderSettings,
   MoonshotAISystemMessageProviderOptions,
 } from '@ai-sdk/moonshotai';
 
@@ -33,8 +34,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type MoonshotAIProvider = ReturnType<typeof wrapProvider>;
-export const createMoonshotAI = (
-  ...args: Parameters<typeof sdkCreateMoonshotAI>
-) =>
-  runSync('createMoonshotAI', () => wrapProvider(sdkCreateMoonshotAI(...args)));
+type ResolverKey = 'apiKey';
+export type MoonshotAIProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createMoonshotAI = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  MoonshotAIProvider
+>('createMoonshotAI', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateMoonshotAI(settings)),
+);
 export const moonshotai: MoonshotAIProvider = wrapProvider(sdkMoonshotai);

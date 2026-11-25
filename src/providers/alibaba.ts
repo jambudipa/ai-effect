@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { AlibabaProviderSettings as SdkSettings } from '@ai-sdk/alibaba';
 import {
   createAlibaba as sdkCreateAlibaba,
   alibaba as sdkAlibaba,
@@ -9,7 +12,6 @@ import {
   wrapEmbeddingModel,
   wrapVideoModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/alibaba';
 export type {
@@ -20,7 +22,6 @@ export type {
   AlibabaLanguageModelChatOptions,
   AlibabaLanguageModelOptions,
   AlibabaProviderOptions,
-  AlibabaProviderSettings,
   AlibabaUsage,
   AlibabaVideoModelId,
   AlibabaVideoModelOptions,
@@ -58,6 +59,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type AlibabaProvider = ReturnType<typeof wrapProvider>;
-export const createAlibaba = (...args: Parameters<typeof sdkCreateAlibaba>) =>
-  runSync('createAlibaba', () => wrapProvider(sdkCreateAlibaba(...args)));
+type ResolverKey = 'apiKey';
+export type AlibabaProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createAlibaba = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  AlibabaProvider
+>('createAlibaba', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateAlibaba(settings)),
+);
 export const alibaba: AlibabaProvider = wrapProvider(sdkAlibaba);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { CohereProviderSettings as SdkSettings } from '@ai-sdk/cohere';
 import {
   createCohere as sdkCreateCohere,
   cohere as sdkCohere,
@@ -9,7 +12,6 @@ import {
   wrapEmbeddingModel,
   wrapRerankingModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/cohere';
 export type {
@@ -17,7 +19,6 @@ export type {
   CohereEmbeddingModelOptions,
   CohereLanguageModelChatOptions,
   CohereLanguageModelOptions,
-  CohereProviderSettings,
   CohereRerankingModelOptions,
   CohereRerankingOptions,
 } from '@ai-sdk/cohere';
@@ -62,6 +63,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type CohereProvider = ReturnType<typeof wrapProvider>;
-export const createCohere = (...args: Parameters<typeof sdkCreateCohere>) =>
-  runSync('createCohere', () => wrapProvider(sdkCreateCohere(...args)));
+type ResolverKey = 'apiKey';
+export type CohereProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createCohere = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  CohereProvider
+>('createCohere', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateCohere(settings)),
+);
 export const cohere: CohereProvider = wrapProvider(sdkCohere);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { TopazProviderSettings as SdkSettings } from '@ai-sdk/topaz';
 import {
   createTopaz as sdkCreateTopaz,
   topaz as sdkTopaz,
@@ -5,13 +8,11 @@ import {
 import type { TopazProvider as SdkProvider } from '@ai-sdk/topaz';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapImageModel, wrapVideoModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/topaz';
 export type {
   TopazImageModelId,
   TopazImageModelOptions,
-  TopazProviderSettings,
   TopazVideoModelId,
   TopazVideoModelOptions,
   TopazVideoOutput,
@@ -34,6 +35,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type TopazProvider = ReturnType<typeof wrapProvider>;
-export const createTopaz = (...args: Parameters<typeof sdkCreateTopaz>) =>
-  runSync('createTopaz', () => wrapProvider(sdkCreateTopaz(...args)));
+type ResolverKey = 'apiKey';
+export type TopazProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createTopaz = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  TopazProvider
+>('createTopaz', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateTopaz(settings)),
+);
 export const topaz: TopazProvider = wrapProvider(sdkTopaz);

@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { TencentProviderSettings as SdkSettings } from '@ai-sdk/tencent';
 import {
   createTencent as sdkCreateTencent,
   tencent as sdkTencent,
@@ -10,13 +13,11 @@ import {
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import { wrapVideoModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/tencent';
 export type {
   TencentChatModelId,
   TencentLanguageModelChatOptions,
-  TencentProviderSettings,
   TencentTokenHubErrorData,
   TencentVideoModelId,
   TencentVideoModelOptions,
@@ -43,6 +44,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type TencentProvider = ReturnType<typeof wrapProvider>;
-export const createTencent = (...args: Parameters<typeof sdkCreateTencent>) =>
-  runSync('createTencent', () => wrapProvider(sdkCreateTencent(...args)));
+type ResolverKey = 'apiKey';
+export type TencentProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createTencent = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  TencentProvider
+>('createTencent', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateTencent(settings)),
+);
 export const tencent: TencentProvider = wrapProvider(sdkTencent);

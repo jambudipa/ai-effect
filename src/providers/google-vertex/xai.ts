@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../../internal/provider-settings.js';
+import type { GoogleVertexXaiProviderSettings as SdkSettings } from '@ai-sdk/google-vertex/xai';
 import {
   createGoogleVertexXai as sdkCreateGoogleVertexXai,
   googleVertexXai as sdkGoogleVertexXai,
@@ -9,12 +12,8 @@ import {
   wrapProviderBase,
 } from '../../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../../internal/language-model.js';
-import { runSync } from '../../internal/operation.js';
 
-export type {
-  GoogleVertexXaiModelId,
-  GoogleVertexXaiProviderSettings,
-} from '@ai-sdk/google-vertex/xai';
+export type { GoogleVertexXaiModelId } from '@ai-sdk/google-vertex/xai';
 
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('googleVertexXai', sdk, wrapLanguageModel), {
@@ -35,11 +34,17 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type GoogleVertexXaiProvider = ReturnType<typeof wrapProvider>;
-export const createGoogleVertexXai = (
-  ...args: Parameters<typeof sdkCreateGoogleVertexXai>
-) =>
-  runSync('createGoogleVertexXai', () =>
-    wrapProvider(sdkCreateGoogleVertexXai(...args)),
-  );
+type ResolverKey = 'headers';
+export type GoogleVertexXaiProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createGoogleVertexXai = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  GoogleVertexXaiProvider
+>('createGoogleVertexXai', ['headers'], (settings) =>
+  wrapProvider(sdkCreateGoogleVertexXai(settings)),
+);
 export const googleVertexXai: GoogleVertexXaiProvider =
   wrapProvider(sdkGoogleVertexXai);

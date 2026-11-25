@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { ElevenLabsProviderSettings as SdkSettings } from '@ai-sdk/elevenlabs';
 import {
   createElevenLabs as sdkCreateElevenLabs,
   elevenLabs as sdkElevenLabs,
@@ -13,11 +16,9 @@ import {
   wrapSpeechModel,
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/elevenlabs';
 export type {
-  ElevenLabsProviderSettings,
   ElevenLabsSpeechModelId,
   ElevenLabsSpeechModelOptions,
   ElevenLabsSpeechVoiceId,
@@ -43,9 +44,17 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type ElevenLabsProvider = ReturnType<typeof wrapProvider>;
-export const createElevenLabs = (
-  ...args: Parameters<typeof sdkCreateElevenLabs>
-) =>
-  runSync('createElevenLabs', () => wrapProvider(sdkCreateElevenLabs(...args)));
+type ResolverKey = 'apiKey';
+export type ElevenLabsProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createElevenLabs = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  ElevenLabsProvider
+>('createElevenLabs', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateElevenLabs(settings)),
+);
 export const elevenLabs: ElevenLabsProvider = wrapProvider(sdkElevenLabs);
 export const elevenlabs: ElevenLabsProvider = elevenLabs;

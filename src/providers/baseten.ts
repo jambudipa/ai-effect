@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { BasetenProviderSettings as SdkSettings } from '@ai-sdk/baseten';
 import {
   createBaseten as sdkCreateBaseten,
   baseten as sdkBaseten,
@@ -9,7 +12,6 @@ import {
   wrapDecisionModel,
   wrapEmbeddingModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/baseten';
 export type {
@@ -20,7 +22,6 @@ export type {
   BasetenErrorData,
   BasetenPerformanceClient,
   BasetenPerformanceClientConstructor,
-  BasetenProviderSettings,
 } from '@ai-sdk/baseten';
 
 const wrapProvider = (sdk: SdkProvider) =>
@@ -53,6 +54,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type BasetenProvider = ReturnType<typeof wrapProvider>;
-export const createBaseten = (...args: Parameters<typeof sdkCreateBaseten>) =>
-  runSync('createBaseten', () => wrapProvider(sdkCreateBaseten(...args)));
+type ResolverKey = 'apiKey';
+export type BasetenProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createBaseten = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  BasetenProvider
+>('createBaseten', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateBaseten(settings)),
+);
 export const baseten: BasetenProvider = wrapProvider(sdkBaseten);

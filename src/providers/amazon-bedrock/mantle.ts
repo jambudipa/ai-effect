@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../../internal/provider-settings.js';
+import type { BedrockMantleProviderSettings as SdkSettings } from '@ai-sdk/amazon-bedrock/mantle';
 import {
   createBedrockMantle as sdkCreateBedrockMantle,
   bedrockMantle as sdkBedrockMantle,
@@ -9,12 +12,8 @@ import {
   wrapProviderBase,
 } from '../../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../../internal/language-model.js';
-import { runSync } from '../../internal/operation.js';
 
-export type {
-  BedrockMantleModelId,
-  BedrockMantleProviderSettings,
-} from '@ai-sdk/amazon-bedrock/mantle';
+export type { BedrockMantleModelId } from '@ai-sdk/amazon-bedrock/mantle';
 
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('bedrockMantle', sdk, wrapLanguageModel), {
@@ -40,11 +39,17 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type BedrockMantleProvider = ReturnType<typeof wrapProvider>;
-export const createBedrockMantle = (
-  ...args: Parameters<typeof sdkCreateBedrockMantle>
-) =>
-  runSync('createBedrockMantle', () =>
-    wrapProvider(sdkCreateBedrockMantle(...args)),
-  );
+type ResolverKey = 'apiKey' | 'credentialProvider';
+export type BedrockMantleProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createBedrockMantle = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  BedrockMantleProvider
+>('createBedrockMantle', ['apiKey', 'credentialProvider'], (settings) =>
+  wrapProvider(sdkCreateBedrockMantle(settings)),
+);
 export const bedrockMantle: BedrockMantleProvider =
   wrapProvider(sdkBedrockMantle);

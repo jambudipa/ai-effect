@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { AssemblyAIProviderSettings as SdkSettings } from '@ai-sdk/assemblyai';
 import {
   createAssemblyAI as sdkCreateAssemblyAI,
   assemblyai as sdkAssemblyai,
@@ -13,11 +16,9 @@ import {
   wrapSpeechModel,
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/assemblyai';
 export type {
-  AssemblyAIProviderSettings,
   AssemblyAISpeechModelId,
   AssemblyAISpeechModelOptions,
   AssemblyAITranscriptionModelOptions,
@@ -42,8 +43,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type AssemblyAIProvider = ReturnType<typeof wrapProvider>;
-export const createAssemblyAI = (
-  ...args: Parameters<typeof sdkCreateAssemblyAI>
-) =>
-  runSync('createAssemblyAI', () => wrapProvider(sdkCreateAssemblyAI(...args)));
+type ResolverKey = 'apiKey';
+export type AssemblyAIProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createAssemblyAI = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  AssemblyAIProvider
+>('createAssemblyAI', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateAssemblyAI(settings)),
+);
 export const assemblyai: AssemblyAIProvider = wrapProvider(sdkAssemblyai);

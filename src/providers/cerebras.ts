@@ -3,10 +3,13 @@ import {
   cerebras as sdkCerebras,
   createCerebras as sdkCreateCerebras,
   type CerebrasProvider as SdkCerebrasProvider,
-  type CerebrasProviderSettings,
+  type CerebrasProviderSettings as SdkSettings,
 } from '@ai-sdk/cerebras';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
+import type { Effect, Scope } from 'effect';
+import type { AiSdkError } from '../internal/operation.js';
+import { createWithProviderSettings } from '../internal/provider-settings.js';
+import type { ProviderSetting } from '../internal/provider-settings.js';
 import {
   adaptMethod,
   adaptUnsupportedMethod,
@@ -17,7 +20,6 @@ export { VERSION };
 export type {
   CerebrasErrorData,
   CerebrasLanguageModelChatOptions,
-  CerebrasProviderSettings,
 } from '@ai-sdk/cerebras';
 export type { LanguageModelV4 } from '../internal/language-model.js';
 export type {
@@ -47,6 +49,31 @@ const wrapCerebras = (sdk: SdkCerebrasProvider) =>
 /** Use Cerebras with its default settings. Requests start on execution. */
 export const cerebras = wrapCerebras(sdkCerebras);
 
-/** Create a Cerebras provider with caller-supplied settings. */
-export const createCerebras = (options?: CerebrasProviderSettings) =>
-  runSync('createCerebras', () => wrapCerebras(sdkCreateCerebras(options)));
+/** Cerebras connection settings. A credential Effect runs when the SDK requests it. */
+export interface CerebrasProviderSettings<E = never, R = never> {
+  readonly apiKey?: ProviderSetting<string, E, R>;
+  readonly baseURL?: string;
+  readonly headers?: Record<string, string>;
+  readonly fetch?: typeof globalThis.fetch;
+}
+
+type PlainCerebrasSettings = Omit<CerebrasProviderSettings, 'apiKey'> & {
+  readonly apiKey?: string;
+};
+
+/** Create a provider with static settings. */
+export function createCerebras(
+  options?: PlainCerebrasSettings,
+): Effect.Effect<CerebrasProvider, AiSdkError>;
+/** Create a provider with credentials that resolve during each SDK request. */
+export function createCerebras<E, R>(
+  options: CerebrasProviderSettings<E, R>,
+): Effect.Effect<CerebrasProvider, AiSdkError, R | Scope.Scope>;
+export function createCerebras<E, R>(options?: CerebrasProviderSettings<E, R>) {
+  return createWithProviderSettings<SdkSettings, R, CerebrasProvider>(
+    'createCerebras',
+    options,
+    ['apiKey'],
+    (settings) => wrapCerebras(sdkCreateCerebras(settings)),
+  );
+}

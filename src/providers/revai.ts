@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { RevaiProviderSettings as SdkSettings } from '@ai-sdk/revai';
 import {
   createRevai as sdkCreateRevai,
   revai as sdkRevai,
@@ -10,13 +13,9 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapTranscriptionModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/revai';
-export type {
-  RevaiProviderSettings,
-  RevaiTranscriptionModelOptions,
-} from '@ai-sdk/revai';
+export type { RevaiTranscriptionModelOptions } from '@ai-sdk/revai';
 
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('revai', sdk, wrapLegacyTranscription), {
@@ -32,6 +31,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type RevaiProvider = ReturnType<typeof wrapProvider>;
-export const createRevai = (...args: Parameters<typeof sdkCreateRevai>) =>
-  runSync('createRevai', () => wrapProvider(sdkCreateRevai(...args)));
+type ResolverKey = 'apiKey';
+export type RevaiProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createRevai = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  RevaiProvider
+>('createRevai', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateRevai(settings)),
+);
 export const revai: RevaiProvider = wrapProvider(sdkRevai);

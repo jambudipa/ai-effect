@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { TogetherAIProviderSettings as SdkSettings } from '@ai-sdk/togetherai';
 import {
   createTogetherAI as sdkCreateTogetherAI,
   togetherai as sdkTogetherai,
@@ -10,14 +13,12 @@ import {
   wrapImageModel,
   wrapRerankingModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/togetherai';
 export type {
   TogetherAIErrorData,
   TogetherAIImageModelOptions,
   TogetherAIImageProviderOptions,
-  TogetherAIProviderSettings,
   TogetherAIRerankingModelOptions,
   TogetherAIRerankingOptions,
 } from '@ai-sdk/togetherai';
@@ -68,8 +69,16 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type TogetherAIProvider = ReturnType<typeof wrapProvider>;
-export const createTogetherAI = (
-  ...args: Parameters<typeof sdkCreateTogetherAI>
-) =>
-  runSync('createTogetherAI', () => wrapProvider(sdkCreateTogetherAI(...args)));
+type ResolverKey = 'apiKey';
+export type TogetherAIProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createTogetherAI = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  TogetherAIProvider
+>('createTogetherAI', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateTogetherAI(settings)),
+);
 export const togetherai: TogetherAIProvider = wrapProvider(sdkTogetherai);

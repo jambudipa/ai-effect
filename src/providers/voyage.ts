@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { VoyageProviderSettings as SdkSettings } from '@ai-sdk/voyage';
 import {
   createVoyage as sdkCreateVoyage,
   voyage as sdkVoyage,
@@ -8,12 +11,10 @@ import {
   wrapEmbeddingModel,
   wrapRerankingModel,
 } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/voyage';
 export type {
   VoyageEmbeddingModelOptions,
-  VoyageProviderSettings,
   VoyageRerankingModelOptions,
 } from '@ai-sdk/voyage';
 
@@ -51,6 +52,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type VoyageProvider = ReturnType<typeof wrapProvider>;
-export const createVoyage = (...args: Parameters<typeof sdkCreateVoyage>) =>
-  runSync('createVoyage', () => wrapProvider(sdkCreateVoyage(...args)));
+type ResolverKey = 'apiKey';
+export type VoyageProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createVoyage = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  VoyageProvider
+>('createVoyage', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateVoyage(settings)),
+);
 export const voyage: VoyageProvider = wrapProvider(sdkVoyage);

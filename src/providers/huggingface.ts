@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { HuggingFaceProviderSettings as SdkSettings } from '@ai-sdk/huggingface';
 import {
   createHuggingFace as sdkCreateHuggingFace,
   huggingFace as sdkHuggingFace,
@@ -9,12 +12,10 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/huggingface';
 export type {
   HuggingFaceErrorData,
-  HuggingFaceProviderSettings,
   HuggingFaceResponsesModelId,
   HuggingFaceResponsesSettings,
 } from '@ai-sdk/huggingface';
@@ -38,11 +39,17 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
   });
 export type HuggingFaceProvider = ReturnType<typeof wrapProvider>;
-export const createHuggingFace = (
-  ...args: Parameters<typeof sdkCreateHuggingFace>
-) =>
-  runSync('createHuggingFace', () =>
-    wrapProvider(sdkCreateHuggingFace(...args)),
-  );
+type ResolverKey = 'apiKey';
+export type HuggingFaceProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createHuggingFace = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  HuggingFaceProvider
+>('createHuggingFace', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateHuggingFace(settings)),
+);
 export const huggingFace: HuggingFaceProvider = wrapProvider(sdkHuggingFace);
 export const huggingface: HuggingFaceProvider = huggingFace;

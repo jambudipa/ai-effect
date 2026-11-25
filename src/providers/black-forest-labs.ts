@@ -1,3 +1,6 @@
+import { adaptProviderFactory } from '../internal/provider-settings.js';
+import type { EffectProviderSettings } from '../internal/provider-settings.js';
+import type { BlackForestLabsProviderSettings as SdkSettings } from '@ai-sdk/black-forest-labs';
 import {
   createBlackForestLabs as sdkCreateBlackForestLabs,
   blackForestLabs as sdkBlackForestLabs,
@@ -9,7 +12,6 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import { wrapImageModel, wrapVideoModel } from '../internal/provider-model.js';
-import { runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/black-forest-labs';
 export type {
@@ -17,7 +19,6 @@ export type {
   BlackForestLabsImageModelId,
   BlackForestLabsImageModelOptions,
   BlackForestLabsImageProviderOptions,
-  BlackForestLabsProviderSettings,
   BlackForestLabsVideoModelId,
   BlackForestLabsVideoModelOptions,
 } from '@ai-sdk/black-forest-labs';
@@ -50,11 +51,17 @@ const wrapProvider = (sdk: SdkProvider) => ({
   ),
 });
 export type BlackForestLabsProvider = ReturnType<typeof wrapProvider>;
-export const createBlackForestLabs = (
-  ...args: Parameters<typeof sdkCreateBlackForestLabs>
-) =>
-  runSync('createBlackForestLabs', () =>
-    wrapProvider(sdkCreateBlackForestLabs(...args)),
-  );
+type ResolverKey = 'apiKey';
+export type BlackForestLabsProviderSettings<
+  E = never,
+  R = never,
+> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+export const createBlackForestLabs = adaptProviderFactory<
+  SdkSettings,
+  ResolverKey,
+  BlackForestLabsProvider
+>('createBlackForestLabs', ['apiKey'], (settings) =>
+  wrapProvider(sdkCreateBlackForestLabs(settings)),
+);
 export const blackForestLabs: BlackForestLabsProvider =
   wrapProvider(sdkBlackForestLabs);
