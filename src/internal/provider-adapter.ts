@@ -1,6 +1,7 @@
 import type { ProviderV4 } from '@ai-sdk/provider';
 import type { Effect } from 'effect';
 import type { AiSdkError } from './operation.js';
+import type { ProviderHostArguments } from './provider-host-configuration.js';
 import { wrapLanguageModel } from './language-model.js';
 import { runSync } from './operation.js';
 import {
@@ -109,5 +110,5 @@ export type AdaptedConstructor<
   Constructor extends abstract new (...args: never[]) => unknown,
   Model,
 > = (
-  ...args: ConstructorParameters<Constructor>
+  ...args: ProviderHostArguments<ConstructorParameters<Constructor>>
 ) => Effect.Effect<Model, AiSdkError>;

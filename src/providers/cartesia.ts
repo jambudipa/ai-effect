@@ -73,7 +73,10 @@ export const createCartesia = adaptProviderFactory<
   wrapProvider(sdkCreateCartesia(settings)),
 );
 export const cartesia: CartesiaProvider = wrapProvider(sdkCartesia);
-export const CartesiaRealtimeModel = adaptModelConstructor(
+export const CartesiaRealtimeModel: AdaptedConstructor<
+  typeof SdkCartesiaRealtimeModel,
+  CartesiaRealtimeModel
+> = adaptModelConstructor(
   'CartesiaRealtimeModel',
   SdkCartesiaRealtimeModel,
   wrapRealtimeModel,

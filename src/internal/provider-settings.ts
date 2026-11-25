@@ -2,6 +2,7 @@ import { Effect } from 'effect';
 import type { Scope } from 'effect';
 import { openOperation, runSync } from './operation.js';
 import type { AiSdkError } from './operation.js';
+import type { ProviderHostOption } from './provider-host-configuration.js';
 
 export type ProviderSettingValue<T> = T extends () => infer A
   ? Awaited<A>
@@ -49,14 +50,14 @@ type PlainSetting<T> = T extends (() => unknown) | PromiseLike<unknown>
 export type StaticProviderSettings<Native, Keys extends keyof Native> = {
   [Key in keyof Native]: Key extends Keys
     ? PlainSetting<Required<Native>[Key]>
-    : Native[Key];
+    : ProviderHostOption<Key, Native[Key]>;
 };
 
 export type EffectProviderSettings<Native, Keys extends keyof Native, E, R> = {
   [Key in keyof Native]: Key extends Keys
     ? | PlainSetting<Required<Native>[Key]>
       | Effect.Effect<ProviderSettingValue<Required<Native>[Key]>, E, R>
-    : Native[Key];
+    : ProviderHostOption<Key, Native[Key]>;
 };
 
 export interface ProviderFactory<Native, Keys extends keyof Native, Provider> {

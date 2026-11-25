@@ -1,3 +1,6 @@
+import type { Experimental_XaiRealtimeModelConfig as SdkExperimental_XaiRealtimeModelConfig } from '@ai-sdk/xai';
+import type { ProviderHostConfiguration } from '../internal/provider-host-configuration.js';
+import type { AdaptedConstructor } from '../internal/provider-adapter.js';
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { XaiProviderSettings as SdkSettings } from '@ai-sdk/xai';
@@ -37,7 +40,6 @@ import {
 
 export { VERSION } from '@ai-sdk/xai';
 export type {
-  Experimental_XaiRealtimeModelConfig,
   XaiErrorData,
   XaiFilePartProviderOptions,
   XaiFilesOptions,
@@ -124,7 +126,10 @@ export const createXai = adaptProviderFactory<
   XaiProvider
 >('createXai', ['apiKey'], (settings) => wrapProvider(sdkCreateXai(settings)));
 export const xai: XaiProvider = wrapProvider(sdkXai);
-export const Experimental_XaiRealtimeModel = adaptModelConstructor(
+export const Experimental_XaiRealtimeModel: AdaptedConstructor<
+  typeof SdkExperimental_XaiRealtimeModel,
+  Experimental_XaiRealtimeModel
+> = adaptModelConstructor(
   'Experimental_XaiRealtimeModel',
   SdkExperimental_XaiRealtimeModel,
   wrapRealtimeModel,
@@ -146,3 +151,6 @@ export const viewXVideo = adaptProviderTool('xai.viewXVideo', sdkViewXVideo);
 export const webSearch = adaptProviderTool('xai.webSearch', sdkWebSearch);
 export const xSearch = adaptProviderTool('xai.xSearch', sdkXSearch);
 export const xaiTools = wrapProviderTools('xaiTools', sdkXaiTools);
+
+export type Experimental_XaiRealtimeModelConfig =
+  ProviderHostConfiguration<SdkExperimental_XaiRealtimeModelConfig>;

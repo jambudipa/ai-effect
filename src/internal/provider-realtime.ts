@@ -216,3 +216,34 @@ export type RealtimeModelV4 = ReturnType<typeof wrapRealtimeModel>;
 
 export const unwrapRealtimeModel = (model: RealtimeModelV4) =>
   sdkModels.get(model);
+
+type AdaptedRealtimeMethod<T> = T extends (...args: infer Args) => infer A
+  ? (
+      ...args: Args
+    ) => Effect.Effect<Awaited<A>, import('./operation.js').AiSdkError>
+  : T;
+
+type RefinedRealtimeMembers<Native extends SdkRealtimeModel> = {
+  [
+    Key in keyof Native as Key extends keyof RealtimeModelV4 ? Key : never
+  ]: Key extends 'createTransport'
+    ? RealtimeModelV4['createTransport']
+    : Key extends 'createServerEventParser'
+      ? Native[Key] extends (...args: infer Args) => infer A
+        ? (
+            ...args: Args
+          ) => Effect.Effect<
+            AdaptedRealtimeMethod<A>,
+            import('./operation.js').AiSdkError
+          >
+        : Native[Key]
+      : AdaptedRealtimeMethod<Native[Key]>;
+};
+
+/** Realtime subclasses keep their concrete capabilities and implemented methods. */
+export type TypedRealtimeModel<Native extends SdkRealtimeModel> =
+  RefinedRealtimeMembers<Native> & RealtimeModelV4;
+
+export const wrapTypedRealtimeModel = <Native extends SdkRealtimeModel>(
+  model: Native,
+) => wrapRealtimeModel(model) as TypedRealtimeModel<Native>;

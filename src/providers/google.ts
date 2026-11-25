@@ -1,3 +1,7 @@
+import type { Experimental_GoogleTranslationModelConfig as SdkExperimental_GoogleTranslationModelConfig } from '@ai-sdk/google';
+import type { Experimental_GoogleSpeechTranslationModelConfig as SdkExperimental_GoogleSpeechTranslationModelConfig } from '@ai-sdk/google';
+import type { Experimental_GoogleRealtimeModelConfig as SdkExperimental_GoogleRealtimeModelConfig } from '@ai-sdk/google';
+import type { ProviderHostConfiguration } from '../internal/provider-host-configuration.js';
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { GoogleGenerativeAIProviderSettings as SdkSettings } from '@ai-sdk/google';
@@ -39,13 +43,10 @@ import { wrapBatch, wrapFiles } from '../internal/provider-resource.js';
 
 export { VERSION } from '@ai-sdk/google';
 export type {
-  Experimental_GoogleRealtimeModelConfig,
   Experimental_GoogleRealtimeModelId,
   Experimental_GoogleRealtimeModelOptions,
-  Experimental_GoogleSpeechTranslationModelConfig,
   Experimental_GoogleSpeechTranslationModelId,
   Experimental_GoogleSpeechTranslationModelOptions,
-  Experimental_GoogleTranslationModelConfig,
   Experimental_GoogleTranslationModelId,
   Experimental_GoogleTranslationModelOptions,
   GoogleDecisionModelId,
@@ -208,7 +209,10 @@ export const createGoogle = adaptProviderFactory<
 );
 export const createGoogleGenerativeAI = createGoogle;
 export const google: GoogleProvider = wrapProvider(sdkGoogle);
-export const Experimental_GoogleRealtimeModel = adaptModelConstructor(
+export const Experimental_GoogleRealtimeModel: AdaptedConstructor<
+  typeof SdkExperimental_GoogleRealtimeModel,
+  Experimental_GoogleRealtimeModel
+> = adaptModelConstructor(
   'Experimental_GoogleRealtimeModel',
   SdkExperimental_GoogleRealtimeModel,
   wrapRealtimeModel,
@@ -216,7 +220,10 @@ export const Experimental_GoogleRealtimeModel = adaptModelConstructor(
 export type Experimental_GoogleRealtimeModel = ReturnType<
   typeof wrapRealtimeModel
 >;
-export const Experimental_GoogleSpeechTranslationModel = adaptModelConstructor(
+export const Experimental_GoogleSpeechTranslationModel: AdaptedConstructor<
+  typeof SdkExperimental_GoogleSpeechTranslationModel,
+  Experimental_GoogleSpeechTranslationModel
+> = adaptModelConstructor(
   'Experimental_GoogleSpeechTranslationModel',
   SdkExperimental_GoogleSpeechTranslationModel,
   wrapSpeechTranslationModel,
@@ -239,3 +246,12 @@ export const GoogleTranscriptionModel: AdaptedConstructor<
 export type GoogleTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel
 >;
+
+export type Experimental_GoogleRealtimeModelConfig =
+  ProviderHostConfiguration<SdkExperimental_GoogleRealtimeModelConfig>;
+
+export type Experimental_GoogleSpeechTranslationModelConfig =
+  ProviderHostConfiguration<SdkExperimental_GoogleSpeechTranslationModelConfig>;
+
+export type Experimental_GoogleTranslationModelConfig =
+  ProviderHostConfiguration<SdkExperimental_GoogleTranslationModelConfig>;

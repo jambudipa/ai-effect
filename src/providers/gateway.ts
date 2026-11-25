@@ -9,6 +9,20 @@ import { getGatewayRealtimeTeamIdOrSlug as sdkRealtimeTeamIdOrSlug } from '@ai-s
 import { getGatewayRealtimeProtocols as sdkRealtimeProtocols } from '@ai-sdk/gateway';
 import { getGatewayRealtimeAuthToken as sdkRealtimeAuthToken } from '@ai-sdk/gateway';
 import { wrapRealtimeModel } from '../internal/provider-realtime.js';
+import type {
+  RealtimeModelV4,
+  TypedRealtimeModel,
+} from '../internal/provider-realtime.js';
+import type { AiSdkError } from '../internal/operation.js';
+import type { Effect } from 'effect';
+import type {
+  Experimental_RealtimeModelV4 as SdkRealtimeModel,
+  Experimental_RealtimeModelV4ClientSecretOptions,
+  Experimental_RealtimeModelV4ClientSecretResult,
+  Experimental_RealtimeModelV4ServerEvent,
+  Experimental_RealtimeModelV4SessionConfig,
+} from '@ai-sdk/provider';
+import type { GatewayKnownLiveModelId } from '@ai-sdk/gateway';
 import { wrapProviderTools } from '../internal/provider-tool.js';
 import {
   createGateway as sdkCreateGateway,
@@ -78,22 +92,78 @@ export type {
 
 type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
 
-const wrapGatewayRealtime = (factory: SdkRealtimeFactory) =>
-  Object.assign(
-    (
-      modelId: Parameters<SdkRealtimeFactory>[0],
-      options?: GatewayRealtimeOptions,
-    ) =>
-      runSync('gateway.experimental_realtime', () =>
-        wrapRealtimeModel(factory(modelId, options)),
+type GatewayModel<Live extends boolean> = Omit<
+  SdkRealtimeModel,
+  | 'capabilities'
+  | 'doCreateClientSecret'
+  | 'getServerWebSocketConfig'
+  | 'getWebSocketConfig'
+  | 'parseServerEvent'
+  | 'buildSessionConfig'
+> & {
+  readonly capabilities: {
+    readonly conversation: Live extends true ? 'continuous' : 'turn-based';
+    readonly transports: readonly ['websocket'];
+    readonly connections: readonly [
+      'client-secret-websocket',
+      'server-websocket',
+    ];
+  } & (Live extends true
+    ? {
+        readonly startup: 'session-start';
+        readonly finalization: 'session-close';
+      }
+    : {});
+  doCreateClientSecret(
+    options?: Experimental_RealtimeModelV4ClientSecretOptions,
+  ): Promise<Experimental_RealtimeModelV4ClientSecretResult>;
+  getServerWebSocketConfig: NonNullable<
+    SdkRealtimeModel['getServerWebSocketConfig']
+  >;
+  getWebSocketConfig: NonNullable<SdkRealtimeModel['getWebSocketConfig']>;
+  parseServerEvent(raw: unknown): Experimental_RealtimeModelV4ServerEvent;
+  buildSessionConfig(
+    ...args: Parameters<SdkRealtimeModel['buildSessionConfig']>
+  ): Live extends true ? Experimental_RealtimeModelV4SessionConfig : unknown;
+};
+
+const wrapGatewayRealtime = (factory: SdkRealtimeFactory) => {
+  function select(
+    modelId: string,
+    options: { api: 'live' },
+  ): Effect.Effect<TypedRealtimeModel<GatewayModel<true>>, AiSdkError>;
+  function select(
+    modelId: string,
+    options: { api: 'realtime' },
+  ): Effect.Effect<TypedRealtimeModel<GatewayModel<false>>, AiSdkError>;
+  function select(
+    modelId: GatewayKnownLiveModelId,
+    options?: { api?: undefined },
+  ): Effect.Effect<TypedRealtimeModel<GatewayModel<true>>, AiSdkError>;
+  function select(
+    modelId: Parameters<SdkRealtimeFactory>[0],
+    options?: GatewayRealtimeOptions,
+  ): Effect.Effect<RealtimeModelV4, AiSdkError>;
+  function select(
+    modelId: Parameters<SdkRealtimeFactory>[0],
+    options?: GatewayRealtimeOptions | { api?: undefined },
+  ) {
+    return runSync('gateway.experimental_realtime', () =>
+      wrapRealtimeModel(
+        options?.api
+          ? factory(modelId, { api: options.api })
+          : factory(modelId),
       ),
-    {
-      getToken: (options: Parameters<SdkRealtimeFactory['getToken']>[0]) =>
-        runRequest('gateway.experimental_realtime.getToken', {}, () =>
-          factory.getToken(options),
-        ),
-    },
-  );
+    );
+  }
+
+  return Object.assign(select, {
+    getToken: (options: Parameters<SdkRealtimeFactory['getToken']>[0]) =>
+      runRequest('gateway.experimental_realtime.getToken', {}, () =>
+        factory.getToken(options),
+      ),
+  });
+};
 
 export type GatewayRealtimeFactory = ReturnType<typeof wrapGatewayRealtime>;
 

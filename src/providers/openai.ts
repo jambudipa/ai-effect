@@ -1,9 +1,19 @@
+import type { Experimental_OpenAIRealtimeModelLiveConfig as SdkExperimental_OpenAIRealtimeModelLiveConfig } from '@ai-sdk/openai';
+import type { Experimental_OpenAIRealtimeModelConfig as SdkExperimental_OpenAIRealtimeModelConfig } from '@ai-sdk/openai';
+import type { ProviderHostConfiguration } from '../internal/provider-host-configuration.js';
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { OpenAIProviderSettings as SdkSettings } from '@ai-sdk/openai';
 import type { AdaptedTools } from '../internal/provider-tool.js';
 import type { AdaptedConstructor } from '../internal/provider-adapter.js';
-import { wrapRealtimeModel } from '../internal/provider-realtime.js';
+import {
+  wrapRealtimeModel,
+  wrapTypedRealtimeModel,
+} from '../internal/provider-realtime.js';
+import type {
+  RealtimeModelV4,
+  TypedRealtimeModel,
+} from '../internal/provider-realtime.js';
 import { Experimental_OpenAISpeechTranslationModel as SdkExperimental_OpenAISpeechTranslationModel } from '@ai-sdk/openai';
 import { Experimental_OpenAIRealtimeModelLive as SdkExperimental_OpenAIRealtimeModelLive } from '@ai-sdk/openai';
 import { Experimental_OpenAIRealtimeModel as SdkExperimental_OpenAIRealtimeModel } from '@ai-sdk/openai';
@@ -37,12 +47,13 @@ import {
   wrapFiles,
   wrapSkills,
 } from '../internal/provider-resource.js';
+import type { Effect } from 'effect';
+import type { AiSdkError } from '../internal/operation.js';
+import type { Experimental_OpenAIRealtimeModelLiveId } from '@ai-sdk/openai';
 import { runRequest, runSync } from '../internal/operation.js';
 
 export { VERSION } from '@ai-sdk/openai';
 export type {
-  Experimental_OpenAIRealtimeModelConfig,
-  Experimental_OpenAIRealtimeModelLiveConfig,
   Experimental_OpenAIRealtimeModelLiveId,
   Experimental_OpenAIRealtimeModelLiveOptions,
   Experimental_OpenAIRealtimeOptions,
@@ -80,22 +91,51 @@ export type {
 
 type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
 
-const wrapOpenAIRealtime = (factory: SdkRealtimeFactory) =>
-  Object.assign(
-    (
-      modelId: Parameters<SdkRealtimeFactory>[0],
-      options?: Experimental_OpenAIRealtimeOptions,
-    ) =>
-      runSync('openai.experimental_realtime', () =>
-        wrapRealtimeModel(factory(modelId, options)),
+type LiteralModelIds<Id extends string> = Id extends string
+  ? string extends Id
+    ? never
+    : Id
+  : never;
+
+type KnownLiveModelId = LiteralModelIds<Experimental_OpenAIRealtimeModelLiveId>;
+
+const wrapOpenAIRealtime = (factory: SdkRealtimeFactory) => {
+  function select(
+    modelId: string,
+    options: { api: 'live' },
+  ): Effect.Effect<Experimental_OpenAIRealtimeModelLive, AiSdkError>;
+  function select(
+    modelId: string,
+    options: { api: 'realtime' },
+  ): Effect.Effect<Experimental_OpenAIRealtimeModel, AiSdkError>;
+  function select(
+    modelId: KnownLiveModelId,
+    options?: { api?: undefined },
+  ): Effect.Effect<Experimental_OpenAIRealtimeModelLive, AiSdkError>;
+  function select(
+    modelId: string,
+    options?: Experimental_OpenAIRealtimeOptions,
+  ): Effect.Effect<RealtimeModelV4, AiSdkError>;
+  function select(
+    modelId: string,
+    options?: Experimental_OpenAIRealtimeOptions | { api?: undefined },
+  ) {
+    return runSync('openai.experimental_realtime', () =>
+      wrapRealtimeModel(
+        options?.api
+          ? factory(modelId, { api: options.api })
+          : factory(modelId),
       ),
-    {
-      getToken: (options: Parameters<SdkRealtimeFactory['getToken']>[0]) =>
-        runRequest('openai.experimental_realtime.getToken', {}, () =>
-          factory.getToken(options),
-        ),
-    },
-  );
+    );
+  }
+
+  return Object.assign(select, {
+    getToken: (options: Parameters<SdkRealtimeFactory['getToken']>[0]) =>
+      runRequest('openai.experimental_realtime.getToken', {}, () =>
+        factory.getToken(options),
+      ),
+  });
+};
 
 export type Experimental_OpenAIRealtimeFactory = ReturnType<
   typeof wrapOpenAIRealtime
@@ -212,22 +252,26 @@ export const createOpenAI = adaptProviderFactory<
   wrapProvider(sdkCreateOpenAI(settings)),
 );
 export const openai: OpenAIProvider = wrapProvider(sdkOpenai);
-export const Experimental_OpenAIRealtimeModel = adaptModelConstructor(
+export const Experimental_OpenAIRealtimeModel: AdaptedConstructor<
+  typeof SdkExperimental_OpenAIRealtimeModel,
+  Experimental_OpenAIRealtimeModel
+> = adaptModelConstructor(
   'Experimental_OpenAIRealtimeModel',
   SdkExperimental_OpenAIRealtimeModel,
-  wrapRealtimeModel,
+  wrapTypedRealtimeModel<SdkExperimental_OpenAIRealtimeModel>,
 );
-export type Experimental_OpenAIRealtimeModel = ReturnType<
-  typeof wrapRealtimeModel
->;
-export const Experimental_OpenAIRealtimeModelLive = adaptModelConstructor(
+export type Experimental_OpenAIRealtimeModel =
+  TypedRealtimeModel<SdkExperimental_OpenAIRealtimeModel>;
+export const Experimental_OpenAIRealtimeModelLive: AdaptedConstructor<
+  typeof SdkExperimental_OpenAIRealtimeModelLive,
+  Experimental_OpenAIRealtimeModelLive
+> = adaptModelConstructor(
   'Experimental_OpenAIRealtimeModelLive',
   SdkExperimental_OpenAIRealtimeModelLive,
-  wrapRealtimeModel,
+  wrapTypedRealtimeModel<SdkExperimental_OpenAIRealtimeModelLive>,
 );
-export type Experimental_OpenAIRealtimeModelLive = ReturnType<
-  typeof wrapRealtimeModel
->;
+export type Experimental_OpenAIRealtimeModelLive =
+  TypedRealtimeModel<SdkExperimental_OpenAIRealtimeModelLive>;
 export const Experimental_OpenAISpeechTranslationModel: AdaptedConstructor<
   typeof SdkExperimental_OpenAISpeechTranslationModel,
   Experimental_OpenAISpeechTranslationModel
@@ -243,3 +287,9 @@ export const Experimental_OpenAITranslationModel =
   Experimental_OpenAISpeechTranslationModel;
 export type Experimental_OpenAITranslationModel =
   Experimental_OpenAISpeechTranslationModel;
+
+export type Experimental_OpenAIRealtimeModelConfig =
+  ProviderHostConfiguration<SdkExperimental_OpenAIRealtimeModelConfig>;
+
+export type Experimental_OpenAIRealtimeModelLiveConfig =
+  ProviderHostConfiguration<SdkExperimental_OpenAIRealtimeModelLiveConfig>;
