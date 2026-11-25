@@ -9,6 +9,7 @@ import {
 } from 'ai';
 
 export { makeChatTransport } from './internal/chat-transport.js';
+export * from './core-models.js';
 export * from './core-errors.js';
 export * from './core-data.js';
 export * from './internal/sdk-data/core.js';
