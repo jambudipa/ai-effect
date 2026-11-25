@@ -67,7 +67,6 @@ export type {
   ToolResult,
   ToolResultOutput,
   ToolResultPart,
-  ToolSet,
   UserContent,
   UserModelMessage,
   ValidationResult,

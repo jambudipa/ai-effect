@@ -3,6 +3,7 @@ import type { InferToolSetContext } from '@ai-sdk/provider-utils';
 import type { Effect, Stream } from 'effect';
 import type { ToolLoopAgent } from './core.js';
 import type { createDownload } from './core-files.js';
+import type { FlexibleSchema } from './core-schema.js';
 import type { SandboxSession } from './integrations/internal/sandbox-base.js';
 import type { TelemetryEvent } from './integrations/internal/telemetry.js';
 import type {
@@ -105,6 +106,17 @@ export type Experimental_DownloadFunction = Effect.Success<
 export type InferTelemetryEvent<Event> = TelemetryEvent<
   sdk.InferTelemetryEvent<Event>
 >;
+export type InferSchema<Value> =
+  Value extends FlexibleSchema<infer A, unknown> ? A : never;
+export type InferGenerateOutput<Value extends Output> =
+  Value extends OutputSpecification<infer A, unknown, unknown, unknown>
+    ? A
+    : never;
+export type InferStreamOutput<Value extends Output> =
+  Value extends OutputSpecification<unknown, infer A, unknown, unknown>
+    ? A
+    : never;
+export type { InferToolInput, InferToolOutput } from './internal/tool.js';
 export type LogWarningsFunction<S = never> = CoreCallback<
   sdk.LogWarningsFunction,
   S
@@ -148,6 +160,51 @@ export type {
   GenerateTextStartEvent as OnStartEvent,
   GenerateTextStepStartEvent as OnStepStartEvent,
 };
+
+export type GenerateTextAbortEvent<
+  T extends EffectTools = EffectTools,
+  R extends Context = Context,
+> = CoreEvent<sdk.GenerateTextAbortEvent<BoundTools<T>, R>, T>;
+export type GenerateTextEndEvent<
+  T extends EffectTools = EffectTools,
+  R extends Context = Context,
+> = CoreEvent<sdk.GenerateTextEndEvent<BoundTools<T>, R>, T>;
+export type GenerateTextStepEndEvent<
+  T extends EffectTools = EffectTools,
+  R extends Context = Context,
+> = CoreEvent<sdk.GenerateTextStepEndEvent<BoundTools<T>, R>, T>;
+export type {
+  GenerateTextEndEvent as OnFinishEvent,
+  GenerateTextStepEndEvent as OnStepFinishEvent,
+};
+export type LanguageModelCallEndEvent<T extends EffectTools = EffectTools> =
+  CoreEvent<sdk.LanguageModelCallEndEvent<BoundTools<T>>, T>;
+export type LanguageModelStreamPart<T extends EffectTools = EffectTools> =
+  sdk.LanguageModelStreamPart<BoundTools<T>>;
+export type { LanguageModelStreamPart as Experimental_LanguageModelStreamPart };
+export type RequestOptions<T extends EffectTools = EffectTools> = CoreOptions<
+  sdk.RequestOptions<BoundTools<T>>,
+  never,
+  T
+>;
+export type StepResult<
+  T extends EffectTools,
+  R extends Context = Context,
+> = sdk.StepResult<BoundTools<T>, R>;
+export type StreamTextEndEvent<
+  T extends EffectTools = EffectTools,
+  R extends Context = Context,
+  O extends Output = Output,
+> = CoreEvent<sdk.StreamTextEndEvent<BoundTools<T>, R, Native<O>>, T>;
+export type ContentPart<T extends EffectTools> = sdk.ContentPart<BoundTools<T>>;
+export type TextStreamPart<T extends EffectTools> = sdk.TextStreamPart<
+  BoundTools<T>
+>;
+export type ToolApprovalRequestOutput<T extends EffectTools> =
+  sdk.ToolApprovalRequestOutput<BoundTools<T>>;
+export type ToolApprovalResponseOutput<T extends EffectTools> =
+  sdk.ToolApprovalResponseOutput<BoundTools<T>>;
+export type ToolSet = EffectTools;
 
 export type GenerateTextOnStartCallback<
   T extends EffectTools = EffectTools,

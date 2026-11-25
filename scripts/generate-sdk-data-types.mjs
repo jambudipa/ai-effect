@@ -24,7 +24,19 @@ const outputs = new Map([
   ['@ai-sdk/provider', 'provider'],
 ]);
 const adaptations = new Map([
-  ['ai', new Set(['IdGenerator', 'TimeoutConfiguration'])],
+  [
+    'ai',
+    new Set([
+      'IdGenerator',
+      'InferGenerateOutput',
+      'InferSchema',
+      'InferStreamOutput',
+      'InferTelemetryEvent',
+      'InferToolInput',
+      'InferToolOutput',
+      'TimeoutConfiguration',
+    ]),
+  ],
 ]);
 
 const options = {
