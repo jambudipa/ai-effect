@@ -8,6 +8,8 @@ import type { ProviderToolHandle } from '../src/internal/provider-tool.js';
 import { anthropic } from '../src/providers/anthropic.js';
 import { bindProviderTool } from '../src/internal/provider-tool.js';
 import { createCerebras } from '../src/providers/cerebras.js';
+import type { HeyGenVideoAsset } from '../src/providers/heygen.js';
+import type { OpenAIComputerAction } from '../src/providers/openai.js';
 import { openai } from '../src/providers/openai.js';
 import { createOpenAICompatible } from '../src/providers/openai-compatible.js';
 
@@ -16,6 +18,18 @@ class ToolOutput extends Context.Service<ToolOutput, string>()(
 ) {}
 
 describe('provider adapters', () => {
+  it('preserves the pinned Zod union discriminators', () => {
+    expectTypeOf<HeyGenVideoAsset['type']>().toEqualTypeOf<
+      'url' | 'asset_id' | 'base64'
+    >();
+    expectTypeOf<
+      Extract<OpenAIComputerAction, { type: 'type' }>['text']
+    >().toEqualTypeOf<string>();
+    expectTypeOf<
+      Extract<OpenAIComputerAction, { type: 'screenshot' }>
+    >().toEqualTypeOf<{ type: 'screenshot' }>();
+  });
+
   it.effect('keeps model selection and embedding requests lazy', () =>
     Effect.gen(function* () {
       let requests = 0;
