@@ -515,8 +515,14 @@ export function createUIMessageStreamResponse<R, CallbackServices>({
   stream,
   consumeSseStream,
   ...options
-}: UiHostOptions<R, CallbackServices>) {
+}: UiHostOptions<R, CallbackServices>): Effect.Effect<
+  Response,
+  AiSdkError,
+  R | CallbackServices | import('effect').Scope.Scope
+> {
   const operation = 'createUIMessageStreamResponse';
+  // Each overload declares the services of its branch.
+  // @effect-diagnostics-next-line missingEffectContext:off
   return Effect.gen(function* () {
     if (!consumeSseStream) {
       const readable = yield* webStream(stream);

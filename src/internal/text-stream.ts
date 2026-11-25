@@ -216,7 +216,11 @@ export const wrapSingleConsumerTextStream = <
     keepAliveMs,
     consumeSseStream,
     ...options
-  }: UiResponseOptions<Message, R> = {}) {
+  }: UiResponseOptions<Message, R> = {}): Effect.Effect<
+    Response,
+    AiSdkError,
+    R | Scope.Scope
+  > {
     const settings = {
       ...(headers ? { headers } : {}),
       ...(status === undefined ? {} : { status }),
@@ -224,6 +228,8 @@ export const wrapSingleConsumerTextStream = <
       ...(keepAliveMs === undefined ? {} : { keepAliveMs }),
       stream: uiStream(options),
     };
+    // The overload with an SSE consumer keeps its scope while the body runs.
+    // @effect-diagnostics-next-line missingEffectContext:off
     return consumeSseStream
       ? createUIMessageStreamResponse({ ...settings, consumeSseStream })
       : createUIMessageStreamResponse(settings);
