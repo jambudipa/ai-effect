@@ -1,6 +1,15 @@
 import { jsonSchema as nativeJsonSchema } from '@ai-sdk/provider-utils';
 import { describe, expect, it } from '@effect/vitest';
-import { Deferred, Effect, Ref, Schema, Stream } from 'effect';
+import {
+  Context,
+  Deferred,
+  Effect,
+  Fiber,
+  Option,
+  Ref,
+  Schema,
+  Stream,
+} from 'effect';
 import * as v from 'valibot';
 import {
   type CodeModeToolExecutionOptions,
@@ -17,10 +26,18 @@ import { toUIMessageStream } from '../src/integrations/llamaindex.js';
 import {
   createMCPClient,
   experimental_createMCPEventWebhook,
+  type CustomMCPTransport,
+  type MCPTransportStartOptions,
 } from '../src/integrations/mcp.js';
+import type { AiSdkError } from '../src/internal/operation.js';
 import { createTestServer } from '../src/integrations/test-server.js';
 import { createJustBashNetworkSandboxSession } from '../src/integrations/sandbox-just-bash.js';
 import { valibotSchema } from '../src/integrations/valibot.js';
+
+class TransportActivity extends Context.Service<
+  TransportActivity,
+  { readonly starts: Ref.Ref<number>; readonly closes: Ref.Ref<number> }
+>()('@jambudipa/ai-effect/test/TransportActivity') {}
 
 describe('LlamaIndex adapter', () => {
   it.effect('preserves UI chunks and callback order', () =>
@@ -66,6 +83,115 @@ describe('Valibot adapter', () => {
 });
 
 describe('MCP integration', () => {
+  it.effect(
+    'connects and releases a custom transport in the caller scope',
+    () =>
+      Effect.gen(function* () {
+        const starts = yield* Ref.make(0);
+        const closes = yield* Ref.make(0);
+        const callbacks = yield* Ref.make(
+          Option.none<MCPTransportStartOptions>(),
+        );
+        const transport: CustomMCPTransport<TransportActivity, AiSdkError> = {
+          start: (options) =>
+            Effect.gen(function* () {
+              const activity = yield* TransportActivity;
+              yield* Ref.update(activity.starts, (count) => count + 1);
+              yield* Ref.set(callbacks, Option.some(options));
+            }),
+          send: (message) =>
+            Effect.gen(function* () {
+              const events = yield* Ref.get(callbacks);
+              if (
+                Option.isNone(events) ||
+                !('method' in message && 'id' in message)
+              )
+                return;
+              const result =
+                message.method === 'initialize'
+                  ? {
+                      protocolVersion: '2025-11-25',
+                      capabilities: { tools: {} },
+                      serverInfo: {
+                        name: 'custom transport fixture',
+                        version: '1.0',
+                      },
+                    }
+                  : {
+                      tools: [
+                        { name: 'local', inputSchema: { type: 'object' } },
+                      ],
+                    };
+              yield* events.value.onMessage({
+                jsonrpc: '2.0',
+                id: message.id,
+                result,
+              });
+            }),
+          close: () =>
+            Effect.gen(function* () {
+              const activity = yield* TransportActivity;
+              yield* Ref.update(activity.closes, (count) => count + 1);
+            }),
+        };
+        const tools = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const client = yield* createMCPClient({ transport });
+            expect(client.serverInfo.name).toBe('custom transport fixture');
+            return (yield* client.listTools()).tools;
+          }),
+        ).pipe(Effect.provideService(TransportActivity, { starts, closes }));
+        expect(tools.map((tool) => tool.name)).toEqual(['local']);
+        expect(yield* Ref.get(starts)).toBe(1);
+        expect(yield* Ref.get(closes)).toBe(1);
+      }),
+  );
+
+  it.effect(
+    'releases a custom transport once when startup is interrupted',
+    () =>
+      Effect.gen(function* () {
+        const closes = yield* Ref.make(0);
+        const started = yield* Deferred.make<boolean>();
+        const stopped = yield* Deferred.make<boolean>();
+        const released = yield* Deferred.make<boolean>();
+        const controller = new AbortController();
+        const cause = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const connect = yield* Effect.forkScoped(
+              Effect.flip(
+                createMCPClient({
+                  initializationOptions: { signal: controller.signal },
+                  transport: {
+                    start: () =>
+                      Deferred.succeed(started, true).pipe(
+                        Effect.andThen(Effect.never),
+                        Effect.onInterrupt(() =>
+                          Deferred.succeed(stopped, true),
+                        ),
+                      ),
+                    send: () => Effect.void,
+                    close: () =>
+                      Ref.update(closes, (count) => count + 1).pipe(
+                        Effect.andThen(Deferred.succeed(released, true)),
+                        Effect.asVoid,
+                      ),
+                  },
+                }),
+              ),
+            );
+            yield* Deferred.await(started);
+            controller.abort();
+            yield* Deferred.await(stopped);
+            yield* Deferred.await(released);
+            return yield* Fiber.join(connect);
+          }),
+        );
+        expect(cause._tag).toBe('AiSdkError');
+        expect(yield* Ref.get(closes)).toBe(1);
+      }),
+  );
+
   it.effect('uses a scoped HTTP fixture for a JSON-RPC request', () =>
     Effect.gen(function* () {
       const url = 'https://local-mcp.example.test/messages';

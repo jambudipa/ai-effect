@@ -1,7 +1,7 @@
 import * as runtime from '@ai-sdk/mcp';
 import type * as MCPContract from './internal/mcp-contract.js';
 import type { Experimental_ManagedMCPClient as NativeManagedClient } from './internal/mcp-contract.js';
-import { Cause, Effect, type Schema, type Scope } from 'effect';
+import { Cause, Deferred, Effect, type Schema, type Scope } from 'effect';
 import {
   type AiSdkError,
   openOperation,
@@ -315,7 +315,7 @@ export type MCPClientConfig<R = never, E = never> = Omit<
   MCPContract.MCPClientConfig,
   'transport' | 'onUncaughtError' | 'experimental_events'
 > & {
-  readonly transport: HttpTransport<R, E> | MCPTransport;
+  readonly transport: HttpTransport<R, E> | MCPTransport<R, E>;
   readonly experimental_events?: Experimental_MCPEventsConfig<R, E>;
   readonly onUncaughtError?: (error: unknown) => Effect.Effect<void, E, R>;
 };
@@ -384,10 +384,17 @@ export function createMCPClient<R = never, E = never>(
       ...opts
     } = config;
     const owner = yield* openOperation<R>(initializationOptions?.signal);
-    const nativeTransport =
+    let nativeTransport =
       'type' in transport
         ? bindHttpTransport(transport, owner)
         : transports.get(transport);
+    if (
+      !nativeTransport &&
+      !('type' in transport) &&
+      isCustomTransport(transport)
+    ) {
+      nativeTransport = yield* bindCustomTransport(transport, owner);
+    }
     if (!nativeTransport) {
       return yield* Effect.fail(sdkError(operation, 'Invalid MCP transport'));
     }
@@ -705,7 +712,162 @@ export class Experimental_WebMCPTransport {
   }
 }
 
-export type MCPTransport = StdioMCPTransport | Experimental_WebMCPTransport;
+export interface MCPTransportStartOptions {
+  readonly signal: AbortSignal;
+  readonly onMessage: (
+    message: MCPContract.JSONRPCMessage,
+  ) => Effect.Effect<void, AiSdkError>;
+  readonly onError: (error: Error) => Effect.Effect<void, AiSdkError>;
+  readonly onClose: Effect.Effect<void, AiSdkError>;
+}
+
+/** A caller-owned transport acquired and closed by the MCP client scope. */
+export interface CustomMCPTransport<R = never, E = never> {
+  readonly supportsProtocolVersionDiscovery?: boolean;
+  readonly waitsForProtocolVersionDiscovery?: boolean;
+  readonly supportsMcpToolParameterHeaders?: boolean;
+  readonly protocolVersion?: string;
+  readonly start: (
+    options: MCPTransportStartOptions,
+  ) => Effect.Effect<void, E, R>;
+  readonly send: (
+    message: MCPContract.JSONRPCMessage,
+    options?: MCPTransportSendOptions<never, AiSdkError>,
+  ) => Effect.Effect<void, E, R>;
+  readonly close: (
+    options?: MCPContract.MCPTransportCloseOptions,
+  ) => Effect.Effect<void, E, R>;
+  readonly setProtocolVersion?: (version: string) => Effect.Effect<void, E, R>;
+}
+
+export type MCPTransport<R = never, E = never> =
+  StdioMCPTransport | Experimental_WebMCPTransport | CustomMCPTransport<R, E>;
+
+const isCustomTransport = <R, E>(
+  transport: MCPTransport<R, E>,
+): transport is CustomMCPTransport<R, E> =>
+  typeof transport.start === 'function';
+
+const observeTransportPromise = <A>(promise: Promise<A>): Promise<A> => {
+  // An already-aborted SDK request can skip awaiting the transport promise.
+  void promise.catch(() => {});
+  return promise;
+};
+
+const bindCustomTransport = <R, E>(
+  transport: CustomMCPTransport<R, E>,
+  owner: McpOwner<R>,
+) =>
+  Effect.gen(function* () {
+    const released = yield* Deferred.make<void, E>();
+    // The SDK can close the transport after the initialization signal aborts.
+    const closeInContext = Effect.runPromiseWith(yield* Effect.context<R>());
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, owner.signal]);
+    const invoke = <A, Failure>(
+      effect: Effect.Effect<A, Failure, R>,
+      operationSignal = signal,
+    ) => observeTransportPromise(owner.runCallback(effect, operationSignal));
+    let closing = false;
+    let notified = false;
+    const notifyClose = () => {
+      if (notified) return;
+      notified = true;
+      controller.abort();
+      native.onclose?.();
+    };
+    const close = (options?: MCPContract.MCPTransportCloseOptions) =>
+      Effect.uninterruptible(
+        Effect.gen(function* () {
+          if (!closing) {
+            closing = true;
+            controller.abort();
+            yield* Deferred.complete(
+              released,
+              Effect.suspend(() =>
+                options?.signal?.aborted
+                  ? transport.close()
+                  : transport.close(options),
+              ).pipe(Effect.ensuring(Effect.sync(notifyClose))),
+            );
+          }
+          return yield* Deferred.await(released);
+        }),
+      );
+    const setVersion =
+      transport.setProtocolVersion &&
+      bindNotification(
+        'MCP.transport.setProtocolVersion',
+        transport.setProtocolVersion.bind(transport),
+        owner,
+      );
+    const native: MCPContract.MCPTransport = {
+      start: () =>
+        invoke(
+          Effect.suspend(() =>
+            transport.start({
+              signal,
+              onMessage: (message) =>
+                runSync('MCP.transport.onMessage', () => {
+                  if (!signal.aborted) native.onmessage?.(message);
+                }),
+              onError: (error) =>
+                runSync('MCP.transport.onError', () => {
+                  if (!signal.aborted) native.onerror?.(error);
+                }),
+              onClose: runSync('MCP.transport.onClose', notifyClose),
+            }),
+          ),
+        ),
+      send: (message, options) => {
+        const { onresumptiontoken, ...settings } = options ?? {};
+        return invoke(
+          Effect.suspend(() =>
+            transport.send(
+              message,
+              options && {
+                ...settings,
+                ...(onresumptiontoken && {
+                  onresumptiontoken: (token: string) =>
+                    runSync('MCP.transport.onResumptionToken', () =>
+                      onresumptiontoken(token),
+                    ),
+                }),
+              },
+            ),
+          ),
+          options?.signal ? AbortSignal.any([signal, options.signal]) : signal,
+        );
+      },
+      close: (options) =>
+        observeTransportPromise(closeInContext(close(options))),
+      setProtocolVersion: (version) => {
+        native.protocolVersion = version;
+        setVersion?.(version);
+      },
+    };
+    for (const flag of [
+      'supportsProtocolVersionDiscovery',
+      'waitsForProtocolVersionDiscovery',
+      'supportsMcpToolParameterHeaders',
+    ] as const) {
+      const value = transport[flag];
+      if (value !== undefined) native[flag] = value;
+    }
+    if (transport.protocolVersion !== undefined)
+      native.protocolVersion = transport.protocolVersion;
+    yield* Effect.addFinalizer(() =>
+      close().pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning(
+            'MCP transport release failed',
+            sdkError('MCP.transport.close', Cause.squash(cause)),
+          ),
+        ),
+      ),
+    );
+    return native;
+  });
 
 type NativeWebhook = MCPContract.Experimental_MCPEventWebhookOptions;
 const webhookCallbacks = [
