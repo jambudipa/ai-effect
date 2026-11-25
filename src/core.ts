@@ -7,6 +7,14 @@ import {
   type OutputInterface,
   type ToolLoopAgentSettings,
 } from 'ai';
+
+export { makeChatTransport } from './internal/chat-transport.js';
+export type {
+  ChatReconnectOptions,
+  ChatSendOptions,
+  ChatTransport,
+  ChatTransportHandlers,
+} from './internal/chat-transport.js';
 import { Effect } from 'effect';
 import {
   unwrapLanguageModel,
