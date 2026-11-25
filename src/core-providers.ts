@@ -513,7 +513,7 @@ const makeCustomProvider = <const Options extends CustomProviderOptions>(
                 : evaluationModels,
             })
           : provider
-      ) as CustomProvider<Options>;
+      ) as unknown as CustomProvider<Options>;
     });
   });
 
