@@ -18,7 +18,7 @@ describe('makeChatTransport', () => {
             Effect.succeed(
               Stream.make(chunk).pipe(
                 Stream.concat(Stream.never),
-                Stream.ensuring(Deferred.succeed(stopped, undefined)),
+                Stream.ensuring(Deferred.succeed(stopped, void 0)),
               ),
             ),
           reconnectToStream: () => Effect.succeed(Option.none()),

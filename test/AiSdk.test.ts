@@ -42,7 +42,7 @@ describe('AiSdk', () => {
 
       expect(model.doGenerateCalls).toHaveLength(0);
       const result = yield* request;
-      expectTypeOf(result.output).toEqualTypeOf<{ answer: number }>();
+      expectTypeOf(result.output).toEqualTypeOf<{ readonly answer: number }>();
       expect(result.output.answer).toBe(42);
       expect(model.doGenerateCalls).toHaveLength(1);
     }).pipe(Effect.provide(AiSdk.layer)),
