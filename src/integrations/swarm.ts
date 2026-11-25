@@ -2,29 +2,46 @@ import * as sdk from '@ai-sdk/swarm';
 import { Effect, type Schema, Stream } from 'effect';
 import {
   type AiSdkError,
-  type openOperation,
+  abortable,
+  combineSignals,
+  openOperation,
   runRequest,
   runSync,
 } from '../internal/operation.js';
-import { openOperation as openOwner } from '../internal/operation.js';
 import { toSdkSchema } from '../internal/schema.js';
+import type {
+  SwarmMessage,
+  SwarmModelContract,
+  SwarmStepResult,
+} from './internal/swarm-types.js';
 
 type NativeModel = NonNullable<sdk.Agent['model']>;
-type NativeCall = Parameters<NativeModel['doGenerate']>[0];
-type NativeStream = Awaited<ReturnType<NativeModel['doStream']>>;
-type Part = NativeStream['stream'] extends ReadableStream<infer A> ? A : never;
+type ModelCall = Parameters<SwarmModelContract['doGenerate']>[0];
+type ModelStream = Awaited<ReturnType<SwarmModelContract['doStream']>>;
+type Part = ModelStream['stream'] extends ReadableStream<infer A> ? A : never;
+type SwarmToolChoice =
+  | 'auto'
+  | 'none'
+  | 'required'
+  | {
+      readonly type: 'tool';
+      readonly toolName: string;
+    };
 
 export interface SwarmLanguageModel<R = never, E = never> extends Omit<
-  NativeModel,
-  'doGenerate' | 'doStream'
+  SwarmModelContract,
+  'doGenerate' | 'doStream' | 'supportsUrl'
 > {
+  readonly supportsUrl?: (url: URL) => boolean;
   readonly doGenerate: (
-    options: NativeCall,
-  ) => Effect.Effect<Awaited<ReturnType<NativeModel['doGenerate']>>, E, R>;
-  readonly doStream: (
-    options: Parameters<NativeModel['doStream']>[0],
+    options: ModelCall,
   ) => Effect.Effect<
-    Omit<NativeStream, 'stream'> & {
+    Awaited<ReturnType<SwarmModelContract['doGenerate']>>,
+    E,
+    R
+  >;
+  readonly doStream: (options: ModelCall) => Effect.Effect<
+    Omit<ModelStream, 'stream'> & {
       readonly stream: Stream.Stream<Part, E, R>;
     },
     E,
@@ -70,29 +87,46 @@ export const handoverTool = <C, A, R = never, E = never>(
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
 const bindModel = <R, E>(
-  model: SwarmLanguageModel<R, E>,
+  { doGenerate, doStream, supportsUrl, ...metadata }: SwarmLanguageModel<R, E>,
   owner: Owner<R>,
 ): NativeModel => ({
-  ...model,
+  ...metadata,
+  ...(supportsUrl && { supportsUrl: (url: URL) => supportsUrl(url) }),
   doGenerate: (options) =>
-    owner.runCallback(model.doGenerate(options), options.abortSignal),
+    owner.runCallback(
+      Effect.suspend(() =>
+        doGenerate({
+          ...options,
+          abortSignal: combineSignals(owner.signal, options.abortSignal),
+        }),
+      ),
+      options.abortSignal,
+    ),
   doStream: (options) =>
     owner.runCallback(
       Effect.gen(function* () {
-        const { stream, ...metadata } = yield* model.doStream(options);
+        const signal = combineSignals(owner.signal, options.abortSignal);
+        const { stream, ...metadata } = yield* doStream({
+          ...options,
+          abortSignal: signal,
+        });
         return {
           ...metadata,
-          stream: yield* Stream.toReadableStreamEffect(stream),
+          stream: Stream.toReadableStreamWith(
+            stream,
+            yield* Effect.context<R>(),
+            { signal },
+          ),
         };
       }),
       options.abortSignal,
     ),
 });
 
-type Definition<C, R, E> = Omit<
-  ConstructorParameters<typeof sdk.Agent<C>>[0],
-  'model' | 'tools'
-> & {
+type Definition<C, R, E> = {
+  readonly name: string;
+  readonly system?: string | ((context: C) => string);
+  readonly toolChoice?: SwarmToolChoice;
   readonly model?: SwarmLanguageModel<R, E>;
   readonly tools?: Record<string, AgentTool<C, never, unknown, E, R>>;
 };
@@ -121,25 +155,22 @@ export class Agent<C = unknown, R = never, E = never> {
   }
 }
 
-type NativeOptions<C> = Parameters<typeof sdk.runSwarm<C>>[0];
-type StepEvent<C> = Parameters<
-  NonNullable<NativeOptions<C>['onStepFinish']>
->[0];
-
-type RunOptions<C, R, E> = Omit<
-  NativeOptions<C>,
-  'agent' | 'model' | 'onStepFinish'
-> & {
+type RunOptions<C, R, E> = {
   readonly agent: Agent<C, R, E>;
   readonly model: SwarmLanguageModel<R, E>;
+  readonly prompt: string | SwarmMessage[];
+  readonly context?: C;
+  readonly maxSteps?: number;
+  readonly toolChoice?: SwarmToolChoice;
+  readonly debug?: boolean;
   readonly abortSignal?: AbortSignal;
-  readonly onStepFinish?: (event: StepEvent<C>) => Effect.Effect<void, E, R>;
+  readonly onStepFinish?: (event: SwarmStepResult) => Effect.Effect<void, E, R>;
 };
 
-export type SwarmResult<C, R = never, E = never> = Omit<
-  Awaited<ReturnType<typeof sdk.runSwarm<C>>>,
-  'activeAgent'
-> & {
+export type SwarmResult<C, R = never, E = never> = {
+  readonly text: string;
+  readonly responseMessages: SwarmMessage[];
+  readonly finishReason: SwarmStepResult['finishReason'];
   readonly activeAgent: Agent<C, R, E>;
 };
 
@@ -149,7 +180,7 @@ export const runSwarm = <C, R = never, E = never>(
 ): Effect.Effect<SwarmResult<C, R, E>, AiSdkError, R> =>
   Effect.scoped(
     Effect.gen(function* () {
-      const owner = yield* openOwner<R>(options.abortSignal);
+      const owner = yield* openOperation<R>(options.abortSignal);
       const wrapped = new WeakMap<sdk.Agent<C>, Agent<C, R, E>>();
       const bindAgent = (agent: Agent<C, R, E>): sdk.Agent<C> => {
         const { model, tools, ...settings } = agent.settings;
@@ -199,20 +230,25 @@ export const runSwarm = <C, R = never, E = never>(
       };
       const { agent, model, onStepFinish, abortSignal, ...rest } = options;
       const active = yield* runSync('Swarm.bindAgent', () => bindAgent(agent));
-      const result = yield* runRequest(
+      const result = yield* abortable(
         'Swarm.run',
-        { ...(abortSignal && { abortSignal }) },
-        (signal) =>
+        owner.signal,
+        runRequest('Swarm.run', { abortSignal: owner.signal }, (signal) =>
           sdk.runSwarm<C>({
             ...rest,
             agent: active,
             model: bindModel(model, owner),
             ...(onStepFinish && {
               onStepFinish: (event) =>
-                owner.runCallback(onStepFinish(event), signal),
+                owner.runCallback(
+                  Effect.suspend(() => onStepFinish(event)),
+                  signal,
+                ),
             }),
           }),
+        ),
       );
+      yield* owner.markComplete;
       return {
         ...result,
         activeAgent: wrapped.get(result.activeAgent) ?? agent,
