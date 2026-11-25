@@ -24,6 +24,7 @@ import {
   safeValidateWebSocketChatTransportRequest,
   TextStreamChatTransport,
   validateUIMessages,
+  WebSocketChatTransport,
   type ChatState,
 } from '../src/core-chat.js';
 import { ToolLoopAgent } from '../src/core.js';
@@ -319,6 +320,61 @@ describe('Core chat', () => {
       expect(invalid.success ? invalid.data : invalid.error).toBeInstanceOf(
         AiSdkError,
       );
+    }),
+  );
+
+  it.effect('closes the scoped WebSocket after reading correlated chunks', () =>
+    Effect.gen(function* () {
+      let closed = false;
+      const noListener = Option.getOrNull(Option.none<never>());
+      class Socket {
+        readyState = 0;
+        onopen: ((event: unknown) => void) | null = noListener;
+        onmessage: ((event: { data: unknown }) => void) | null = noListener;
+        onerror: ((event: unknown) => void) | null = noListener;
+        onclose: ((event: unknown) => void) | null = noListener;
+
+        constructor() {
+          queueMicrotask(() => {
+            this.readyState = 1;
+            this.onopen?.({});
+          });
+        }
+
+        send(data: string | Uint8Array | ArrayBuffer) {
+          if (typeof data !== 'string') return;
+          const id = /"requestId":"([^"]+)"/u.exec(data)?.[1];
+          if (!id) return;
+          this.onmessage?.({
+            data: `{"type":"chunk","requestId":"${id}","sequence":0,"chunk":{"type":"text-delta","id":"text","delta":"hello"}}`,
+          });
+          this.onmessage?.({ data: `{"type":"end","requestId":"${id}"}` });
+        }
+
+        close() {
+          this.readyState = 3;
+          closed = true;
+        }
+      }
+
+      const received = yield* Effect.scoped(
+        Effect.gen(function* () {
+          const transport = yield* WebSocketChatTransport({
+            url: 'ws://example.test',
+            webSocket: Socket,
+          });
+          const stream = yield* transport.sendMessages({
+            ...request,
+            messages: [],
+          });
+          expect(closed).toBe(false);
+          return yield* Stream.runCollect(stream);
+        }),
+      );
+      expect(received).toEqual([
+        { type: 'text-delta', id: 'text', delta: 'hello' },
+      ]);
+      expect(closed).toBe(true);
     }),
   );
 });
