@@ -443,8 +443,13 @@ const readResult = <
 });
 
 type CreateOptions = Parameters<typeof sdk.createHarnessSandboxTemplate>[0];
-type TemplateOptions = Omit<CreateOptions, 'harnesses'> & {
+type BootstrapConfig<E, R> = Omit<HarnessAgentSandboxConfig<E, R>, 'onSession'>;
+type TemplateOptions<E = never, R = never> = Omit<
+  CreateOptions,
+  'harnesses' | 'sandboxConfig'
+> & {
   readonly harnesses: ReadonlyArray<{ readonly harnessId: string }>;
+  readonly sandboxConfig?: BootstrapConfig<E, R>;
 };
 const unwrapHarnesses = (harnesses: TemplateOptions['harnesses']) =>
   Effect.forEach(harnesses, (harness) => {
@@ -475,76 +480,112 @@ const wrapTemplate = (
 
 export type HarnessSandboxTemplate = ReturnType<typeof wrapTemplate>;
 
-export const createHarnessSandboxTemplate = (options: TemplateOptions) =>
+export const createHarnessSandboxTemplate = <E = never, R = never>(
+  options: TemplateOptions<E, R>,
+) =>
   Effect.gen(function* () {
-    const harnesses = yield* unwrapHarnesses(options.harnesses);
+    const { sandboxConfig, harnesses: handles } = options;
+    const harnesses = yield* unwrapHarnesses(handles);
+    const owner = yield* openOperation<R>();
     const template = yield* runRequest(
       'HarnessAgent.createHarnessSandboxTemplate',
-      {},
-      () => sdk.createHarnessSandboxTemplate({ ...options, harnesses }),
+      { abortSignal: owner.signal },
+      () =>
+        sdk.createHarnessSandboxTemplate({
+          harnesses,
+          ...(sandboxConfig && {
+            sandboxConfig: bindSandboxConfig(sandboxConfig, owner),
+          }),
+        }),
     );
     return template && wrapTemplate(template);
   });
 
-type PrewarmOptions = Omit<
+type PrewarmOptions<E, R> = Omit<
   Parameters<typeof sdk.prepareHarnessSandboxTemplate>[0],
-  'harness' | 'sandboxProvider'
+  'harness' | 'sandboxProvider' | 'sandboxConfig'
 > & {
   readonly harness: { readonly harnessId: string };
+  readonly sandboxConfig?: BootstrapConfig<E, R>;
   readonly sandboxProvider: ReturnType<
     typeof import('../internal/sandbox.js').wrapSandboxProvider
   >;
 };
 
-export const prepareHarnessSandboxTemplate = (options: PrewarmOptions) =>
-  Effect.gen(function* () {
-    const harness = unwrapHarness(options.harness);
-    const sandboxProvider = unwrapSandboxProvider(options.sandboxProvider);
-    if (!harness || !sandboxProvider) {
-      return yield* Effect.fail(
-        sdkError('HarnessAgent.prewarm', 'Invalid harness or sandbox provider'),
+export const prepareHarnessSandboxTemplate = <E = never, R = never>(
+  options: PrewarmOptions<E, R>,
+) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const { sandboxConfig, ...settings } = options;
+      const harness = unwrapHarness(options.harness);
+      const sandboxProvider = unwrapSandboxProvider(options.sandboxProvider);
+      if (!harness || !sandboxProvider) {
+        return yield* Effect.fail(
+          sdkError(
+            'HarnessAgent.prewarm',
+            'Invalid harness or sandbox provider',
+          ),
+        );
+      }
+      const owner = yield* openOperation<R>(options.abortSignal);
+      return yield* runRequest(
+        'HarnessAgent.prewarm',
+        { abortSignal: owner.signal },
+        (abortSignal) =>
+          sdk.prepareHarnessSandboxTemplate({
+            ...settings,
+            harness,
+            sandboxProvider,
+            abortSignal,
+            ...(sandboxConfig && {
+              sandboxConfig: bindSandboxConfig(sandboxConfig, owner),
+            }),
+          }),
       );
-    }
-    return yield* runRequest('HarnessAgent.prewarm', options, (abortSignal) =>
-      sdk.prepareHarnessSandboxTemplate({
-        ...options,
-        harness,
-        sandboxProvider,
-        abortSignal,
-      }),
-    );
-  });
+    }),
+  );
 
 export const prewarmHarness = prepareHarnessSandboxTemplate;
 
-type PrepareOptions = Omit<
+type PrepareOptions<E, R> = Omit<
   Parameters<typeof sdk.prepareSandboxForHarness>[0],
-  'session' | 'harnesses'
+  'session' | 'harnesses' | 'sandboxConfig'
 > & {
   readonly session: SandboxSession;
-  readonly harnesses: TemplateOptions['harnesses'];
+  readonly harnesses: TemplateOptions<E, R>['harnesses'];
+  readonly sandboxConfig?: HarnessAgentSandboxConfig<E, R>;
 };
 
-export const prepareSandboxForHarness = (options: PrepareOptions) =>
-  Effect.gen(function* () {
-    const session = unwrapSandbox(options.session);
-    if (!session)
-      return yield* Effect.fail(
-        sdkError('HarnessAgent.prepareSandbox', 'Invalid sandbox session'),
+export const prepareSandboxForHarness = <E = never, R = never>(
+  options: PrepareOptions<E, R>,
+) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const { sandboxConfig, ...settings } = options;
+      const session = unwrapSandbox(options.session);
+      if (!session)
+        return yield* Effect.fail(
+          sdkError('HarnessAgent.prepareSandbox', 'Invalid sandbox session'),
+        );
+      const harnesses = yield* unwrapHarnesses(options.harnesses);
+      const owner = yield* openOperation<R>(options.abortSignal);
+      return yield* runRequest(
+        'HarnessAgent.prepareSandbox',
+        { abortSignal: owner.signal },
+        (abortSignal) =>
+          sdk.prepareSandboxForHarness({
+            ...settings,
+            session,
+            harnesses,
+            abortSignal,
+            ...(sandboxConfig && {
+              sandboxConfig: bindSandboxConfig(sandboxConfig, owner),
+            }),
+          }),
       );
-    const harnesses = yield* unwrapHarnesses(options.harnesses);
-    return yield* runRequest(
-      'HarnessAgent.prepareSandbox',
-      options,
-      (abortSignal) =>
-        sdk.prepareSandboxForHarness({
-          ...options,
-          session,
-          harnesses,
-          abortSignal,
-        }),
-    );
-  });
+    }),
+  );
 
 /** A harness agent whose native sessions and streaming results stay private. */
 export class HarnessAgent<A = unknown, P = A, I = unknown> {
