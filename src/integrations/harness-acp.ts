@@ -130,8 +130,8 @@ export type ACPHarnessSettings<
     readonly askUserQuestions?: Q & AskQuestions<R, E>;
     readonly builtinTools?: T;
     readonly credentialForwarding?: HarnessV1CredentialForwarding<R, E>;
-  /** @deprecated The SDK ignores this setting and generates its own bridge keys. */
-  readonly mintBridgeToken?: HarnessV1MintBridgeTokenCallback;
+    /** @deprecated The SDK ignores this setting and generates its own bridge keys. */
+    readonly mintBridgeToken?: HarnessV1MintBridgeTokenCallback;
     readonly prepareSandbox?: (
       options: Omit<Parameters<PrepareSandbox>[0], 'sandbox'> & {
         readonly sandbox: SandboxSession;
