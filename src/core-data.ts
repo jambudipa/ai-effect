@@ -5,6 +5,7 @@ import type {
   DynamicToolUIPart,
   FileUIPart,
   ReasoningFileUIPart,
+  ReasoningUIPart,
   TextUIPart,
   ToolOutputErrorUIPart,
   ToolUIPart,
@@ -143,6 +144,10 @@ export const isFileUIPart = (
 export const isReasoningFileUIPart = (
   part: UIMessagePart<UIDataTypes, UITools>,
 ): part is ReasoningFileUIPart => part.type === 'reasoning-file';
+
+export const isReasoningUIPart = (
+  part: UIMessagePart<UIDataTypes, UITools>,
+): part is ReasoningUIPart => part.type === 'reasoning';
 
 export const isStaticToolUIPart = <Tools extends UITools>(
   part: UIMessagePart<UIDataTypes, Tools>,
