@@ -168,4 +168,41 @@ describe('Core provider adapters', () => {
       expect(current.modelId).toBe('registry/gpt-oss-120b');
     }),
   );
+
+  it.effect(
+    'keeps local IDs and resolves a direct legacy fallback lazily',
+    () =>
+      Effect.gen(function* () {
+        const fallback: ProviderV2<Tenant> = {
+          languageModel: (id) =>
+            Effect.map(choose(id), (model) =>
+              wrapLegacyModel<NativeLanguageV2>({
+                ...model,
+                specificationVersion: 'v2',
+              }),
+            ),
+          textEmbeddingModel: unexpected,
+          imageModel: unexpected,
+        };
+        const local = yield* cerebras('gpt-oss-120b');
+        const create = customProvider({
+          languageModels: { local },
+          fallbackProvider: fallback,
+        });
+        expectTypeOf<Effect.Services<typeof create>>().toEqualTypeOf<
+          Tenant | Scope.Scope
+        >();
+        const custom = yield* Effect.provideService(create, Tenant, 'fallback');
+        expectTypeOf<
+          Parameters<typeof custom.languageModel>[0]
+        >().toEqualTypeOf<'local'>();
+        const registry = yield* createProviderRegistry({ custom });
+        expect((yield* registry.languageModel('custom:local')).modelId).toBe(
+          local.modelId,
+        );
+        expect((yield* registry.languageModel('custom:dialogue')).modelId).toBe(
+          'fallback/dialogue',
+        );
+      }),
+  );
 });
