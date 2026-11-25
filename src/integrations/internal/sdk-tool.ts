@@ -9,7 +9,7 @@ import { Effect, Stream } from 'effect';
 import { runSync, sdkError } from '../../internal/operation.js';
 import { runResult, runValue } from './operation.js';
 import { wrapSchema } from './schema.js';
-import { type SandboxSession, unwrapSandbox } from './sandbox.js';
+import { type SandboxSession, unwrapSandbox } from './sandbox-base.js';
 
 type ExecutionOptions<C> = Omit<
   ToolExecutionOptions<C>,
