@@ -12,6 +12,12 @@ export { makeChatTransport } from './internal/chat-transport.js';
 export * from './core-data.js';
 export * from './core-errors.js';
 export * from './core-models.js';
+export { asSchema, jsonSchema, zodSchema } from './core-schema.js';
+export type {
+  FlexibleSchema,
+  Schema,
+  ValidationResult,
+} from './core-schema.js';
 export * from './internal/sdk-data/core.js';
 export { simulateReadableStream } from './internal/simulate-readable.js';
 export type {
