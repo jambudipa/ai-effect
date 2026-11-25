@@ -123,6 +123,9 @@ describe('experimental Core adapters', () => {
       Effect.gen(function* () {
         const output = yield* Output.text();
         const nativeOutput = unwrapOutput(output);
+        if (!nativeOutput) {
+          return yield* Effect.die('Expected a fixed native text format');
+        }
         const nativeTelemetry = { onError: () => {} };
         const event = wrapTelemetryEvent({
           output: nativeOutput,
