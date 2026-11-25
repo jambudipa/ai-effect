@@ -3,7 +3,7 @@
 import * as sdk from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
 import { Effect } from 'effect';
-import { createElement, useEffect, useMemo } from 'react';
+import { createElement, useEffect, useMemo, type ReactElement } from 'react';
 import { runSync, sdkError, type AiSdkError } from '../internal/operation.js';
 import {
   unwrapRealtimeModel,
@@ -459,7 +459,7 @@ export function MCPAppRenderer({
   loadResource,
   handlers,
   ...props
-}: MCPAppRendererProps) {
+}: MCPAppRendererProps): ReactElement {
   const { view } = useLifetime();
   const bind =
     <Args extends unknown[], A>(
