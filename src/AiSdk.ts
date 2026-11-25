@@ -15,6 +15,12 @@ import type {
   ToolSet,
 } from 'ai';
 import { Context, Effect, Layer, Ref, Schema, Stream } from 'effect';
+import {
+  combineSignals,
+  runRequest,
+  sdkError,
+  type AiSdkError,
+} from './internal/operation.js';
 
 type RuntimeContext = Record<string, unknown>;
 type RerankDocument = Parameters<typeof sdkRerank>[0]['documents'][number];
@@ -35,20 +41,7 @@ type TextEvent<Tools extends ToolSet> = TextStreamPart<Tools> & {
   type: Exclude<TextStreamPart<ToolSet>['type'], 'error' | 'abort'>;
 };
 
-/** An AI SDK failure with the operation name and the original cause. */
-export class AiSdkError extends Schema.TaggedError<AiSdkError>()('AiSdkError', {
-  operation: Schema.Literals([
-    'generateText',
-    'streamText',
-    'embed',
-    'embedMany',
-    'rerank',
-    'generateImage',
-    'generateSpeech',
-    'transcribe',
-  ]),
-  cause: Schema.Defect(),
-}) {}
+export { AiSdkError } from './internal/operation.js';
 
 /** The SDK ended a text stream in response to an abort signal. */
 export class AiSdkStreamAborted extends Schema.TaggedError<AiSdkStreamAborted>()(
@@ -56,21 +49,7 @@ export class AiSdkStreamAborted extends Schema.TaggedError<AiSdkStreamAborted>()
   { reason: Schema.optionalKey(Schema.String) },
 ) {}
 
-const combineSignals = (signal: AbortSignal, callerSignal?: AbortSignal) =>
-  callerSignal ? AbortSignal.any([signal, callerSignal]) : signal;
-
-const runRequest = <A>(
-  operation: AiSdkError['operation'],
-  options: { abortSignal?: AbortSignal },
-  request: (signal: AbortSignal) => PromiseLike<A>,
-): Effect.Effect<A, AiSdkError> =>
-  Effect.tryPromise({
-    try: (signal) => request(combineSignals(signal, options.abortSignal)),
-    catch: (cause) => new AiSdkError({ operation, cause }),
-  });
-
-const streamError = (cause: unknown) =>
-  new AiSdkError({ operation: 'streamText', cause });
+const streamError = (cause: unknown) => sdkError('streamText', cause);
 
 const generateText = <
   Tools extends ToolSet,

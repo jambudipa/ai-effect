@@ -1,0 +1,95 @@
+import { Effect, FiberSet, Redacted, Schema } from 'effect';
+
+/** A foreign SDK failure with only safe diagnostic fields visible. */
+export class AiSdkError extends Schema.TaggedError<AiSdkError>()('AiSdkError', {
+  operation: Schema.String,
+  category: Schema.String,
+  status: Schema.optionalKey(Schema.Number),
+  requestId: Schema.optionalKey(Schema.String),
+  cause: Schema.Redacted(Schema.Defect(), { disallowJsonEncode: true }),
+}) {}
+
+export const sdkError = (operation: string, cause: unknown): AiSdkError => {
+  const error =
+    typeof cause === 'object' && cause
+      ? (cause as Record<string, unknown>)
+      : {};
+  const category =
+    typeof error.name === 'string' && /^AI_[a-zA-Z]+Error$/.test(error.name)
+      ? error.name
+      : 'Error';
+  const headers = error.responseHeaders as Record<string, unknown> | undefined;
+  const requestId =
+    headers?.['x-request-id'] ??
+    headers?.['request-id'] ??
+    headers?.['x-cerebras-request-id'];
+  return new AiSdkError({
+    operation,
+    category,
+    ...(typeof error.statusCode === 'number'
+      ? { status: error.statusCode }
+      : {}),
+    ...(typeof requestId === 'string' ? { requestId } : {}),
+    cause: Redacted.make(cause),
+  });
+};
+
+export const combineSignals = (
+  signal: AbortSignal,
+  callerSignal?: AbortSignal,
+) => (callerSignal ? AbortSignal.any([signal, callerSignal]) : signal);
+
+export const runSync = <A>(operation: string, run: () => A) =>
+  Effect.try({ try: run, catch: (cause) => sdkError(operation, cause) });
+
+export const runRequest = <A>(
+  operation: string,
+  options: { readonly abortSignal?: AbortSignal },
+  request: (signal: AbortSignal) => PromiseLike<A>,
+): Effect.Effect<A, AiSdkError> =>
+  Effect.tryPromise({
+    try: (signal) => request(combineSignals(signal, options.abortSignal)),
+    catch: (cause) => sdkError(operation, cause),
+  });
+
+/** Observe caller cancellation even if the SDK does not use the signal. */
+export const abortable = <A, E, R>(
+  operation: string,
+  signal: AbortSignal,
+  effect: Effect.Effect<A, E, R>,
+) =>
+  Effect.raceFirst(
+    Effect.callback<never, AiSdkError>((resume) => {
+      const abort = () =>
+        resume(Effect.fail(sdkError(operation, signal.reason)));
+      if (signal.aborted) {
+        abort();
+        return;
+      }
+      signal.addEventListener('abort', abort, { once: true });
+      return Effect.sync(() => signal.removeEventListener('abort', abort));
+    }),
+    effect,
+  );
+
+/** Own the SDK signal and each callback fiber in the same scope. */
+export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
+  Effect.gen(function* () {
+    const callbacks = yield* FiberSet.make();
+    const runCallback = yield* FiberSet.runtimePromise(callbacks)<R>();
+    const controller = yield* Effect.acquireRelease(
+      Effect.sync(() => new AbortController()),
+      (controller) => Effect.sync(() => controller.abort()),
+    );
+    const signal = combineSignals(controller.signal, callerSignal);
+    return {
+      signal,
+      runCallback: <A, E>(
+        effect: Effect.Effect<A, E, R>,
+        callbackSignal?: AbortSignal,
+      ) =>
+        runCallback(effect, {
+          signal: combineSignals(signal, callbackSignal),
+        }),
+    };
+  });

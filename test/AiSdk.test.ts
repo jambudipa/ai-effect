@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest';
 import { jsonSchema, Output, simulateReadableStream } from 'ai';
 import { MockEmbeddingModelV4, MockLanguageModelV4 } from 'ai/test';
-import { Deferred, Effect, Fiber, Stream } from 'effect';
+import { Deferred, Effect, Fiber, Redacted, Stream } from 'effect';
 import { expectTypeOf } from 'vitest';
 import { AiSdk, AiSdkError, AiSdkStreamAborted } from '../src/index.js';
 
@@ -63,7 +63,7 @@ describe('AiSdk', () => {
 
       expect(error).toBeInstanceOf(AiSdkError);
       expect(error.operation).toBe('generateText');
-      expect(error.cause).toBe(cause);
+      expect(Redacted.value(error.cause)).toBe(cause);
     }).pipe(Effect.provide(AiSdk.layer)),
   );
 
@@ -145,7 +145,7 @@ describe('AiSdk', () => {
       expect(error).toBeInstanceOf(AiSdkError);
       if (error._tag === 'AiSdkError') {
         expect(error.operation).toBe('streamText');
-        expect(error.cause).toBe(cause);
+        expect(Redacted.value(error.cause)).toBe(cause);
       }
     }).pipe(Effect.provide(AiSdk.layer)),
   );
