@@ -15,8 +15,10 @@ export default [
   },
   {
     files: [
-      'src/frameworks/svelte.ts',
+      'src/frameworks/lifetime.ts',
+      'src/frameworks/react.ts',
       'src/internal/language-model.ts',
+      'src/internal/provider-realtime.ts',
       'src/internal/text-stream.ts',
       'src/providers/cerebras.ts',
     ],
@@ -33,10 +35,58 @@ export default [
     },
   },
   {
-    files: ['src/frameworks/svelte.ts'],
+    files: [
+      'src/internal/provider-model.ts',
+      'src/internal/provider-resource.ts',
+    ],
     rules: {
-      // Svelte bindings and SDK callbacks use undefined to represent absence.
+      // Native callbacks normalize PromiseLike values and own late stream results.
+      'effect/no-promise-then-catch': 'off',
+      'effect/no-promise-resolve-reject': 'off',
+      // SDK model interfaces use undefined to represent optional methods.
       'effect/no-undefined-use-option': 'off',
+    },
+  },
+  {
+    files: [
+      'src/frameworks/chat.ts',
+      'src/frameworks/lifetime.ts',
+      'src/frameworks/react.ts',
+      'src/frameworks/rsc-client.ts',
+      'src/frameworks/svelte.ts',
+      'src/internal/fetch.ts',
+    ],
+    rules: {
+      // Host bindings and SDK callbacks use undefined to represent absence.
+      'effect/no-undefined-use-option': 'off',
+    },
+  },
+  {
+    files: ['src/frameworks/angular.ts'],
+    rules: {
+      // Angular throws from inject when the caller creates a standalone signal.
+      'effect/no-try-catch-use-effect': 'off',
+    },
+  },
+  {
+    files: ['src/frameworks/chat.ts', 'src/frameworks/react.ts'],
+    rules: {
+      // Host constructors and hooks run synchronously and reject invalid handles.
+      'effect/no-throw-use-effect': 'off',
+    },
+  },
+  {
+    files: ['src/internal/provider-tool.ts'],
+    rules: {
+      // The synchronous native SDK bridge returns the failure to its Effect caller.
+      'effect/no-throw-use-effect': 'off',
+    },
+  },
+  {
+    files: ['src/frameworks/react.ts'],
+    rules: {
+      // React cleanup uses a synchronous callback to stop native commands.
+      'effect/no-promise-then-catch': 'off',
     },
   },
   {
