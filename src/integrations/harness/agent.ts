@@ -3,22 +3,23 @@ import type { HarnessV1 as NativeHarness } from '../internal/harness-contracts/h
 import type { GenerateTextResult, OutputInterface, ToolSet } from 'ai';
 import { Effect, Ref } from 'effect';
 import {
+  bindCoreOptions,
+  type CoreOptions,
+} from '../../internal/core-settings.js';
+import {
   type AiSdkError,
   openOperation,
   runRequest,
   runSync,
   sdkError,
 } from '../../internal/operation.js';
+import { bindOutput, type OutputSpecification } from '../../internal/output.js';
 import { wrapTextStream } from '../../internal/text-stream.js';
 import {
   bindTools,
   type EffectTools,
   type ToolServices,
 } from '../../internal/tool.js';
-import {
-  type WithEffectCallbacks,
-  bindCallbacks,
-} from '../internal/callbacks.js';
 import { agents } from '../internal/harness-agent.js';
 import { unwrapHarness } from '../internal/harness.js';
 import {
@@ -46,8 +47,19 @@ export type {
   TraceTreeReporterOptions,
 } from '@ai-sdk/harness/agent';
 
-type Options = sdk.HarnessAgentSettings<NativeHarness, ToolSet>;
-type NativeAgent = sdk.HarnessAgent<NativeHarness, ToolSet>;
+type RuntimeContext = Record<string, unknown>;
+type NativeOptions<A, P, I> = sdk.HarnessAgentSettings<
+  NativeHarness,
+  ToolSet,
+  RuntimeContext,
+  OutputInterface<A, P, I>
+>;
+type NativeAgent<A = unknown, P = A, I = unknown> = sdk.HarnessAgent<
+  NativeHarness,
+  ToolSet,
+  RuntimeContext,
+  OutputInterface<A, P, I>
+>;
 const constructorCallbacks = [
   'onStart',
   'onStepStart',
@@ -73,14 +85,13 @@ export type HarnessAgentSettings<
   T extends EffectTools = {},
   E = never,
   R = never,
-> = WithEffectCallbacks<
-  Pick<Options, SettingsKeys>,
-  (typeof constructorCallbacks)[number],
-  E,
-  R
-> & {
+  A = unknown,
+  P = A,
+  I = unknown,
+> = CoreOptions<Pick<NativeOptions<A, P, I>, SettingsKeys>, R, T> & {
   readonly harness: { readonly harnessId: string };
   readonly tools?: T;
+  readonly output?: OutputSpecification<A, P, I, R>;
   readonly sandbox?: ReturnType<
     typeof import('../internal/sandbox.js').wrapSandboxProvider
   >;
@@ -355,14 +366,20 @@ export const prepareSandboxForHarness = (options: PrepareOptions) =>
   });
 
 /** A harness agent whose native sessions and streaming results stay private. */
-export class HarnessAgent {
-  static make<T extends EffectTools = {}, E = never, R = never>(
-    settings: HarnessAgentSettings<T, E, R>,
-  ) {
+export class HarnessAgent<A = unknown, P = A, I = unknown> {
+  static make<
+    T extends EffectTools = {},
+    E = never,
+    R = never,
+    A = unknown,
+    P = A,
+    I = unknown,
+  >(settings: HarnessAgentSettings<T, E, R, A, P, I>) {
     return Effect.gen(function* () {
       const {
         harness,
         tools,
+        output,
         sandbox,
         sandboxConfig,
         onSandboxSession,
@@ -376,17 +393,22 @@ export class HarnessAgent {
         );
       }
       const owner = yield* openOperation<R | ToolServices<T>>();
-      const callbacks = bindCallbacks<
-        Pick<Options, SettingsKeys>,
-        typeof constructorCallbacks,
-        E,
+      const callbacks = bindCoreOptions<
+        Pick<NativeOptions<A, P, I>, SettingsKeys>,
         R
-      >(options, constructorCallbacks, owner);
+      >(options, owner, tools);
       return yield* runSync('HarnessAgent.make', () => {
-        const native = new sdk.HarnessAgent<NativeHarness, ToolSet>({
+        const nativeOutput = output && bindOutput(output, owner);
+        const native = new sdk.HarnessAgent<
+          NativeHarness,
+          ToolSet,
+          RuntimeContext,
+          OutputInterface<A, P, I>
+        >({
           ...callbacks,
           harness: nativeHarness,
           ...(tools && { tools: bindTools(tools, owner) }),
+          ...(nativeOutput && { output: nativeOutput }),
           ...(nativeSandbox && { sandbox: nativeSandbox }),
           ...(sandboxConfig && {
             sandboxConfig: bindSandboxConfig(sandboxConfig, owner),
@@ -406,7 +428,7 @@ export class HarnessAgent {
     });
   }
 
-  private constructor(private readonly native: NativeAgent) {}
+  private constructor(private readonly native: NativeAgent<A, P, I>) {}
 
   get version() {
     return this.native.version;
