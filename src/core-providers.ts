@@ -4,7 +4,7 @@ import type {
   Experimental_VideoModelV4,
   ProviderV4,
 } from '@ai-sdk/provider';
-import { Effect } from 'effect';
+import { Effect, HashMap, Option } from 'effect';
 import type { Scope } from 'effect';
 import type { LanguageModel } from './core.js';
 import type {
@@ -31,6 +31,14 @@ import {
   wrapLanguageModel,
 } from './internal/language-model.js';
 import { unwrapLegacyModel } from './internal/legacy-model.js';
+import {
+  applyProviderMiddleware,
+  isLegacyProviderV3,
+  isProviderFacade,
+  type LegacyProvider,
+  type ProviderFacade,
+  wrapLegacyProvider,
+} from './internal/legacy-provider.js';
 import { openOperation, runSync, sdkError } from './internal/operation.js';
 import type { AiSdkError } from './internal/operation.js';
 import {
@@ -69,6 +77,7 @@ import type {
   SkillsV4Handle,
 } from './internal/provider-resource.js';
 import type { Owner } from './internal/experimental-callbacks.js';
+import type { ProviderV2, ProviderV3 } from './protocols/provider.js';
 
 type RegisteredProvider = {
   readonly specificationVersion: 'v4';
@@ -76,8 +85,34 @@ type RegisteredProvider = {
     ...args: never[]
   ) => Effect.Effect<unknown, AiSdkError, unknown>;
 };
-type ProviderMap = Readonly<Record<string, RegisteredProvider>>;
+type RegistryProvider = RegisteredProvider | ProviderV3<unknown>;
+type ProviderMap = Readonly<Record<string, RegistryProvider>>;
 type ProviderHandle = ReturnType<typeof wrapProviderBase>;
+type LegacyMethods = keyof ProviderV2<unknown> | keyof ProviderV3<unknown>;
+type RegistryMethods =
+  'videoModel' | 'decisionModel' | 'evaluationModel' | 'extractionModel';
+type ProviderServices<Provider, AdditionalMethods = never> = Provider extends {
+  readonly specificationVersion: 'v4';
+}
+  ? never
+  : {
+      [
+        Name in Extract<keyof Provider, LegacyMethods | AdditionalMethods>
+      ]-?: NonNullable<Provider[Name]> extends (
+        ...args: never[]
+      ) => Effect.Effect<unknown, unknown, infer Services>
+        ? Services
+        : never;
+    }[Extract<keyof Provider, LegacyMethods | AdditionalMethods>];
+type RegistryServices<Providers extends ProviderMap> = ProviderServices<
+  Providers[keyof Providers],
+  RegistryMethods
+>;
+type LegacyRegistryScope<Providers extends ProviderMap> = [
+  Extract<Providers[keyof Providers], ProviderV3<unknown>>,
+] extends [never]
+  ? never
+  : Scope.Scope | RegistryServices<Providers>;
 
 type ResourceIdentity = {
   readonly specificationVersion: 'v2' | 'v3' | 'v4';
@@ -457,72 +492,126 @@ export type Experimental_ExtractionProviderRegistry<
   >;
 };
 
+const registryRoutes =
+  (facades: HashMap.HashMap<string, ProviderFacade>, separator: string) =>
+  <Id extends string, A>(
+    native: (id: Id) => Effect.Effect<A, AiSdkError>,
+    select: (
+      provider: ProviderFacade,
+    ) => ((id: string) => Effect.Effect<A, AiSdkError>) | undefined,
+  ) =>
+  (id: Id): Effect.Effect<A, AiSdkError> =>
+    Effect.suspend(() => {
+      const split = id.indexOf(separator);
+      if (split < 0) return native(id);
+      const provider = Option.getOrUndefined(
+        HashMap.get(facades, id.slice(0, split)),
+      );
+      const method = provider && select(provider);
+      return method ? method(id.slice(split + separator.length)) : native(id);
+    });
+
 const wrapRegistry = <Providers extends ProviderMap, Separator extends string>(
   native: ReturnType<
     typeof sdk.createProviderRegistry<Record<string, ProviderV4>, Separator>
   >,
-): Experimental_ExtractionProviderRegistry<Providers, Separator> => ({
-  languageModel: adaptMethod(
-    'ProviderRegistry.languageModel',
-    native.languageModel.bind(native),
-    wrapLanguageModel,
-  ),
-  embeddingModel: adaptMethod(
-    'ProviderRegistry.embeddingModel',
-    native.embeddingModel.bind(native),
-    wrapEmbeddingModel,
-  ),
-  imageModel: adaptMethod(
-    'ProviderRegistry.imageModel',
-    native.imageModel.bind(native),
-    wrapImageModel,
-  ),
-  transcriptionModel: adaptMethod(
-    'ProviderRegistry.transcriptionModel',
-    native.transcriptionModel.bind(native),
-    wrapTranscriptionModel,
-  ),
-  speechModel: adaptMethod(
-    'ProviderRegistry.speechModel',
-    native.speechModel.bind(native),
-    wrapSpeechModel,
-  ),
-  rerankingModel: adaptMethod(
-    'ProviderRegistry.rerankingModel',
-    native.rerankingModel.bind(native),
-    wrapRerankingModel,
-  ),
-  videoModel: adaptMethod(
-    'ProviderRegistry.videoModel',
-    native.videoModel.bind(native),
-    wrapVideoModel,
-  ),
-  files: adaptMethod(
-    'ProviderRegistry.files',
-    native.files.bind(native),
-    wrapFiles,
-  ),
-  skills: adaptMethod(
-    'ProviderRegistry.skills',
-    native.skills.bind(native),
-    wrapSkills,
-  ),
-  decisionModel: adaptMethod(
-    'ProviderRegistry.decisionModel',
-    native.decisionModel.bind(native),
-    wrapDecisionModel,
-  ),
-  evaluationModel: adaptMethod(
-    'ProviderRegistry.evaluationModel',
-    native.evaluationModel.bind(native),
-    wrapEvaluationModel,
-  ),
-  extractionModel: adaptMethod(
-    'ProviderRegistry.extractionModel',
-    native.extractionModel.bind(native),
-    wrapExtractionModel,
-  ),
-});
+  facades: HashMap.HashMap<string, ProviderFacade>,
+  separator: string,
+): Experimental_ExtractionProviderRegistry<Providers, Separator> => {
+  const route = registryRoutes(facades, separator);
+  return {
+    languageModel: route(
+      adaptMethod(
+        'ProviderRegistry.languageModel',
+        native.languageModel.bind(native),
+        wrapLanguageModel,
+      ),
+      (provider) => provider.languageModel,
+    ),
+    embeddingModel: route(
+      adaptMethod(
+        'ProviderRegistry.embeddingModel',
+        native.embeddingModel.bind(native),
+        wrapEmbeddingModel,
+      ),
+      (provider) => provider.embeddingModel,
+    ),
+    imageModel: route(
+      adaptMethod(
+        'ProviderRegistry.imageModel',
+        native.imageModel.bind(native),
+        wrapImageModel,
+      ),
+      (provider) => provider.imageModel,
+    ),
+    transcriptionModel: route(
+      adaptMethod(
+        'ProviderRegistry.transcriptionModel',
+        native.transcriptionModel.bind(native),
+        wrapTranscriptionModel,
+      ),
+      (provider) => provider.transcriptionModel,
+    ),
+    speechModel: route(
+      adaptMethod(
+        'ProviderRegistry.speechModel',
+        native.speechModel.bind(native),
+        wrapSpeechModel,
+      ),
+      (provider) => provider.speechModel,
+    ),
+    rerankingModel: route(
+      adaptMethod(
+        'ProviderRegistry.rerankingModel',
+        native.rerankingModel.bind(native),
+        wrapRerankingModel,
+      ),
+      (provider) => provider.rerankingModel,
+    ),
+    videoModel: route(
+      adaptMethod(
+        'ProviderRegistry.videoModel',
+        native.videoModel.bind(native),
+        wrapVideoModel,
+      ),
+      (provider) => provider.videoModel,
+    ),
+    files: adaptMethod(
+      'ProviderRegistry.files',
+      native.files.bind(native),
+      wrapFiles,
+    ),
+    skills: adaptMethod(
+      'ProviderRegistry.skills',
+      native.skills.bind(native),
+      wrapSkills,
+    ),
+    decisionModel: route(
+      adaptMethod(
+        'ProviderRegistry.decisionModel',
+        native.decisionModel.bind(native),
+        wrapDecisionModel,
+      ),
+      (provider) => provider.decisionModel,
+    ),
+    evaluationModel: route(
+      adaptMethod(
+        'ProviderRegistry.evaluationModel',
+        native.evaluationModel.bind(native),
+        wrapEvaluationModel,
+      ),
+      (provider) => provider.evaluationModel,
+    ),
+    extractionModel: route(
+      adaptMethod(
+        'ProviderRegistry.extractionModel',
+        native.extractionModel.bind(native),
+        wrapExtractionModel,
+      ),
+      (provider) => provider.extractionModel,
+    ),
+  };
+};
 
 type MiddlewareOptions<R> = {
   readonly languageModelMiddleware?:
@@ -572,36 +661,59 @@ const createRegistry = <
 ): Effect.Effect<
   Experimental_ExtractionProviderRegistry<Providers, Separator>,
   AiSdkError,
-  R | Scope.Scope
+  R | RegistryServices<Providers> | Scope.Scope
 > =>
   Effect.gen(function* () {
-    const entries = yield* Effect.forEach(
-      Object.entries(providers),
-      ([name, provider]) =>
-        requireProvider(provider, 'createProviderRegistry').pipe(
-          Effect.map((native) => [name, native] as const),
-        ),
+    type Services = R | RegistryServices<Providers>;
+    const supplied = Object.entries<RegistryProvider>(providers);
+    const hasLegacy = supplied.some(([, provider]) =>
+      isLegacyProviderV3(provider),
     );
+    const middleware =
+      options?.languageModelMiddleware || options?.imageModelMiddleware;
+    const owner =
+      (hasLegacy || middleware) && (yield* openOperation<Services>());
+    const boundMiddleware =
+      options && owner ? nativeMiddleware<Services>(options, owner) : {};
+    let facades = HashMap.empty<string, ProviderFacade>();
+    const entries = yield* Effect.forEach(supplied, ([name, provider]) => {
+      if (
+        (isLegacyProviderV3(provider) && owner) ||
+        isProviderFacade(provider)
+      ) {
+        return runSync('createProviderRegistry', () => {
+          const facade = isProviderFacade(provider)
+            ? provider
+            : wrapLegacyProvider(
+                provider as ProviderV3<Services>,
+                owner as Owner<Services>,
+                true,
+              );
+          facades = HashMap.set(
+            facades,
+            name,
+            applyProviderMiddleware(facade, boundMiddleware, true),
+          );
+          // Keep the legacy name in the SDK registry for its standard lookup errors.
+          return [name, sdk.customProvider({})] as const;
+        });
+      }
+      return requireProvider(
+        provider as RegisteredProvider,
+        'createProviderRegistry',
+      ).pipe(Effect.map((native) => [name, native] as const));
+    });
     const native = Object.fromEntries(entries);
     const base =
       options && 'separator' in options ? { separator: options.separator } : {};
-    if (!options?.languageModelMiddleware && !options?.imageModelMiddleware)
-      return yield* runSync('createProviderRegistry', () =>
-        wrapRegistry<Providers, Separator>(
-          sdk.createProviderRegistry<Record<string, ProviderV4>, Separator>(
-            native,
-            base,
-          ),
-        ),
-      );
-
-    const owner = yield* openOperation<R>();
     return yield* runSync('createProviderRegistry', () =>
       wrapRegistry<Providers, Separator>(
         sdk.createProviderRegistry<Record<string, ProviderV4>, Separator>(
           native,
-          { ...base, ...nativeMiddleware(options, owner) },
+          { ...base, ...boundMiddleware },
         ),
+        facades,
+        options?.separator ?? ':',
       ),
     );
   });
@@ -612,7 +724,8 @@ interface CreateProviderRegistry {
     options?: StaticRegistryOptions<Separator>,
   ): Effect.Effect<
     Experimental_ExtractionProviderRegistry<Providers, Separator>,
-    AiSdkError
+    AiSdkError,
+    LegacyRegistryScope<Providers>
   >;
   <
     const Providers extends ProviderMap,
@@ -624,41 +737,62 @@ interface CreateProviderRegistry {
   ): Effect.Effect<
     Experimental_ExtractionProviderRegistry<Providers, Separator>,
     AiSdkError,
-    R | Scope.Scope
+    R | RegistryServices<Providers> | Scope.Scope
   >;
 }
 
 export const createProviderRegistry = createRegistry as CreateProviderRegistry;
 export const experimental_createProviderRegistry = createProviderRegistry;
 
-export const wrapProvider = <R = never>(
+export const wrapProvider = <
+  R = never,
+  const Provider extends RegisteredProvider | LegacyProvider<unknown> =
+    RegisteredProvider,
+>(
   options: MiddlewareOptions<R> & {
-    readonly provider: RegisteredProvider;
+    readonly provider: Provider;
     readonly languageModelMiddleware:
       LanguageModelMiddleware<R> | LanguageModelMiddleware<R>[];
   },
-): Effect.Effect<ProviderHandle, AiSdkError, R | Scope.Scope> =>
+): Effect.Effect<
+  ProviderHandle,
+  AiSdkError,
+  R | ProviderServices<Provider> | Scope.Scope
+> =>
   Effect.gen(function* () {
-    const provider = yield* requireProvider(options.provider, 'wrapProvider');
-    const owner = yield* openOperation<R>();
-    const imageModelMiddleware = bindMiddleware(
-      options.imageModelMiddleware,
-      (middleware) => bindImageMiddleware(middleware, owner),
+    type Services = R | ProviderServices<Provider>;
+    const selected = options.provider;
+    const owner = yield* openOperation<Services>();
+    const middleware = nativeMiddleware<Services>(options, owner);
+    const legacy =
+      !('specificationVersion' in selected) ||
+      selected.specificationVersion === 'v3';
+    if (legacy || isProviderFacade(selected)) {
+      return yield* runSync('wrapProvider', () =>
+        applyProviderMiddleware(
+          legacy
+            ? wrapLegacyProvider(
+                selected as LegacyProvider<Services>,
+                owner,
+                false,
+              )
+            : (selected as ProviderFacade),
+          middleware,
+          false,
+        ),
+      );
+    }
+    const provider = yield* requireProvider(
+      selected as RegisteredProvider,
+      'wrapProvider',
     );
-    const languageModelMiddleware = Array.isArray(
-      options.languageModelMiddleware,
-    )
-      ? options.languageModelMiddleware.map((middleware) =>
-          bindLanguageMiddleware(middleware, owner),
-        )
-      : bindLanguageMiddleware(options.languageModelMiddleware, owner);
     return yield* runSync('wrapProvider', () =>
       wrapProviderBase(
         'wrapProvider',
         sdk.wrapProvider({
           provider,
-          languageModelMiddleware,
-          ...(imageModelMiddleware ? { imageModelMiddleware } : {}),
+          ...middleware,
+          languageModelMiddleware: middleware.languageModelMiddleware ?? [],
         }),
       ),
     );
