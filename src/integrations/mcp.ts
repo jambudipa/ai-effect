@@ -1,7 +1,7 @@
 import * as runtime from '@ai-sdk/mcp';
 import type * as MCPContract from './internal/mcp-contract.js';
 import type { Experimental_ManagedMCPClient as NativeManagedClient } from './internal/mcp-contract.js';
-import { Effect, type Schema, type Scope } from 'effect';
+import { Cause, Effect, type Schema, type Scope } from 'effect';
 import {
   type AiSdkError,
   openOperation,
@@ -515,15 +515,48 @@ const oauthCallbacks = [
 ] as const;
 
 export type OAuthClientProvider<R = never, E = never> = WithEffectCallbacks<
-  MCPContract.OAuthClientProvider,
+  Omit<MCPContract.OAuthClientProvider, 'redirectUrl' | 'clientMetadata'>,
   (typeof oauthCallbacks)[number],
   E,
   R
->;
+> & {
+  readonly redirectUrl: string | URL;
+  readonly clientMetadata: MCPContract.OAuthClientMetadata;
+};
 
-type HttpTransport<R, E> = Omit<NativeHttpTransport, 'authProvider'> & {
+const sessionCallbacks = ['onSessionIdChange', 'onSessionExpired'] as const;
+type HttpTransport<R, E> = Omit<
+  WithEffectCallbacks<
+    NativeHttpTransport,
+    (typeof sessionCallbacks)[number],
+    E,
+    R
+  >,
+  'authProvider'
+> & {
   readonly authProvider?: OAuthClientProvider<R, E>;
 };
+
+const bindNotification =
+  <Args extends unknown[], R, E>(
+    operation: string,
+    callback: (...args: Args) => Effect.Effect<void, E, R>,
+    owner: McpOwner<R>,
+  ) =>
+  (...args: Args) => {
+    void owner
+      .runCallback(
+        Effect.suspend(() => callback(...args)).pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning(
+              operation,
+              sdkError(operation, Cause.squash(cause)),
+            ),
+          ),
+        ),
+      )
+      .catch(() => {});
+  };
 
 type McpOwner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
@@ -531,9 +564,23 @@ const bindHttpTransport = <R, E>(
   input: HttpTransport<R, E>,
   owner: McpOwner<R>,
 ): NativeHttpTransport => {
-  const { authProvider, ...rest } = input;
+  const { authProvider, onSessionIdChange, onSessionExpired, ...rest } = input;
   return {
     ...rest,
+    ...(onSessionIdChange && {
+      onSessionIdChange: bindNotification(
+        'MCP.onSessionIdChange',
+        onSessionIdChange,
+        owner,
+      ),
+    }),
+    ...(onSessionExpired && {
+      onSessionExpired: bindNotification(
+        'MCP.onSessionExpired',
+        onSessionExpired,
+        owner,
+      ),
+    }),
     ...(authProvider && {
       authProvider: bindCallbacks<
         MCPContract.OAuthClientProvider,
@@ -577,8 +624,13 @@ export type Experimental_WebMCPModelContext<
 export type {
   Experimental_WebMCPTool,
   MCPTransportCloseOptions,
-  MCPTransportSendOptions,
 } from './internal/mcp-contract.js';
+export type MCPTransportSendOptions<R = never, E = never> = WithEffectCallbacks<
+  MCPContract.MCPTransportSendOptions,
+  'onresumptiontoken',
+  E,
+  R
+>;
 
 /** Turn a WebMCP context into a scoped MCP transport. */
 export class Experimental_WebMCPTransport {
@@ -624,14 +676,31 @@ export class Experimental_WebMCPTransport {
     return runRequest('WebMCPTransport.close', {}, () => this.native.close());
   }
 
-  send(
+  send<R = never, E = never>(
     message: MCPContract.JSONRPCMessage,
-    options?: MCPContract.MCPTransportSendOptions,
+    options?: MCPTransportSendOptions<R, E>,
   ) {
-    return runRequest(
-      'WebMCPTransport.send',
-      { ...(options?.signal && { abortSignal: options.signal }) },
-      (signal) => this.native.send(message, { ...options, signal }),
+    return Effect.scoped(
+      Effect.gen({ self: this }, function* () {
+        const { onresumptiontoken, ...settings } = options ?? {};
+        const owner = yield* openOperation<R>(settings.signal);
+        return yield* runRequest(
+          'WebMCPTransport.send',
+          { abortSignal: owner.signal },
+          (signal) =>
+            this.native.send(message, {
+              ...settings,
+              signal,
+              ...(onresumptiontoken && {
+                onresumptiontoken: bindNotification(
+                  'WebMCPTransport.onResumptionToken',
+                  onresumptiontoken,
+                  owner,
+                ),
+              }),
+            }),
+        );
+      }),
     );
   }
 }
@@ -659,9 +728,10 @@ export type Experimental_MCPEventStore<
 
 export type Experimental_MCPEventWebhookOptions<R = never, E = never> = Omit<
   WithEffectCallbacks<NativeWebhook, (typeof webhookCallbacks)[number], E, R>,
-  'store'
+  'store' | 'onError'
 > & {
   readonly store: Experimental_MCPEventStore<R, E>;
+  readonly onError?: (error: unknown) => Effect.Effect<void, E, R>;
 };
 
 /** Handle a webhook request with Effect-owned store and delivery callbacks. */
@@ -671,7 +741,8 @@ export const experimental_createMCPEventWebhook =
     Effect.scoped(
       Effect.gen(function* () {
         const owner = yield* openOperation<R>(request.signal);
-        const { store, ...callbacks } = options;
+        const { store, onError, ...callbacks } = options;
+        let reported: readonly unknown[] = [];
         const nativeStore = bindCallbacks<
           MCPContract.Experimental_MCPEventStore,
           typeof storeCallbacks,
@@ -684,11 +755,29 @@ export const experimental_createMCPEventWebhook =
           E,
           R
         >({ ...callbacks, store: nativeStore }, webhookCallbacks, owner);
-        return yield* runRequest(
+        const response = yield* runRequest(
           'MCP.eventWebhook',
           { abortSignal: owner.signal },
-          () => sdk.experimental_createMCPEventWebhook(bound)(request),
+          () =>
+            sdk.experimental_createMCPEventWebhook({
+              ...bound,
+              ...(onError && {
+                onError: (error) => {
+                  reported = [...reported, error];
+                },
+              }),
+            })(request),
         );
+        if (onError) {
+          yield* Effect.forEach(reported, (error) =>
+            Effect.suspend(() => onError(error)).pipe(
+              Effect.mapError((cause) =>
+                sdkError('MCP.eventWebhook.onError', cause),
+              ),
+            ),
+          );
+        }
+        return response;
       }),
     );
 

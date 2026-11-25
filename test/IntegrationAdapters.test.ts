@@ -1,6 +1,6 @@
 import { jsonSchema as nativeJsonSchema } from '@ai-sdk/provider-utils';
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, Ref, Schema, Stream } from 'effect';
+import { Deferred, Effect, Ref, Schema, Stream } from 'effect';
 import * as v from 'valibot';
 import {
   type CodeModeToolExecutionOptions,
@@ -14,7 +14,10 @@ import { createCodex } from '../src/integrations/harness-codex.js';
 import { harnessV1BridgeReadySchema } from '../src/integrations/harness.js';
 import { wrapSchema } from '../src/integrations/internal/schema.js';
 import { toUIMessageStream } from '../src/integrations/llamaindex.js';
-import { createMCPClient } from '../src/integrations/mcp.js';
+import {
+  createMCPClient,
+  experimental_createMCPEventWebhook,
+} from '../src/integrations/mcp.js';
 import { createTestServer } from '../src/integrations/test-server.js';
 import { createJustBashNetworkSandboxSession } from '../src/integrations/sandbox-just-bash.js';
 import { valibotSchema } from '../src/integrations/valibot.js';
@@ -66,17 +69,25 @@ describe('MCP integration', () => {
   it.effect('uses a scoped HTTP fixture for a JSON-RPC request', () =>
     Effect.gen(function* () {
       const url = 'https://local-mcp.example.test/messages';
+      const sessionId = yield* Deferred.make<string | undefined>();
       const fixture = yield* createTestServer({
         [url]: {
           response: {
             type: 'json-value',
             body: { jsonrpc: '2.0', id: 0, result: { tools: [] } },
+            headers: { 'mcp-session-id': 'local-session' },
           },
         },
       });
       yield* fixture.server.start;
       const client = yield* createMCPClient({
-        transport: { type: 'http', url, terminateSessionOnClose: false },
+        transport: {
+          type: 'http',
+          url,
+          terminateSessionOnClose: false,
+          onSessionIdChange: (value) =>
+            Deferred.succeed(sessionId, value).pipe(Effect.asVoid),
+        },
         initialInitializeResult: {
           protocolVersion: '2025-11-25',
           capabilities: { tools: {} },
@@ -84,6 +95,7 @@ describe('MCP integration', () => {
         },
       });
       expect((yield* client.listTools()).tools).toEqual([]);
+      expect(yield* Deferred.await(sessionId)).toBe('local-session');
       const calls = yield* fixture.calls;
       const request = calls.find(
         (call) => call.requestMethod === 'POST',
@@ -133,6 +145,38 @@ describe('MCP integration', () => {
       ).toEqual(managedSubscription);
     }),
   );
+
+  it.effect('runs a webhook error callback before returning the response', () =>
+    Effect.gen(function* () {
+      const reported = yield* Ref.make(false);
+      const webhook = experimental_createMCPEventWebhook({
+        store: {
+          get: () => Effect.fail('unavailable'),
+          getById: () => Effect.fail('unused'),
+          set: () => Effect.void,
+          update: () => Effect.void,
+          delete: () => Effect.void,
+        },
+        onEvent: () => Effect.void,
+        onError: () => Ref.set(reported, true),
+      });
+      const response = yield* webhook(
+        new Request(
+          'https://local-mcp.example.test/events?mcp_event_subscription=fixture',
+          {
+            method: 'POST',
+            body: '{}',
+            headers: {
+              'content-type': 'application/json',
+              'x-mcp-subscription-id': 'fixture',
+            },
+          },
+        ),
+      );
+      expect(response.status).toBe(503);
+      expect(yield* Ref.get(reported)).toBe(true);
+    }),
+  );
 });
 
 describe('Just Bash integration', () => {
@@ -148,41 +192,43 @@ describe('Just Bash integration', () => {
 
 describe('Code mode integration', () => {
   for (const mode of ['Effect', 'Stream'] as const) {
-    it.effect(`continues an interruption from a tool that returns ${mode}`, () =>
-      Effect.gen(function* () {
-        const tools = {
-          pause: tool({
-            inputSchema: Schema.Struct({}),
-            execute: (_input, options: CodeModeToolExecutionOptions) => {
-              const result = Effect.gen(function* () {
-                if (!options.codeModeInterrupt) {
-                  return yield* experimental_requestCodeModeInterrupt({
-                    kind: 'fixture',
-                  });
-                }
-                return yield* Schema.decodeUnknownEffect(Schema.String)(
-                  options.codeModeInterrupt.resolution,
-                );
-              });
-              return mode === 'Effect' ? result : Stream.fromEffect(result);
-            },
-          }),
-        };
-        const first = yield* experimental_runCodeMode({
-          js: 'return await tools.pause({})',
-          tools,
-        });
-        const interrupt = experimental_getCodeModeInterrupt(first);
-        expect(interrupt?.payload.kind).toBe('fixture');
-        if (interrupt) {
-          const result = yield* experimental_continueCodeModeInterrupt({
-            interrupt,
-            resolution: 'confirmed',
+    it.effect(
+      `continues an interruption from a tool that returns ${mode}`,
+      () =>
+        Effect.gen(function* () {
+          const tools = {
+            pause: tool({
+              inputSchema: Schema.Struct({}),
+              execute: (_input, options: CodeModeToolExecutionOptions) => {
+                const result = Effect.gen(function* () {
+                  if (!options.codeModeInterrupt) {
+                    return yield* experimental_requestCodeModeInterrupt({
+                      kind: 'fixture',
+                    });
+                  }
+                  return yield* Schema.decodeUnknownEffect(Schema.String)(
+                    options.codeModeInterrupt.resolution,
+                  );
+                });
+                return mode === 'Effect' ? result : Stream.fromEffect(result);
+              },
+            }),
+          };
+          const first = yield* experimental_runCodeMode({
+            js: 'return await tools.pause({})',
             tools,
           });
-          expect(result).toBe('confirmed');
-        }
-      }),
+          const interrupt = experimental_getCodeModeInterrupt(first);
+          expect(interrupt?.payload.kind).toBe('fixture');
+          if (interrupt) {
+            const result = yield* experimental_continueCodeModeInterrupt({
+              interrupt,
+              resolution: 'confirmed',
+              tools,
+            });
+            expect(result).toBe('confirmed');
+          }
+        }),
     );
   }
 });
