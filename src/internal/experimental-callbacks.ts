@@ -60,7 +60,10 @@ const callbackSignal = (args: unknown[]) =>
       arg.abortSignal instanceof AbortSignal,
   )?.abortSignal;
 
-export const bindTelemetry = <R>(telemetry: EffectTelemetry, owner: Owner<R>) => {
+export const bindTelemetry = <R>(
+  telemetry: EffectTelemetry,
+  owner: Owner<R>,
+) => {
   const native = unwrapTelemetry(telemetry);
   if (native) return native;
 
