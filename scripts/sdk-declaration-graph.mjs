@@ -6,9 +6,11 @@ function sourcePath(declaration) {
 
 function hasSdkOrigin(declaration) {
   const path = sourcePath(declaration);
+  if (path.includes('/harness-contracts/just-bash/')) return false;
   return (
     /\/node_modules\/(?:ai|@ai-sdk\/[^/]+)\//u.test(path) ||
     path.endsWith('/integrations/internal/mcp-contract.d.ts') ||
+    path.endsWith('/integrations/internal/code-mode-contract.d.ts') ||
     /\/(?:integrations\/internal\/harness-contracts|internal\/provider-contracts)\/.*\.d\.ts$/u.test(
       path,
     )
@@ -16,8 +18,10 @@ function hasSdkOrigin(declaration) {
 }
 
 function hasWrapperOrigin(declaration) {
-  return sourcePath(declaration).includes(
-    '/node_modules/@jambudipa/ai-effect/',
+  const path = sourcePath(declaration);
+  return (
+    path.includes('/node_modules/@jambudipa/ai-effect/') &&
+    !path.includes('/harness-contracts/just-bash/')
   );
 }
 

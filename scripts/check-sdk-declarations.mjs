@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -21,6 +22,10 @@ assert.ok(
   'Pass --fixture with the external consumer directory',
 );
 const fixture = resolve(values.fixture);
+const packageRoot = join(fixture, 'node_modules/@jambudipa/ai-effect');
+const manifest = JSON.parse(
+  await readFile(join(packageRoot, 'package.json'), 'utf8'),
+);
 const baseline = JSON.parse(
   await readFile(new URL('../docs/sdk-surface.json', import.meta.url), 'utf8'),
 );
@@ -42,8 +47,26 @@ const contexts = {
   'react-server': { mode: ts.ModuleKind.ESNext, flags: ['react-server'] },
 };
 
+function declarationTarget(branch, conditions) {
+  if (typeof branch === 'string') return branch;
+  for (const [condition, value] of Object.entries(branch ?? {})) {
+    if (condition !== 'default' && !conditions.includes(condition)) continue;
+    const target = declarationTarget(value, conditions);
+    if (target) return target;
+  }
+  return undefined;
+}
+
 function resolveDeclarations(context, options, mode) {
   const host = ts.createCompilerHost(options);
+  const conditions = [
+    'types',
+    mode === ts.ModuleKind.CommonJS ? 'require' : 'import',
+    ...(options.moduleResolution === ts.ModuleResolutionKind.NodeNext
+      ? ['node']
+      : []),
+    ...(options.customConditions ?? []),
+  ];
   const probe = join(
     fixture,
     mode === ts.ModuleKind.CommonJS ? 'probe.cts' : 'probe.mts',
@@ -65,6 +88,16 @@ function resolveDeclarations(context, options, mode) {
       file,
       /\.d\.[cm]?ts$/u,
       `${context}: ${specifier} must resolve declarations`,
+    );
+    const target = declarationTarget(
+      manifest.exports[path.wrapper],
+      conditions,
+    );
+    assert.ok(target, `${context}: ${specifier} has no declaration target`);
+    assert.equal(
+      realpathSync(file),
+      realpathSync(join(packageRoot, target)),
+      `${context}: ${specifier} selected the wrong declaration target`,
     );
     return { path, file };
   });
