@@ -72,6 +72,9 @@ function registerSchema<A, R>(binding: Binding<A, R>): Schema<A, R> {
   return schema;
 }
 
+export const fromNativeSchema = <A>(value: sdk.FlexibleSchema<A>): Schema<A> =>
+  registerSchema(() => sdk.asSchema(value));
+
 /** Resolve only inside the scope of the SDK operation that uses the schema. */
 export const bindSchema = <A, R>(
   input: FlexibleSchema<A, R>,
