@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
+  countSignatures,
   findPrivateSdkImports,
   findSdkOperations,
 } from '../scripts/sdk-declaration-graph.mjs';
@@ -36,10 +37,14 @@ function inspect(declarations, dependencies = []) {
     const checker = program.getTypeChecker();
     const source = program.getSourceFile(wrapper);
     const namespace = checker.getSymbolAtLocation(source);
+    const symbols = checker.getExportsOfModule(namespace);
     return {
-      operations: findSdkOperations(
-        checker,
-        checker.getExportsOfModule(namespace),
+      operations: findSdkOperations(checker, symbols),
+      signatures: Object.fromEntries(
+        symbols.map((symbol) => [
+          symbol.name,
+          countSignatures(checker, symbol),
+        ]),
       ),
       privateImports: findPrivateSdkImports(
         program,
@@ -52,6 +57,19 @@ function inspect(declarations, dependencies = []) {
 }
 
 describe('packed declaration graph', () => {
+  it('detects a removed overload behind the same export name', () => {
+    const signature = 'declare function lookup(key: string): string;';
+    const alias = 'export { lookup as read };';
+    const before = inspect(`
+      ${signature}
+      declare function lookup(key: number): string;
+      ${alias}
+    `);
+    const after = inspect(`${signature}\n${alias}`);
+    expect(before.signatures).toEqual({ read: 2 });
+    expect(after.signatures).toEqual({ read: 1 });
+  });
+
   it('uses the output members of an adapter mapped from an SDK type', () => {
     const { operations } = inspect(`
       import type { RawOperation } from 'ai';
