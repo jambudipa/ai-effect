@@ -1,7 +1,12 @@
 import { expect, it } from '@effect/vitest';
-import { Effect, Schema, Stream } from 'effect';
+import { Deferred, Effect, Ref, Schema, Stream } from 'effect';
 import { expectTypeOf } from 'vitest';
-import { HarnessAgent } from '../src/integrations/harness/agent.js';
+import {
+  createHarnessSandboxTemplate,
+  createTraceTreeReporter,
+  HarnessAgent,
+  prepareSandboxForHarness,
+} from '../src/integrations/harness/agent.js';
 import type {
   HarnessV1,
   HarnessV1Session,
@@ -39,7 +44,7 @@ it.effect('binds harness results and releases the local session', () =>
         }) =>
           Effect.runPromise(
             Effect.sync(() => {
-                models = [...models, model ?? ''];
+              models = [...models, model ?? ''];
               emit({ type: 'stream-start' });
               emit({ type: 'text-start', id: 'result' });
               emit({
@@ -84,11 +89,20 @@ it.effect('binds harness results and releases the local session', () =>
 
     const result = yield* Effect.scoped(
       Effect.gen(function* () {
+        const harnessHandle = wrapHarness(harness);
+        const bootstrapCount = yield* Ref.make(0);
+        const traceText = yield* Deferred.make<string>();
+        const reporter = yield* createTraceTreeReporter({
+          write: (chunk) =>
+            Deferred.succeed(traceText, chunk).pipe(Effect.asVoid),
+        });
+        const onBootstrap = () =>
+          Ref.update(bootstrapCount, (count) => count + 1);
         const output = yield* Output.object({
           schema: Schema.Struct({ value: Schema.Number }),
         });
         const agent = yield* HarnessAgent.make({
-          harness: wrapHarness(harness),
+          harness: harnessHandle,
           output,
           runtimeContext: { stage: 'initial' },
           prepareCall: (options) =>
@@ -101,12 +115,15 @@ it.effect('binds harness results and releases the local session', () =>
               };
             }),
           telemetry: {
-            integrations: {
-              onStart: () =>
-                Effect.sync(() => {
-                  traced = true;
-                }),
-            },
+            integrations: [
+              reporter,
+              {
+                onStart: () =>
+                  Effect.sync(() => {
+                    traced = true;
+                  }),
+              },
+            ],
           },
           onStart: (event) =>
             Effect.sync(() => {
@@ -115,11 +132,24 @@ it.effect('binds harness results and releases the local session', () =>
             }),
         });
         const sandboxSession = yield* createJustBashNetworkSandboxSession();
+        yield* prepareSandboxForHarness({
+          session: sandboxSession,
+          harnesses: [harnessHandle],
+          sandboxConfig: { bootstrapHash: 'direct-fixture', onBootstrap },
+        });
+        const template = yield* createHarnessSandboxTemplate({
+          harnesses: [harnessHandle],
+          sandboxConfig: { bootstrapHash: 'template-fixture', onBootstrap },
+        });
+        expect(template).toBeDefined();
+        if (template) yield* template.prepare({ session: sandboxSession });
+        expect(yield* Ref.get(bootstrapCount)).toBe(2);
         const session = yield* agent.createSession({ sandboxSession });
         const response = yield* agent.generate({
           session,
           prompt: 'Return a value.',
         });
+        expect((yield* Deferred.await(traceText)).length).toBeGreaterThan(0);
         const turnOptions = {
           model: 'direct/model',
           skills: [],

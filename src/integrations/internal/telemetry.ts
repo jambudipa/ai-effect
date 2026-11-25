@@ -197,7 +197,7 @@ export const wrapTelemetryEvent = <T>(event: T): TelemetryEvent<T> => {
   return publicEvent as TelemetryEvent<T>;
 };
 
-const unwrapTelemetryEvent = <T>(event: TelemetryEvent<T>): T => {
+export const unwrapTelemetryEvent = <T>(event: TelemetryEvent<T>): T => {
   if (typeof event !== 'object' || !event) return event as T;
 
   const original = nativeEvents.get(event);

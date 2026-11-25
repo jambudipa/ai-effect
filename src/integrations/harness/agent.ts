@@ -1,7 +1,7 @@
 import * as sdk from '@ai-sdk/harness/agent';
 import type { HarnessV1 as NativeHarness } from '../internal/harness-contracts/harness.js';
 import type { GenerateTextResult, OutputInterface, ToolSet } from 'ai';
-import { Effect, Fiber, Ref } from 'effect';
+import { Effect, Fiber, Option, Ref } from 'effect';
 import type { Scope } from 'effect/Scope';
 import {
   bindCoreOptions,
@@ -35,7 +35,11 @@ import {
   wrapSandbox,
 } from '../internal/sandbox.js';
 import { wrapTools } from '../internal/sdk-tool.js';
-import { type EffectTelemetry, wrapTelemetry } from '../internal/telemetry.js';
+import {
+  type EffectTelemetry,
+  unwrapTelemetryEvent,
+  wrapTelemetry,
+} from '../internal/telemetry.js';
 
 export {
   HarnessCapabilityUnsupportedError,
@@ -49,7 +53,6 @@ export type {
   HarnessAgentResumeSessionState,
   HarnessAgentSkill,
   HarnessDiagnostic,
-  TraceTreeReporterOptions,
 } from '@ai-sdk/harness/agent';
 
 type RuntimeContext = Record<string, unknown>;
@@ -864,15 +867,53 @@ export const createFileReporter = (
 
 export type FileReporter = EffectTelemetry & HarnessDiagnosticConsumer;
 
-export const createTraceTreeReporter = (
-  ...args: Parameters<typeof sdk.createTraceTreeReporter>
-) =>
-  runSync('HarnessAgent.createTraceTreeReporter', () =>
-    wrapTelemetry(
-      'HarnessAgent.TraceTreeReporter',
-      sdk.createTraceTreeReporter(...args),
-    ),
-  );
+export interface TraceTreeReporterOptions<E = never, R = never> {
+  readonly write?: (chunk: string) => Effect.Effect<void, E, R>;
+}
+
+export const createTraceTreeReporter = <E = never, R = never>(
+  options?: TraceTreeReporterOptions<E, R>,
+): Effect.Effect<EffectTelemetry, AiSdkError, Scope | R> =>
+  Effect.gen(function* () {
+    const operation = 'HarnessAgent.TraceTreeReporter';
+    const write = options?.write;
+    if (!write) {
+      return yield* runSync(operation, () =>
+        wrapTelemetry(operation, sdk.createTraceTreeReporter()),
+      );
+    }
+    const owner = yield* openOperation<R>();
+    return yield* runSync(operation, (): EffectTelemetry => {
+      let rendered = Option.none<string>();
+      const native = sdk.createTraceTreeReporter({
+        write: (chunk) => {
+          rendered = Option.some(chunk);
+        },
+      });
+      return {
+        ...wrapTelemetry(operation, native),
+        onEnd: (event) =>
+          Effect.gen(function* () {
+            const chunk = yield* runSync(`${operation}.render`, () => {
+              rendered = Option.none();
+              native.onEnd?.(unwrapTelemetryEvent(event));
+              return rendered;
+            });
+            if (Option.isSome(chunk)) {
+              yield* runRequest(
+                `${operation}.write`,
+                { abortSignal: owner.signal },
+                (signal) =>
+                  owner.runCallback(
+                    Effect.suspend(() => write(chunk.value)),
+                    signal,
+                  ),
+              );
+            }
+          }),
+      };
+    });
+  });
 
 export const getHarnessErrorMessage = (
   ...args: Parameters<typeof sdk.getHarnessErrorMessage>
