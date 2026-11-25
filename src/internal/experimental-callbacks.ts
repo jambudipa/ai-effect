@@ -44,7 +44,7 @@ export type ExperimentalOptions<Native, Model, R> = {
     ? Model
     : K extends CallbackName
       ? AdaptCallback<Native[K], R>
-      : K extends 'telemetry'
+      : K extends 'telemetry' | 'experimental_telemetry'
         ? AdaptTelemetry<Native[K]>
         : K extends '_internal' | 'poll'
           ? AdaptSync<Native[K]>
@@ -165,7 +165,7 @@ export const bindExperimentalOptions = <Native, Model, R>(
         ];
 
       if (
-        key === 'telemetry' &&
+        (key === 'telemetry' || key === 'experimental_telemetry') &&
         value &&
         typeof value === 'object' &&
         'integrations' in value
