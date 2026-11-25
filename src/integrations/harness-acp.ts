@@ -8,6 +8,7 @@ import {
   type EffectTools,
   type ToolServices,
 } from '../internal/tool.js';
+import type { HarnessV1MintBridgeTokenCallback } from './harness.js';
 import type { WithEffectCallbacks } from './internal/callbacks.js';
 import {
   type HarnessV1CredentialForwarding,
@@ -121,6 +122,7 @@ export type ACPHarnessSettings<
   | 'askUserQuestions'
   | 'builtinTools'
   | 'credentialForwarding'
+  | 'mintBridgeToken'
   | 'prepareSandbox'
   | 'resolveAuthenticationEnvironment'
 > &
@@ -128,6 +130,8 @@ export type ACPHarnessSettings<
     readonly askUserQuestions?: Q & AskQuestions<R, E>;
     readonly builtinTools?: T;
     readonly credentialForwarding?: HarnessV1CredentialForwarding<R, E>;
+  /** @deprecated The SDK ignores this setting and generates its own bridge keys. */
+  readonly mintBridgeToken?: HarnessV1MintBridgeTokenCallback;
     readonly prepareSandbox?: (
       options: Omit<Parameters<PrepareSandbox>[0], 'sandbox'> & {
         readonly sandbox: SandboxSession;
@@ -264,6 +268,7 @@ export type ACPV1Settings<R = never, E = never> = Omit<
   | keyof SynchronousSettings<R, E>
   | 'askUserQuestions'
   | 'credentialForwarding'
+  | 'mintBridgeToken'
   | 'prepareSandbox'
   | 'resolveAuthenticationEnvironment'
 > &
@@ -272,6 +277,7 @@ export type ACPV1Settings<R = never, E = never> = Omit<
     ACPHarnessSettings<{}, AskQuestions<R, E>, R, E>,
     | 'askUserQuestions'
     | 'credentialForwarding'
+    | 'mintBridgeToken'
     | 'prepareSandbox'
     | 'resolveAuthenticationEnvironment'
   >;
