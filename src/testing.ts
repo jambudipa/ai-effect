@@ -15,7 +15,6 @@ import {
   runSync,
 } from './internal/operation.js';
 import {
-  wrapDecisionModel,
   wrapEmbeddingModel,
   wrapEvaluationModel,
   wrapExtractionModel,
@@ -246,7 +245,7 @@ export const MockVideoModelV4 = <Services = never>(
 export const Experimental_DecisionMockModelV4 = mockModel(
   'Experimental_DecisionMockModelV4',
   sdk.Experimental_DecisionMockModelV4,
-  wrapDecisionModel,
+  wrapEvaluationModel,
 );
 
 export const Experimental_EvaluationMockModelV4 = mockModel(
