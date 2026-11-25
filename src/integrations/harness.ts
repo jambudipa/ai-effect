@@ -83,7 +83,8 @@ export type {
   SandboxTemplate as HarnessV1SandboxTemplate,
 } from './internal/sandbox.js';
 
-export const HARNESS_V1_BUILTIN_TOOL_NAMES = sdk.HARNESS_V1_BUILTIN_TOOL_NAMES;
+export const HARNESS_V1_BUILTIN_TOOL_NAMES: readonly SDKContract.HarnessV1BuiltinToolName[] =
+  [...sdk.HARNESS_V1_BUILTIN_TOOL_NAMES];
 export const HARNESS_V1_BUILTIN_TOOLS = wrapTools(
   'Harness.builtinTools',
   sdk.HARNESS_V1_BUILTIN_TOOLS,
