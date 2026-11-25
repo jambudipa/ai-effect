@@ -20,7 +20,7 @@ export interface StdioConfig {
 /** A scoped standard I/O transport for MCP. */
 export class StdioMCPTransport {
   readonly supportsProtocolVersionDiscovery = true;
-  readonly events: ReturnType<typeof registerTransport>;
+  private readonly registered: ReturnType<typeof registerTransport>;
 
   static make(config: StdioConfig) {
     return runSync('StdioMCPTransport.make', () => {
@@ -30,12 +30,16 @@ export class StdioMCPTransport {
   }
 
   private constructor(private readonly native: SdkStdioTransport) {
-    this.events = registerTransport(this, native, 'StdioMCPTransport');
+    this.registered = registerTransport(this, native, 'StdioMCPTransport');
+  }
+
+  get events() {
+    return this.registered.events;
   }
 
   get start() {
     return Effect.acquireRelease(
-      runRequest('StdioMCPTransport.start', {}, () => this.native.start()),
+      runRequest('StdioMCPTransport.start', {}, this.registered.start),
       () =>
         this.close.pipe(
           Effect.tapError((error) =>

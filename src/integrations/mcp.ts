@@ -649,7 +649,7 @@ export type MCPTransportSendOptions<R = never, E = never> = WithEffectCallbacks<
 
 /** Turn a WebMCP context into a scoped MCP transport. */
 export class Experimental_WebMCPTransport {
-  readonly events: ReturnType<typeof registerTransport>;
+  private readonly registered: ReturnType<typeof registerTransport>;
 
   static make<R = never, E = never>(options: {
     readonly modelContext: Experimental_WebMCPModelContext<R, E>;
@@ -674,12 +674,16 @@ export class Experimental_WebMCPTransport {
   }
 
   private constructor(private readonly native: NativeWebTransport) {
-    this.events = registerTransport(this, native, 'WebMCPTransport');
+    this.registered = registerTransport(this, native, 'WebMCPTransport');
+  }
+
+  get events() {
+    return this.registered.events;
   }
 
   get start() {
     return Effect.acquireRelease(
-      runRequest('WebMCPTransport.start', {}, () => this.native.start()),
+      runRequest('WebMCPTransport.start', {}, this.registered.start),
       () =>
         this.close.pipe(
           Effect.catchTag('AiSdkError', (error) =>

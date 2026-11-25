@@ -1,5 +1,6 @@
 import { expect, it } from '@effect/vitest';
-import { Context, Deferred, Effect } from 'effect';
+import { Context, Deferred, Effect, Ref } from 'effect';
+import { StdioMCPTransport as NativeStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
 import { vi } from 'vitest';
 import {
   createMCPClient,
@@ -13,6 +14,11 @@ class WebObserver extends Context.Service<
   WebObserver,
   Deferred.Deferred<JSONRPCMessage>
 >()('@jambudipa/ai-effect/test/MCPTransportEvents/WebObserver') {}
+
+class CloseObserver extends Context.Service<
+  CloseObserver,
+  Deferred.Deferred<boolean>
+>()('@jambudipa/ai-effect/test/MCPTransportEvents/CloseObserver') {}
 
 it.effect(
   'delivers WebMCP messages and close events alongside the client',
@@ -46,9 +52,15 @@ it.effect(
             Effect.flatMap(WebObserver, (observer) =>
               Deferred.succeed(observer, message),
             ).pipe(Effect.asVoid),
-          onClose: () => Deferred.succeed(closed, true).pipe(Effect.asVoid),
+          onClose: () =>
+            Effect.flatMap(CloseObserver, (observer) =>
+              Deferred.succeed(observer, true),
+            ).pipe(Effect.asVoid),
         })
-        .pipe(Effect.provideService(WebObserver, response));
+        .pipe(
+          Effect.provideService(WebObserver, response),
+          Effect.provideService(CloseObserver, closed),
+        );
       yield* Effect.scoped(
         Effect.gen(function* () {
           const client = yield* createMCPClient({ transport });
@@ -62,6 +74,112 @@ it.effect(
       );
       expect(yield* Deferred.await(closed)).toBe(true);
       expect(removed).not.toHaveBeenCalled();
+    }),
+);
+
+it.effect(
+  'preserves event order within each subscription while one listener waits',
+  () =>
+    Effect.gen(function* () {
+      const started = yield* Deferred.make<boolean>();
+      const release = yield* Deferred.make<boolean>();
+      const otherClosed = yield* Deferred.make<boolean>();
+      const drained = yield* Deferred.make<boolean>();
+      const events = yield* Ref.make<readonly string[]>([]);
+      const record = (event: string) =>
+        Ref.update(events, (items) => [...items, event]);
+      const transport = yield* Experimental_WebMCPTransport.make({
+        modelContext: {
+          getTools: () => Effect.succeed([]),
+          executeTool: () => Effect.succeed('ok'),
+        },
+      });
+      yield* transport.events.subscribe({
+        onMessage: (message) =>
+          Effect.gen(function* () {
+            if ('id' in message && message.id === 1) {
+              yield* Deferred.succeed(started, true);
+              yield* Deferred.await(release);
+              yield* record('first');
+            } else {
+              yield* record('second');
+            }
+          }),
+        onClose: () =>
+          record('close').pipe(
+            Effect.andThen(Deferred.succeed(drained, true)),
+            Effect.asVoid,
+          ),
+      });
+      yield* transport.events.subscribe({
+        onClose: () => Deferred.succeed(otherClosed, true).pipe(Effect.asVoid),
+      });
+      yield* transport.start;
+      yield* transport.send({ jsonrpc: '2.0', id: 1, method: 'ping' });
+      yield* Deferred.await(started);
+      yield* transport.send({ jsonrpc: '2.0', id: 2, method: 'ping' });
+      yield* transport.close;
+      yield* Deferred.await(otherClosed);
+      expect(yield* Ref.get(events)).toEqual([]);
+      yield* Deferred.succeed(release, true);
+      yield* Deferred.await(drained);
+      expect(yield* Ref.get(events)).toEqual(['first', 'second', 'close']);
+    }),
+);
+
+it.effect(
+  'publishes one close when a stdio abort triggers two native callbacks',
+  () =>
+    Effect.gen(function* () {
+      const ready = yield* Deferred.make<boolean>();
+      const drained = yield* Deferred.make<boolean>();
+      const rawClose = vi.fn<() => void>();
+      const published = vi.fn<() => void>();
+      const nativeStart = NativeStdioTransport.prototype.start;
+      yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vi
+            .spyOn(NativeStdioTransport.prototype, 'start')
+            .mockImplementation(function (this: NativeStdioTransport) {
+              const onClose = this.onclose;
+              this.onclose = () => {
+                onClose?.();
+                rawClose();
+                if (rawClose.mock.calls.length === 2) {
+                  this.onmessage?.({ jsonrpc: '2.0', id: 2, result: {} });
+                }
+              };
+              return nativeStart.call(this);
+            }),
+        ),
+        (spy) =>
+          Effect.sync(() => {
+            spy.mockRestore();
+          }),
+      );
+      const transport = yield* StdioMCPTransport.make({
+        command: process.execPath,
+        args: [
+          '-e',
+          `console.log('{"jsonrpc":"2.0","id":1,"result":{}}'); setInterval(() => {}, 1000);`,
+        ],
+        stderr: 'ignore',
+      });
+      yield* transport.events.subscribe({
+        onMessage: (message) =>
+          Deferred.succeed(
+            'id' in message && message.id === 2 ? drained : ready,
+            true,
+          ).pipe(Effect.asVoid),
+        onClose: () => Effect.sync(published),
+      });
+      yield* transport.start;
+      yield* Deferred.await(ready);
+      yield* transport.close;
+      yield* transport.close;
+      yield* Deferred.await(drained);
+      expect(rawClose).toHaveBeenCalledTimes(2);
+      expect(published).toHaveBeenCalledTimes(1);
     }),
 );
 

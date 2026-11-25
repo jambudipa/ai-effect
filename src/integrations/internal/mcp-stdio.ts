@@ -1,9 +1,5 @@
-import { Cause, Effect } from 'effect';
-import {
-  type AiSdkError,
-  openOperation,
-  sdkError,
-} from '../../internal/operation.js';
+import { Cause, Effect, Queue } from 'effect';
+import { type AiSdkError, sdkError } from '../../internal/operation.js';
 import type {
   JSONRPCMessage,
   MCPTransport as NativeTransport,
@@ -11,10 +7,19 @@ import type {
 
 export const transports = new WeakMap<object, NativeTransport>();
 
-export interface MCPTransportListeners<R = never, E = never> {
-  readonly onMessage?: (message: JSONRPCMessage) => Effect.Effect<void, E, R>;
-  readonly onClose?: () => Effect.Effect<void, E, R>;
-  readonly onError?: (error: AiSdkError) => Effect.Effect<void, E, R>;
+export interface MCPTransportListeners<
+  MessageR = never,
+  MessageE = never,
+  CloseR = MessageR,
+  CloseE = MessageE,
+  ErrorR = MessageR,
+  ErrorE = MessageE,
+> {
+  readonly onMessage?: (
+    message: JSONRPCMessage,
+  ) => Effect.Effect<void, MessageE, MessageR>;
+  readonly onClose?: () => Effect.Effect<void, CloseE, CloseR>;
+  readonly onError?: (error: AiSdkError) => Effect.Effect<void, ErrorE, ErrorR>;
 }
 
 export const registerTransport = (
@@ -22,6 +27,11 @@ export const registerTransport = (
   native: NativeTransport,
   operation: string,
 ) => {
+  let started = false;
+  const start = () =>
+    native.start().then(() => {
+      started = true;
+    });
   let listeners: ReadonlyArray<{
     readonly onMessage: (message: JSONRPCMessage) => void;
     readonly onClose: () => void;
@@ -29,7 +39,7 @@ export const registerTransport = (
   }> = [];
   // The SDK client assigns its own handlers. Keep them separate from listeners.
   const transport: NativeTransport = {
-    start: () => native.start(),
+    start,
     send: (message, options) => native.send(message, options),
     close: (options) => native.close(options),
     ...(native.supportsProtocolVersionDiscovery !== undefined && {
@@ -41,6 +51,8 @@ export const registerTransport = (
     for (const entry of listeners) entry.onMessage(message);
   };
   native.onclose = () => {
+    if (!started) return;
+    started = false;
     transport.onclose?.();
     for (const entry of listeners) entry.onClose();
   };
@@ -52,41 +64,71 @@ export const registerTransport = (
   transports.set(key, transport);
 
   return {
-    subscribe: <R = never, E = never>(callbacks: MCPTransportListeners<R, E>) =>
-      Effect.gen(function* () {
-        const owner = yield* openOperation<R>();
-        const notify = (
-          callback: () => Effect.Effect<void, E, R> | undefined,
-        ) => {
-          void owner
-            .runCallback(
-              Effect.suspend(() => callback() ?? Effect.void).pipe(
-                Effect.catchCause((cause) =>
-                  Effect.logWarning(
-                    'MCP transport listener failed',
-                    sdkError(`${operation}.listener`, Cause.squash(cause)),
+    start,
+    events: {
+      subscribe: <
+        MessageR = never,
+        MessageE = never,
+        CloseR = never,
+        CloseE = never,
+        ErrorR = never,
+        ErrorE = never,
+      >(
+        callbacks: MCPTransportListeners<
+          MessageR,
+          MessageE,
+          CloseR,
+          CloseE,
+          ErrorR,
+          ErrorE
+        >,
+      ) =>
+        Effect.gen(function* () {
+          type Notification = Effect.Effect<
+            void,
+            MessageE | CloseE | ErrorE,
+            MessageR | CloseR | ErrorR
+          >;
+          const pending = yield* Queue.unbounded<Notification>();
+          yield* Effect.forkScoped(
+            Effect.forever(
+              Effect.flatMap(Queue.take(pending), (next) =>
+                next.pipe(
+                  Effect.catchCause((cause) =>
+                    Effect.logWarning(
+                      'MCP transport listener failed',
+                      sdkError(`${operation}.listener`, Cause.squash(cause)),
+                    ),
                   ),
                 ),
               ),
-            )
-            .catch(() => {});
-        };
-        const observer = {
-          onMessage: (message: JSONRPCMessage) =>
-            notify(() => callbacks.onMessage?.(message)),
-          onClose: () => notify(() => callbacks.onClose?.()),
-          onError: (error: AiSdkError) =>
-            notify(() => callbacks.onError?.(error)),
-        };
-        yield* Effect.acquireRelease(
-          Effect.sync(() => {
-            listeners = [...listeners, observer];
-          }),
-          () =>
+            ),
+          );
+          const notify = (callback: () => Notification | undefined) => {
+            Queue.offerUnsafe(
+              pending,
+              Effect.suspend(() => callback() ?? Effect.void),
+            );
+          };
+          const observer = {
+            onMessage: (message: JSONRPCMessage) =>
+              notify(() => callbacks.onMessage?.(message)),
+            onClose: () => notify(() => callbacks.onClose?.()),
+            onError: (error: AiSdkError) =>
+              notify(() => callbacks.onError?.(error)),
+          };
+          yield* Effect.acquireRelease(
             Effect.sync(() => {
-              listeners = listeners.filter((listener) => listener !== observer);
+              listeners = [...listeners, observer];
             }),
-        );
-      }),
+            () =>
+              Effect.sync(() => {
+                listeners = listeners.filter(
+                  (listener) => listener !== observer,
+                );
+              }),
+          );
+        }),
+    },
   };
 };
