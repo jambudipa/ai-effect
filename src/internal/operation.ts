@@ -15,14 +15,19 @@ export const sdkError = (operation: string, cause: unknown): AiSdkError => {
       ? (cause as Record<string, unknown>)
       : {};
   const category =
-    typeof error.name === 'string' && /^AI_[a-zA-Z]+Error$/.test(error.name)
+    typeof error.name === 'string' &&
+    (/^AI_[a-zA-Z]+Error$/u.test(error.name) ||
+      /^Gateway(?:AccessPolicyDenied|Authentication|FailedDependency|Forbidden|InternalServer|InvalidRequest|ModelNotFound|NotFound|RateLimit|Response)?Error$/u.test(
+        error.name,
+      ))
       ? error.name
       : 'Error';
   const headers = error.responseHeaders as Record<string, unknown> | undefined;
   const requestId =
     headers?.['x-request-id'] ??
     headers?.['request-id'] ??
-    headers?.['x-cerebras-request-id'];
+    headers?.['x-cerebras-request-id'] ??
+    error.generationId;
   return new AiSdkError({
     operation,
     category,
