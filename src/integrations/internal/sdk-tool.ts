@@ -3,6 +3,7 @@ import type {
   InferToolOutput,
   Tool,
   ToolExecutionOptions,
+  ToolSet,
 } from '@ai-sdk/provider-utils';
 import { Effect, Stream } from 'effect';
 import { runSync, sdkError } from '../../internal/operation.js';
@@ -135,10 +136,14 @@ export const wrapTool = <Input, Output, C>(
   };
 };
 
-type AnyTool = Tool;
-export type WrappedTools<T extends Record<string, AnyTool>> = {
+type ToolShape = object;
+export type WrappedTools<T extends Record<string, ToolShape>> = {
   readonly [K in keyof T]: ReturnType<
-    typeof wrapTool<InferToolInput<T[K]>, InferToolOutput<T[K]>, unknown>
+    typeof wrapTool<
+      InferToolInput<Extract<T[K], Tool>>,
+      InferToolOutput<Extract<T[K], Tool>>,
+      unknown
+    >
   > &
     Pick<
       T[K],
@@ -146,13 +151,23 @@ export type WrappedTools<T extends Record<string, AnyTool>> = {
     >;
 };
 
-export const wrapTools = <T extends Record<string, AnyTool>>(
+const toolSets = new WeakMap<object, ToolSet>();
+
+export const wrapTools = <T extends Record<string, ToolShape>>(
   operation: string,
   tools: T,
-) =>
-  Object.fromEntries(
+) => {
+  const adapted = Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [
       name,
-      wrapTool(`${operation}.${name}`, tool),
+      wrapTool(
+        `${operation}.${name}`,
+        tool as unknown as Tool<unknown, unknown, unknown>,
+      ),
     ]),
-  ) as WrappedTools<T>;
+  ) as unknown as WrappedTools<T>;
+  toolSets.set(adapted, tools as unknown as ToolSet);
+  return adapted;
+};
+
+export const unwrapTools = (tools: object) => toolSets.get(tools);

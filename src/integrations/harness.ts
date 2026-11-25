@@ -406,3 +406,24 @@ export const harnessV1ToolResultPartSchema = wrapSchema(
 export const isHarnessV1BuiltinToolIncluded = (
   ...args: Parameters<typeof sdk.isHarnessV1BuiltinToolIncluded>
 ) => sdk.isHarnessV1BuiltinToolIncluded(...args);
+
+export type {
+  HarnessV1MintBridgeTokenCallback,
+  HarnessV1RequestTransformation,
+  HarnessV1RequestTransformationSources,
+  HarnessV1SandboxSessionResumeOptions,
+} from '@ai-sdk/harness';
+
+export type HarnessV1SandboxProvider = ReturnType<
+  typeof import('./internal/sandbox.js').wrapSandboxProvider
+>;
+
+export type HarnessV1SandboxSessionCreateOptions<
+  T extends object,
+  R = never,
+  E = never,
+> = T & {
+  readonly sandboxId?: string;
+  readonly template?: import('./internal/sandbox.js').SandboxTemplate<R, E>;
+  readonly abortSignal?: AbortSignal;
+};

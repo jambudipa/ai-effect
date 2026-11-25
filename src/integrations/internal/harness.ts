@@ -16,6 +16,7 @@ import {
   type AiSdkError,
   openOperation,
   runRequest,
+  runSync,
   sdkError,
 } from '../../internal/operation.js';
 import { type SandboxSession, unwrapSandbox } from './sandbox.js';
@@ -70,10 +71,10 @@ const bindTurn =
           invoke({
             ...rest,
             abortSignal,
-            emit: (event) => {
+            emit: (event: HarnessV1StreamPart) => {
               if (!owner.signal.aborted) Queue.offerUnsafe(events, event);
             },
-          } as O & { emit: (event: HarnessV1StreamPart) => void }),
+          } as unknown as O & { emit: (event: HarnessV1StreamPart) => void }),
       );
       const drain = yield* Effect.forkScoped(
         Stream.runForEach(Stream.fromQueue(events), emit),
@@ -118,7 +119,7 @@ const bindTurn =
               () => userMessage(text),
             ),
         }),
-        done: Effect.zipRight(Fiber.join(finished), Fiber.join(drain)),
+        done: Effect.andThen(Fiber.join(finished), Fiber.join(drain)),
       };
     });
 
@@ -171,7 +172,16 @@ export type HarnessV1Session = ReturnType<typeof wrapSession>;
 
 const harnesses = new WeakMap<object, NativeHarness>();
 
-export const wrapHarness = <T extends ToolSet>(native: NativeHarness<T>) => {
+type HarnessData<T extends Record<string, object>> = Omit<
+  NativeHarness,
+  'builtinTools'
+> & {
+  readonly builtinTools: T;
+};
+
+export const wrapHarness = <T extends Record<string, object>>(
+  native: HarnessData<T>,
+) => {
   const bootstrap = native.getBootstrap?.bind(native);
   const harness = {
     specificationVersion: native.specificationVersion,
@@ -229,11 +239,11 @@ export const wrapHarness = <T extends ToolSet>(native: NativeHarness<T>) => {
         return wrapSession(session, closed);
       }),
   };
-  harnesses.set(harness, native);
+  harnesses.set(harness, native as unknown as NativeHarness);
   return harness;
 };
 
-export type HarnessV1<T extends ToolSet = ToolSet> = ReturnType<
+export type HarnessV1<T extends Record<string, object> = ToolSet> = ReturnType<
   typeof wrapHarness<T>
 >;
 
@@ -251,28 +261,28 @@ export type WithCredentialForwarding<Settings, R = never, E = never> = Omit<
 };
 
 export const makeWithCredentialForwarding = <
-  Settings,
-  Tools extends ToolSet,
+  Settings extends {
+    readonly credentialForwarding?: NativeCredentialForwarding;
+  },
+  Tools extends Record<string, object>,
   R,
   E,
 >(
-  create: (
-    settings?: Settings & { credentialForwarding?: NativeCredentialForwarding },
-  ) => NativeHarness<Tools>,
-  options?: Settings & {
-    readonly credentialForwarding?: HarnessV1CredentialForwarding<R, E>;
-  },
+  create: (settings?: Settings) => HarnessData<Tools>,
+  options?: WithCredentialForwarding<Settings, R, E>,
 ) =>
   Effect.gen(function* () {
     const owner = yield* openOperation<R>();
     const { credentialForwarding, ...settings } = options ?? {};
-    return wrapHarness(
-      create({
-        ...settings,
-        ...(credentialForwarding && {
-          credentialForwarding: (input) =>
-            owner.runCallback(credentialForwarding(input)),
-        }),
-      } as Settings & { credentialForwarding?: NativeCredentialForwarding }),
+    const nativeOptions = {
+      ...settings,
+      ...(credentialForwarding && {
+        credentialForwarding: (
+          input: Parameters<NativeCredentialForwarding>[0],
+        ) => owner.runCallback(credentialForwarding(input)),
+      }),
+    } as unknown as Settings;
+    return yield* runSync('Harness.make', () =>
+      wrapHarness(create(nativeOptions)),
     );
   });
