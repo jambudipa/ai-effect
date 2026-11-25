@@ -5,7 +5,7 @@ tool, and structured output types. It provides typed failures and cancels
 requests when their fibers or stream scopes close.
 
 ```sh
-npm install @jambudipa/ai-effect ai@^7.0.181 effect@^4.1.5
+npm install @jambudipa/ai-effect effect@^4.1.5
 ```
 
 Use Node.js 22.19 or later from a supported release line. Configure the model
@@ -29,8 +29,37 @@ const program = Effect.gen(function* () {
 const text = await Effect.runPromise(program);
 ```
 
-Use `Output.object({ schema })` from `ai` for structured output.
-The result's `output` field keeps the type of the SDK schema.
+Use an Effect schema with `Output.object`. The result's `output` field
+keeps the schema type.
+
+```ts
+import { generateText, Output } from '@jambudipa/ai-effect/ai';
+import { createCerebras } from '@jambudipa/ai-effect/cerebras';
+import { Effect, Schema } from 'effect';
+
+const program = Effect.gen(function* () {
+  const provider = yield* createCerebras();
+  const model = yield* provider('gpt-oss-120b');
+  const output = yield* Output.object({
+    schema: Schema.Struct({ explanation: Schema.String }),
+  });
+  const result = yield* generateText({
+    model,
+    prompt: 'Explain lexical scope in one sentence.',
+    output,
+  });
+  return result.output.explanation;
+});
+```
+
+| Import path                          | Purpose                                            |
+| ------------------------------------ | -------------------------------------------------- |
+| `@jambudipa/ai-effect/ai`            | Core generation, tools, agents, and output formats |
+| `@jambudipa/ai-effect/ai/test`       | Model and stream fixtures                          |
+| `@jambudipa/ai-effect/cerebras`      | Callable Cerebras provider                         |
+| `@jambudipa/ai-effect/ui-utils`      | Legacy stream utilities                            |
+| `@jambudipa/ai-effect/ui-utils/test` | Legacy Vitest fixtures                             |
+| `@jambudipa/ai-effect/svelte`        | Svelte 5 component adapters                        |
 
 | Method                                          | Return value                    |
 | ----------------------------------------------- | ------------------------------- |
@@ -67,7 +96,8 @@ The wrapper keeps SDK options, including provider options and the caller's
 stream exit aborts the SDK request. A stream that completes normally leaves the
 signal intact.
 
-`AiSdkError` carries the operation name and original cause. Use
+`AiSdkError` carries the operation name, category, and optional HTTP details.
+The cause is a redacted value. Use
 `Effect.catchTag` or `Stream.catchTag` to handle it. An SDK `abort` event
 becomes `AiSdkStreamAborted`. A `tool-error` event remains an event so the SDK
 can pass the error back to the model. Fiber interruption follows Effect's
