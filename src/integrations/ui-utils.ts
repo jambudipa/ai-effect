@@ -156,13 +156,17 @@ const processStream = <
 
 /** Process the ordered AI SDK 4 data stream with a scoped reader. */
 export const processDataStream = <R = never>(options: DataStreamOptions<R>) =>
-  processStream('legacy.processDataStream', sdk.processDataStream, options);
+  processStream<Parameters<typeof sdk.processDataStream>[0], R>(
+    'legacy.processDataStream',
+    sdk.processDataStream,
+    options,
+  );
 
 /** Process the ordered AI SDK 4 assistant stream with a scoped reader. */
 export const processAssistantStream = <R = never>(
   options: AssistantStreamOptions<R>,
 ) =>
-  processStream(
+  processStream<Parameters<typeof sdk.processAssistantStream>[0], R>(
     'legacy.processAssistantStream',
     sdk.processAssistantStream,
     options,
@@ -171,7 +175,12 @@ export const processAssistantStream = <R = never>(
 /** Process the legacy text stream with a scoped reader. */
 export const processTextStream = <R = never>(
   options: StreamInput & { readonly onTextPart: StreamCallback<string, R> },
-) => processStream('legacy.processTextStream', sdk.processTextStream, options);
+) =>
+  processStream<Parameters<typeof sdk.processTextStream>[0], R>(
+    'legacy.processTextStream',
+    sdk.processTextStream,
+    options,
+  );
 
 export type DataStreamPart<Code extends string, Name extends string, Value> = {
   readonly code: Code;
