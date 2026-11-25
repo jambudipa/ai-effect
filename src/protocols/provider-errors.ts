@@ -1,6 +1,7 @@
 import * as sdk from '@ai-sdk/provider';
+import { Redacted } from 'effect';
 import { wrapErrorConstructor } from '../internal/error-constructor.js';
-import type { AiSdkError } from '../internal/operation.js';
+import { type AiSdkError, runSync, sdkError } from '../internal/operation.js';
 
 export const AISDKError = wrapErrorConstructor('AISDKError', sdk.AISDKError);
 export type AISDKError = AiSdkError;
@@ -110,10 +111,25 @@ export const TooManyEmbeddingValuesForCallError = wrapErrorConstructor(
 );
 export type TooManyEmbeddingValuesForCallError = AiSdkError;
 
-export const TypeValidationError = wrapErrorConstructor(
+const typeValidationConstructor = wrapErrorConstructor(
   'TypeValidationError',
   sdk.TypeValidationError,
 );
+export const TypeValidationError = Object.assign(typeValidationConstructor, {
+  wrap: (options: Parameters<typeof sdk.TypeValidationError.wrap>[0]) =>
+    runSync('TypeValidationError.wrap', () => {
+      const { cause } = options;
+      const wrapped = typeValidationConstructor.isInstance(cause);
+      const nativeCause = wrapped ? Redacted.value(cause.cause) : cause;
+      const error = sdk.TypeValidationError.wrap({
+        ...options,
+        cause: nativeCause,
+      });
+      return wrapped && error === nativeCause
+        ? cause
+        : sdkError('TypeValidationError.wrap', error);
+    }),
+});
 export type TypeValidationError = AiSdkError;
 
 export const UnsupportedFunctionalityError = wrapErrorConstructor(
