@@ -108,10 +108,6 @@ for (const item of cases) {
       failures.push(item.specifier + ' resolved to ' + file + ', expected ' + item.expectedFile);
       continue;
     }
-    if (!item.execute) {
-      checked += 1;
-      continue;
-    }
     const visited = new Set();
     const upstreamName = item.upstream.match(/^(@[^/]+\/[^/]+|[^/]+)/u)[0];
     const upstreamManifest = findPackageJSON(upstreamName, pathToFileURL(file));
@@ -194,9 +190,6 @@ for (const [context, { mode, flag }] of Object.entries(contexts)) {
       upstream: path.upstream,
       upstreamTarget,
       reactServer: context === 'react-server',
-      execute:
-        context !== 'node-require' ||
-        path.leaves.some(({ conditions }) => conditions.includes('require')),
       aliasTarget:
         context === 'node-require' && path.upstream === '@ai-sdk/ui-utils/test'
           ? path.resolvers['node-import'].runtime
@@ -230,7 +223,7 @@ for (const [context, { mode, flag }] of Object.entries(contexts)) {
     hostFailures,
   } = JSON.parse(result.stdout.trimEnd().split('\n').at(-1));
   console.log(
-    `${context}: checked ${checked}/${cases.length} resolver cases (${cases.filter(({ execute, expectedTarget }) => execute && expectedTarget).length} runtime loads requested)`,
+    `${context}: checked ${checked}/${cases.length} resolver cases (${cases.filter(({ expectedTarget }) => expectedTarget).length} runtime loads requested)`,
   );
   for (const route of hostFailures) {
     console.log(`${context}: reproduced upstream host load failure ${route}`);
