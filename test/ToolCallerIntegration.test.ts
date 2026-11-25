@@ -3,6 +3,7 @@ import { Context, Deferred, Effect, Fiber, Schema } from 'effect';
 import { expectTypeOf } from 'vitest';
 import { experimental_toolCaller, generateText, tool } from '../src/core.js';
 import type { LanguageModelV4GenerateResult } from '../src/protocols/provider.js';
+import { experimental_getToolCaller } from '../src/protocols/provider-utils.js';
 import { createOpenAI } from '../src/providers/openai.js';
 import { MockLanguageModelV4 } from '../src/testing.js';
 
@@ -12,6 +13,10 @@ class CallerLabel extends Context.Service<CallerLabel, string>()(
 
 class BoundLabel extends Context.Service<BoundLabel, string>()(
   '@jambudipa/ai-effect/tests/ToolCaller/BoundLabel',
+) {}
+
+class MessageLabel extends Context.Service<MessageLabel, string>()(
+  '@jambudipa/ai-effect/tests/ToolCaller/MessageLabel',
 ) {}
 
 const inputSchema = Schema.Struct({}).annotate({
@@ -38,6 +43,10 @@ const callerResponse: LanguageModelV4GenerateResult = {
   ],
   finishReason: { unified: 'tool-calls', raw: void 0 },
 };
+
+it('finds no caller definition on a plain tool', () => {
+  expect(experimental_getToolCaller(tool({ inputSchema }))).toBeUndefined();
+});
 
 it.effect('applies provider caller options and retains the provider tool', () =>
   Effect.gen(function* () {
@@ -104,7 +113,7 @@ it.effect('binds a local caller and adds its Effect model message', () =>
           });
         }),
       prepareModelMessage: (tools) =>
-        Effect.map(CallerLabel, (label) => {
+        Effect.map(MessageLabel, (label) => {
           expect(Object.keys(tools)).toEqual(['target']);
           return `prepared ${label}`;
         }),
@@ -123,16 +132,17 @@ it.effect('binds a local caller and adds its Effect model message', () =>
       experimental_toolCallers: { target: ['caller'] },
     });
     expectTypeOf<Effect.Services<typeof request>>().toEqualTypeOf<
-      CallerLabel | BoundLabel
+      CallerLabel | BoundLabel | MessageLabel
     >();
     const result = yield* request.pipe(
       Effect.provideService(CallerLabel, 'local label'),
       Effect.provideService(BoundLabel, 'bound label'),
+      Effect.provideService(MessageLabel, 'message label'),
     );
     expect(model.doGenerateCalls[0]?.prompt).toContainEqual(
       expect.objectContaining({
         role: 'user',
-        content: [{ type: 'text', text: 'prepared local label' }],
+        content: [{ type: 'text', text: 'prepared message label' }],
       }),
     );
     expect(result.toolResults).toContainEqual(
