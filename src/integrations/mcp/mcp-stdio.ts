@@ -2,7 +2,8 @@ import { StdioMCPTransport as SdkStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
 import type { JSONRPCMessage } from '../internal/mcp-contract.js';
 import { Effect } from 'effect';
 import { runRequest, runSync } from '../../internal/operation.js';
-import { transports } from '../internal/mcp-stdio.js';
+import { registerTransport } from '../internal/mcp-stdio.js';
+export type { MCPTransportListeners } from '../internal/mcp-stdio.js';
 
 import type { IOType } from 'node:child_process';
 import type { Stream } from 'node:stream';
@@ -19,17 +20,18 @@ export interface StdioConfig {
 /** A scoped standard I/O transport for MCP. */
 export class StdioMCPTransport {
   readonly supportsProtocolVersionDiscovery = true;
+  readonly events: ReturnType<typeof registerTransport>;
 
   static make(config: StdioConfig) {
     return runSync('StdioMCPTransport.make', () => {
       const native = new SdkStdioTransport(config);
-      const wrapped = new StdioMCPTransport(native);
-      transports.set(wrapped, native);
-      return wrapped;
+      return new StdioMCPTransport(native);
     });
   }
 
-  private constructor(private readonly native: SdkStdioTransport) {}
+  private constructor(private readonly native: SdkStdioTransport) {
+    this.events = registerTransport(this, native, 'StdioMCPTransport');
+  }
 
   get start() {
     return Effect.acquireRelease(
@@ -55,22 +57,11 @@ export class StdioMCPTransport {
   }
 
   get messages() {
-    const transport = this.native;
     return {
       subscribe: (onMessage: (message: JSONRPCMessage) => void) =>
-        Effect.acquireRelease(
-          Effect.sync(() => {
-            const previous = transport.onmessage;
-            transport.onmessage = onMessage;
-            return previous;
-          }),
-          (previous) =>
-            Effect.sync(() => {
-              if (transport.onmessage !== onMessage) return;
-              if (previous) transport.onmessage = previous;
-              else delete transport.onmessage;
-            }),
-        ),
+        this.events.subscribe({
+          onMessage: (message) => Effect.sync(() => onMessage(message)),
+        }),
     };
   }
 }

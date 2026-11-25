@@ -16,7 +16,7 @@ import {
 import { wrapError } from './internal/error.js';
 import { wrapTool, wrapTools } from './internal/sdk-tool.js';
 import { toSdkSchema } from '../internal/schema.js';
-import { transports } from './internal/mcp-stdio.js';
+import { registerTransport, transports } from './internal/mcp-stdio.js';
 import type { StdioMCPTransport } from './mcp/mcp-stdio.js';
 
 // Use the normalized declarations with the pinned native runtime.
@@ -58,6 +58,7 @@ export type {
   OAuthTokens,
   experimental_MCPClientCapabilities,
 } from './internal/mcp-contract.js';
+export type { MCPTransportListeners } from './internal/mcp-stdio.js';
 
 export const MCP_APP_MIME_TYPE = sdk.MCP_APP_MIME_TYPE;
 export const mcpAppClientCapabilities = structuredClone(
@@ -351,10 +352,17 @@ type StandardConfig<R, E> = MCPClientConfig<R, E> & {
   >;
 };
 
+type BuiltinTransportConfig<R, E> = Omit<StandardConfig<R, E>, 'transport'> & {
+  readonly transport: StdioMCPTransport | Experimental_WebMCPTransport;
+};
+
 /** Own the MCP handshake, callbacks, and client shutdown in the caller's scope. */
 export function createMCPClient<R = never, E = never>(
   config: ManagedConfig<R, E>,
 ): Effect.Effect<Experimental_ManagedMCPClient<R>, AiSdkError, R | Scope.Scope>;
+export function createMCPClient<R = never, E = never>(
+  config: BuiltinTransportConfig<R, E>,
+): Effect.Effect<MCPClient<R>, AiSdkError, R | Scope.Scope>;
 export function createMCPClient<R = never, E = never>(
   config: StandardConfig<R, E>,
 ): Effect.Effect<MCPClient<R>, AiSdkError, R | Scope.Scope>;
@@ -641,6 +649,8 @@ export type MCPTransportSendOptions<R = never, E = never> = WithEffectCallbacks<
 
 /** Turn a WebMCP context into a scoped MCP transport. */
 export class Experimental_WebMCPTransport {
+  readonly events: ReturnType<typeof registerTransport>;
+
   static make<R = never, E = never>(options: {
     readonly modelContext: Experimental_WebMCPModelContext<R, E>;
     readonly fromOrigins?: string[];
@@ -658,14 +668,14 @@ export class Experimental_WebMCPTransport {
           ...options,
           modelContext,
         });
-        const transport = new Experimental_WebMCPTransport(native);
-        transports.set(transport, native);
-        return transport;
+        return new Experimental_WebMCPTransport(native);
       });
     });
   }
 
-  private constructor(private readonly native: NativeWebTransport) {}
+  private constructor(private readonly native: NativeWebTransport) {
+    this.events = registerTransport(this, native, 'WebMCPTransport');
+  }
 
   get start() {
     return Effect.acquireRelease(
