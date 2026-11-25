@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -199,7 +200,7 @@ function cjsNames(source) {
   return [...names].sort();
 }
 
-function declarationNames(files) {
+function describeDeclarations(files) {
   const options = {
     module: ts.ModuleKind.NodeNext,
     types: [],
@@ -221,6 +222,8 @@ function declarationNames(files) {
     );
   const program = ts.createProgram(files, options, host);
   const checker = program.getTypeChecker();
+  const printer = ts.createPrinter({ removeComments: true });
+  const hash = (text) => createHash('sha256').update(text).digest('hex');
   return new Map(
     files.map((file) => {
       const source = program.getSourceFile(file);
@@ -238,12 +241,40 @@ function declarationNames(files) {
         namespace,
         `Declaration does not have an export namespace: ${file}`,
       );
+      const symbols = checker
+        .getExportsOfModule(namespace)
+        .sort((left, right) => (left.name < right.name ? -1 : 1));
+      const signatures = Object.fromEntries(
+        symbols.map((symbol) => {
+          const original =
+            symbol.flags & ts.SymbolFlags.Alias
+              ? checker.getAliasedSymbol(symbol)
+              : symbol;
+          const declarations = original.declarations ?? symbol.declarations;
+          return [
+            symbol.name,
+            hash(
+              (declarations ?? [])
+                .map((node) =>
+                  printer.printNode(
+                    ts.EmitHint.Unspecified,
+                    node,
+                    node.getSourceFile(),
+                  ),
+                )
+                .join('\n'),
+            ),
+          ];
+        }),
+      );
       return [
         file,
-        checker
-          .getExportsOfModule(namespace)
-          .map((symbol) => symbol.name)
-          .sort(),
+        {
+          format: 'declaration',
+          names: symbols.map(({ name }) => name),
+          signatures,
+          declarationHash: hash(printer.printFile(source)),
+        },
       ];
     }),
   );
@@ -287,8 +318,8 @@ async function describeTargets(paths) {
       }
     }
   }
-  for (const [file, exports] of declarationNames([...declarations])) {
-    names.set(file, { format: 'declaration', names: exports });
+  for (const [file, description] of describeDeclarations([...declarations])) {
+    names.set(file, description);
   }
   return paths.map(({ root, type: _type, ...path }) => ({
     ...path,
@@ -370,6 +401,20 @@ function compareBaseline(actual, expected) {
           `Removed: ${removed.join(', ') || 'none'}`,
         ].join('\n'),
       );
+      if (exports.format === 'declaration') {
+        const changed = exports.names.filter(
+          (name) => exports.signatures[name] !== old.signatures?.[name],
+        );
+        assert.ok(
+          !changed.length,
+          `${path.upstream} ${target} declaration drift: ${changed.join(', ')}`,
+        );
+        assert.equal(
+          exports.declarationHash,
+          old.declarationHash,
+          `${path.upstream} ${target} declaration body changed`,
+        );
+      }
     }
     assert.deepEqual(path, previous, `Changed resolution for ${path.upstream}`);
     expectedPaths.delete(path.upstream);
