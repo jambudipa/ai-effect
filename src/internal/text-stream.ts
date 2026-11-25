@@ -243,8 +243,12 @@ export const wrapSingleConsumerTextStream = <
     textStream,
     stream: events(() => sdk.stream),
     fullStream: events(() => sdk.fullStream),
-    partialOutputStream: parts(() => sdk.partialOutputStream),
-    elementStream: parts(() => sdk.elementStream),
+    partialOutputStream: parts(() => sdk.partialOutputStream).pipe(
+      Stream.onEnd(markComplete),
+    ),
+    elementStream: parts(() => sdk.elementStream).pipe(
+      Stream.onEnd(markComplete),
+    ),
     consumeStream: ({ onError } = {}) =>
       Effect.gen(function* () {
         let failure = Option.none<AiSdkError>();
@@ -317,7 +321,7 @@ export const wrapTextStream = <
     experimental_partialOutputStream: streamParts(
       operation,
       () => sdk.experimental_partialOutputStream,
-    ),
+    ).pipe(Stream.onEnd(markComplete)),
     output: read(() => sdk.output),
   };
 };
