@@ -2,6 +2,9 @@ import { describe, expect, it } from '@effect/vitest';
 import { Effect, Ref, Stream } from 'effect';
 import * as v from 'valibot';
 import { toUIMessageStream } from '../src/integrations/llamaindex.js';
+import { createMCPClient } from '../src/integrations/mcp.js';
+import { createTestServer } from '../src/integrations/test-server.js';
+import { createJustBashNetworkSandboxSession } from '../src/integrations/sandbox-just-bash.js';
 import { valibotSchema } from '../src/integrations/valibot.js';
 
 describe('LlamaIndex adapter', () => {
@@ -44,5 +47,49 @@ describe('Valibot adapter', () => {
         expect(failure._tag).toBe('AiSdkError');
         expect(failure.operation).toBe('Valibot.validate');
       }),
+  );
+});
+
+describe('MCP integration', () => {
+  it.effect('uses a scoped HTTP fixture for a JSON-RPC request', () =>
+    Effect.gen(function* () {
+      const url = 'https://local-mcp.example.test/messages';
+      const fixture = yield* createTestServer({
+        [url]: {
+          response: {
+            type: 'json-value',
+            body: { jsonrpc: '2.0', id: 0, result: { tools: [] } },
+          },
+        },
+      });
+      yield* fixture.server.start;
+      const client = yield* createMCPClient({
+        transport: { type: 'http', url, terminateSessionOnClose: false },
+        initialInitializeResult: {
+          protocolVersion: '2025-11-25',
+          capabilities: { tools: {} },
+          serverInfo: { name: 'scoped fixture', version: '1.0' },
+        },
+      });
+      expect((yield* client.listTools()).tools).toEqual([]);
+      const calls = yield* fixture.calls;
+      const request = calls.find(
+        (call) => call.requestMethod === 'POST',
+      )?.requestBodyJson;
+      expect(request).toBeDefined();
+      if (request)
+        expect(yield* request).toMatchObject({ method: 'tools/list' });
+    }),
+  );
+});
+
+describe('Just Bash integration', () => {
+  it.effect('reads the result of a command in a scoped sandbox', () =>
+    Effect.gen(function* () {
+      const sandbox = yield* createJustBashNetworkSandboxSession();
+      const result = yield* sandbox.run({ command: 'printf adapter' });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toBe('adapter');
+    }),
   );
 });
