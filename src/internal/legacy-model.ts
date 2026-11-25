@@ -18,6 +18,23 @@ const metadata = [
 const operations = ['doEmbed', 'doGenerate', 'doRerank', 'doStream'] as const;
 
 type Metadata = (typeof metadata)[number];
+type LimitName = 'maxImagesPerCall' | 'maxVideosPerCall';
+type LimitOptions = { modelId: string };
+type LimitValue = number | undefined;
+type ModelLimit = (
+  options: LimitOptions,
+) => Effect.Effect<LimitValue, AiSdkError>;
+type NativeLimit =
+  | LimitValue
+  | ((options: LimitOptions) => LimitValue | PromiseLike<LimitValue>);
+type LegacyLimits<Native> = (Native extends {
+  readonly maxImagesPerCall: NativeLimit;
+}
+  ? { readonly maxImagesPerCall: ModelLimit }
+  : unknown) &
+  (Native extends { readonly maxVideosPerCall: NativeLimit }
+    ? { readonly maxVideosPerCall: ModelLimit }
+    : unknown);
 type Operation = (typeof operations)[number];
 type Request = { readonly abortSignal?: AbortSignal };
 
@@ -35,18 +52,20 @@ type WrappedMethod<Method> = Method extends (
     : (options: Options) => Effect.Effect<Result, AiSdkError>
   : never;
 
-export type LegacyModel<Native extends Identity> = Pick<
-  Native,
-  keyof Identity
-> & {
-  readonly [
-    Name in keyof Native as Name extends Metadata ? Name : never
-  ]: Effect.Effect<Awaited<Native[Name]>, AiSdkError>;
+export type LegacyModel<Native extends Identity> = {
+  [
+    Name in keyof Native as Name extends keyof Identity ? Name : never
+  ]: Native[Name];
+} & {
+  readonly [Name in Exclude<Metadata, LimitName> & keyof Native]: Effect.Effect<
+    Awaited<Native[Name]>,
+    AiSdkError
+  >;
 } & {
   readonly [
     Name in keyof Native as Name extends Operation ? Name : never
   ]: WrappedMethod<Native[Name]>;
-};
+} & LegacyLimits<Native>;
 
 const nativeModels = new WeakMap<object, Identity>();
 
@@ -63,10 +82,20 @@ export function wrapLegacyModel<Native extends Identity>(
   const wrappedMetadata = Object.fromEntries(
     metadata
       .filter((name) => name in fields)
-      .map((name) => [
-        name,
-        lazyValue(`${namespace}.${name}`, () => fields[name]),
-      ]),
+      .map((name) => {
+        const operation = `${namespace}.${name}`;
+        if (name === 'maxImagesPerCall' || name === 'maxVideosPerCall') {
+          const read = (options: LimitOptions) =>
+            lazyValue(operation, () => {
+              const limit = fields[name] as NativeLimit;
+              return typeof limit === 'function'
+                ? limit.call(native, options)
+                : limit;
+            });
+          return [name, read];
+        }
+        return [name, lazyValue(operation, () => fields[name])];
+      }),
   );
 
   const methods = native as Native &

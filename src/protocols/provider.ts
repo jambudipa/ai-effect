@@ -107,15 +107,25 @@ type MiddlewareArguments<Arguments, Model> = {
 };
 
 type MiddlewareResult<Name, Result, Model, R> = Name extends
-  'overrideProvider' | 'overrideModelId' | 'overrideMaxImagesPerCall'
+  'overrideProvider' | 'overrideModelId'
   ? Result
-  : Name extends 'wrapStream'
-    ? Model extends { doStream: (options: never) => infer StreamResult }
-      ? StreamResult extends Effect.Effect<infer Value, unknown, infer Context>
-        ? Effect.Effect<Value, unknown, R | Context>
+  : Name extends 'overrideMaxImagesPerCall'
+    ? | number
+      | undefined
+      | ((options: {
+          modelId: string;
+        }) => Effect.Effect<number | undefined, unknown, R>)
+    : Name extends 'wrapStream'
+      ? Model extends { doStream: (options: never) => infer StreamResult }
+        ? StreamResult extends Effect.Effect<
+            infer Value,
+            unknown,
+            infer Context
+          >
+          ? Effect.Effect<Value, unknown, R | Context>
+          : never
         : never
-      : never
-    : Effect.Effect<Awaited<Result>, unknown, R>;
+      : Effect.Effect<Awaited<Result>, unknown, R>;
 
 type LegacyMiddleware<Native, Model, R> = {
   [Name in keyof Native]: NonNullable<Native[Name]> extends (
