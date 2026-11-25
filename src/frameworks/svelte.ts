@@ -5,19 +5,22 @@ import {
   createAIContext as sdkCreateAIContext,
   type CompletionOptions as SdkCompletionOptions,
 } from '@ai-sdk/svelte';
-import type { ChatInit, DeepPartial, UIMessage } from 'ai';
+import type { DeepPartial, UIMessage } from 'ai';
 import { Effect, Schema } from 'effect';
 import { onDestroy } from 'svelte';
+import { guardedFetch } from '../internal/fetch.js';
 import {
   abortable,
-  combineSignals,
   runRequest,
   runSync,
   sdkError,
 } from '../internal/operation.js';
 import { toSdkSchema } from '../internal/schema.js';
+import { HostChat, nativeChatOptions, type ChatInit } from './chat.js';
+import { withLifetime } from './lifetime.js';
 
 export type { CreateUIMessage, UIMessage } from 'ai';
+export type { ChatInit } from './chat.js';
 
 /** Create the AI SDK stores for the current component and its children. */
 export function createAIContext(): void {
@@ -43,30 +46,6 @@ const command =
         Effect.onInterrupt(() => Effect.sync(stop)),
       ),
     );
-
-const guardedFetch =
-  (
-    lifetime: AbortSignal,
-    fetcher: typeof globalThis.fetch = globalThis.fetch,
-  ) =>
-  (input: RequestInfo | URL, init?: RequestInit) => {
-    const signal = combineSignals(lifetime, init?.signal ?? undefined);
-    return fetcher(input, { ...init, signal }).then((response) => {
-      if (signal.aborted) {
-        void response.body?.cancel().catch(() => {});
-        signal.throwIfAborted();
-      }
-      if (!response.body) return response;
-      // The caller may provide a fetch implementation that ignores the signal.
-      // A guarded pipe also stops a response that has already begun streaming.
-      const body = response.body.pipeThrough(new TransformStream(), { signal });
-      return new Response(body, {
-        headers: response.headers,
-        status: response.status,
-        statusText: response.statusText,
-      });
-    });
-  };
 
 export type CompletionOptions<Body extends object = object> =
   SdkCompletionOptions<Body>;
@@ -215,102 +194,14 @@ export type Experimental_StructuredObjectOptions<
 > = StructuredObjectOptions<Decoder, Result>;
 
 /** Bind a chat to the current Svelte component. */
-export class Chat<Message extends UIMessage = UIMessage> {
-  readonly #sdk: SdkChat<Message>;
-  readonly #lifetime: AbortSignal;
-
-  constructor(init: ChatInit<Message>) {
-    this.#lifetime = viewLifetime(() => {
-      void this.#sdk.dispose().catch(() => {});
+export class Chat<
+  Message extends UIMessage = UIMessage,
+> extends HostChat<Message> {
+  constructor(options: ChatInit<Message>) {
+    const view = withLifetime(onDestroy, () => {
+      void native.dispose().catch(() => {});
     });
-    const lifetime = this.#lifetime;
-    this.#sdk = new SdkChat({
-      ...init,
-      onError: (error) => {
-        if (!lifetime.aborted) init.onError?.(sdkError('Chat', error));
-      },
-      onToolCall: (event) => {
-        if (!lifetime.aborted) return init.onToolCall?.(event);
-      },
-      onData: (event) => {
-        if (!lifetime.aborted) return init.onData?.(event);
-      },
-      onFinish: (event) => {
-        if (!lifetime.aborted) return init.onFinish?.(event);
-      },
-      sendAutomaticallyWhen: (options) =>
-        !lifetime.aborted && (init.sendAutomaticallyWhen?.(options) ?? false),
-    });
+    const native = new SdkChat<Message>(nativeChatOptions(options, view));
+    super(native, view);
   }
-
-  get id() {
-    return this.#sdk.id;
-  }
-  get status() {
-    return this.#sdk.status;
-  }
-  get error() {
-    const error = this.#sdk.error;
-    return error ? sdkError('Chat', error) : undefined;
-  }
-  get messages() {
-    return this.#sdk.messages;
-  }
-  set messages(messages: Message[]) {
-    this.#sdk.messages = messages;
-  }
-  get lastMessage() {
-    return this.#sdk.lastMessage;
-  }
-  get experimental_queuedMessages() {
-    return this.#sdk.experimental_queuedMessages;
-  }
-
-  #request<A>(name: string, request: () => PromiseLike<A>) {
-    return command(this.#lifetime, () => {
-      void this.#sdk.stop().catch(() => {});
-    })(name, request);
-  }
-
-  readonly generateId = () =>
-    runSync('Chat.generateId', () => this.#sdk.generateId());
-  readonly experimental_removeQueuedMessage = (
-    ...args: Parameters<SdkChat<Message>['experimental_removeQueuedMessage']>
-  ) =>
-    runSync('Chat.experimental_removeQueuedMessage', () =>
-      this.#sdk.experimental_removeQueuedMessage(...args),
-    );
-  readonly experimental_sendQueuedMessageNow = (
-    ...args: Parameters<SdkChat<Message>['experimental_sendQueuedMessageNow']>
-  ) =>
-    this.#request('Chat.experimental_sendQueuedMessageNow', () =>
-      this.#sdk.experimental_sendQueuedMessageNow(...args),
-    );
-  readonly sendMessage = (
-    ...args: Parameters<SdkChat<Message>['sendMessage']>
-  ) => this.#request('Chat.sendMessage', () => this.#sdk.sendMessage(...args));
-  readonly regenerate = (...args: Parameters<SdkChat<Message>['regenerate']>) =>
-    this.#request('Chat.regenerate', () => this.#sdk.regenerate(...args));
-  readonly resumeStream = (
-    ...args: Parameters<SdkChat<Message>['resumeStream']>
-  ) =>
-    this.#request('Chat.resumeStream', () => this.#sdk.resumeStream(...args));
-  readonly clearError = () =>
-    runSync('Chat.clearError', () => this.#sdk.clearError());
-  readonly addToolApprovalResponse = (
-    ...args: Parameters<SdkChat<Message>['addToolApprovalResponse']>
-  ) =>
-    this.#request('Chat.addToolApprovalResponse', () =>
-      Promise.resolve(this.#sdk.addToolApprovalResponse(...args)),
-    );
-  readonly addToolOutput = (
-    ...args: Parameters<SdkChat<Message>['addToolOutput']>
-  ) =>
-    this.#request('Chat.addToolOutput', () =>
-      Promise.resolve(this.#sdk.addToolOutput(...args)),
-    );
-  readonly addToolResult = this.addToolOutput;
-  readonly stop = () => runRequest('Chat.stop', {}, () => this.#sdk.stop());
-  readonly dispose = () =>
-    runRequest('Chat.dispose', {}, () => this.#sdk.dispose());
 }
