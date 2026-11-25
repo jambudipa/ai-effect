@@ -99,6 +99,9 @@ export function getAIState<
   key: Key,
 ): Effect.Effect<Readonly<InferAIState<AI, unknown>[Key]>, AiSdkError>;
 export function getAIState(
+  key: PropertyKey,
+): Effect.Effect<unknown, AiSdkError>;
+export function getAIState(
   key?: PropertyKey,
 ): Effect.Effect<unknown, AiSdkError> {
   return runSync('getAIState', () =>
@@ -115,6 +118,9 @@ export function getMutableAIState<
   AI extends ProviderComponent,
   Key extends keyof AIState<AI> = keyof AIState<AI>,
 >(key: Key): Effect.Effect<MutableAIState<AIState<AI>[Key]>, AiSdkError>;
+export function getMutableAIState(
+  key: PropertyKey,
+): Effect.Effect<MutableAIState<unknown>, AiSdkError>;
 export function getMutableAIState(
   key?: PropertyKey,
 ): Effect.Effect<unknown, AiSdkError> {
