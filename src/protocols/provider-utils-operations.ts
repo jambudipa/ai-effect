@@ -18,6 +18,9 @@ import type {
   EffectToolOptions,
 } from '../internal/tool.js';
 import { toSdkSchema } from '../internal/schema.js';
+import type { FlexibleSchema } from '../core-schema.js';
+import { bindLazySchema } from '../internal/lazy-schema.js';
+import { ownReadable } from '../internal/readable.js';
 import { wrapError } from '../integrations/internal/error.js';
 import { runValue } from '../integrations/internal/operation.js';
 import { fromReadable, ownStream } from '../integrations/internal/stream.js';
@@ -86,11 +89,33 @@ export const downloadBlob = (
     sdk.downloadBlob(url, { ...options, abortSignal }),
   );
 
-export const readResponseWithSizeLimit = (
-  input: Parameters<typeof sdk.readResponseWithSizeLimit>[0],
-) =>
-  runRequest('ProviderUtils.readResponseWithSizeLimit', {}, () =>
-    sdk.readResponseWithSizeLimit(input),
+type ReadResponseOptions = {
+  readonly response: Response;
+  readonly url: string;
+  readonly maxBytes?: number;
+  readonly abortSignal?: AbortSignal;
+  readonly onChunk?: (chunk: Uint8Array) => void;
+};
+
+export const readResponseWithSizeLimit = (input: ReadResponseOptions) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const operation = 'ProviderUtils.readResponseWithSizeLimit';
+      const { response, abortSignal } = input;
+      const body = response.body;
+      const readable = body && (yield* ownReadable(operation, body));
+      const read = runRequest(operation, {}, () =>
+        sdk.readResponseWithSizeLimit({
+          ...input,
+          response: readable
+            ? new Response(readable, { headers: response.headers })
+            : response,
+        }),
+      );
+      return yield* abortSignal
+        ? abortable(operation, abortSignal, read)
+        : read;
+    }),
   );
 
 export const fetchUntrustedUrl = (
@@ -550,12 +575,11 @@ export const createJsonResponseHandler =
     );
 
 export const createJsonErrorResponseHandler =
-  <A, R = never>(
-    options: Omit<
-      Parameters<typeof sdk.createJsonErrorResponseHandler<A>>[0],
-      'errorSchema'
-    > & { readonly errorSchema: Schema.ConstraintDecoder<A, R> },
-  ) =>
+  <A, R = never>(options: {
+    readonly errorSchema: FlexibleSchema<A, R>;
+    readonly errorToMessage: (error: A) => string;
+    readonly isRetryable?: (response: Response, error?: A) => boolean;
+  }) =>
   (input: HandlerInput) =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -564,7 +588,7 @@ export const createJsonErrorResponseHandler =
         const output = yield* handle(name, input, () =>
           sdk.createJsonErrorResponseHandler({
             ...options,
-            errorSchema: toSdkSchema(options.errorSchema, owner),
+            errorSchema: bindLazySchema(options.errorSchema, owner, name),
           }),
         );
         return { ...output, value: sdkError(name, output.value) };
