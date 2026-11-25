@@ -1,0 +1,102 @@
+import assert from 'node:assert/strict';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { format, resolveConfig } from 'prettier';
+import ts from 'typescript';
+import { zodDiscriminatorEdit } from './zod-discriminator-edits.mjs';
+
+const require = createRequire(import.meta.url);
+const root = fileURLToPath(new URL('..', import.meta.url));
+const contracts = 'internal/provider-contracts';
+const sourceDirectory = join(root, 'src', contracts);
+const distDirectory = join(root, 'dist', contracts);
+
+if (process.argv.includes('--copy-to-dist')) {
+  await cp(sourceDirectory, distDirectory, { recursive: true });
+  process.exit(0);
+}
+
+const check = process.argv.includes('--check');
+const write = async (filename, content) => {
+  const file = join(sourceDirectory, filename);
+  if (check) {
+    assert.equal(
+      await readFile(file, 'utf8'),
+      content,
+      `Stale contract: ${file}`,
+    );
+  } else {
+    await mkdir(sourceDirectory, { recursive: true });
+    await writeFile(file, content);
+  }
+};
+const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
+const manifest = await readJson(join(root, 'package.json'));
+const surface = await readJson(join(root, 'docs/sdk-surface.json'));
+const printer = ts.createPrinter({ removeComments: true });
+const replacements = new Map([
+  ['openai', 2],
+  ['heygen', 5],
+]);
+const licenses = new Map();
+
+for (const [provider, expected] of replacements) {
+  const upstream = `@ai-sdk/${provider}`;
+  const installedManifest = require.resolve(`${upstream}/package.json`);
+  const dir = dirname(installedManifest);
+  const { version } = await readJson(installedManifest);
+  assert.equal(
+    version,
+    manifest.dependencies[upstream],
+    `Pin differs for ${upstream}`,
+  );
+  const target = surface.paths.find((entry) => entry.upstream === upstream)
+    .resolvers['node-import'].types;
+  const license = await readFile(join(dir, 'LICENSE'), 'utf8');
+  const licenseFile = licenses.get(license) ?? `${provider}.LICENSE`;
+  licenses.set(license, licenseFile);
+
+  const filename = `${provider}.d.ts`;
+  const text = await readFile(join(dir, target), 'utf8');
+  const parse = (text) =>
+    ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true);
+  const source = parse(text);
+  const edits = [];
+  const visit = (node) => {
+    const edit = zodDiscriminatorEdit(node, source);
+    if (edit) edits.push(edit);
+    node.forEachChild(visit);
+  };
+  visit(source);
+  assert.equal(
+    edits.length,
+    expected,
+    `Zod union count differs for ${upstream}`,
+  );
+  const normalized = edits
+    .sort((left, right) => right[0] - left[0])
+    .reduce(
+      (content, [start, end, replacement]) =>
+        content.slice(0, start) + replacement + content.slice(end),
+      text,
+    );
+  const header = [
+    `// Generated from ${upstream}@${version}. Do not edit.`,
+    `// Original license: ${licenseFile}.`,
+    '// Preserve discriminator literals with the Zod 3.25.76 bridge.',
+    '/* eslint-disable effect/no-zod-use-schema -- Pinned SDK declaration types use Zod. */',
+    '',
+  ].join('\n');
+  const filepath = join(sourceDirectory, filename);
+  await write(
+    filename,
+    await format(header + printer.printFile(parse(normalized)), {
+      ...(await resolveConfig(filepath)),
+      filepath,
+    }),
+  );
+}
+
+for (const [content, filename] of licenses) await write(filename, content);
