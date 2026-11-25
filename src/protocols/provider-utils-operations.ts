@@ -153,74 +153,6 @@ export const fetchWithValidatedEndpoint = (
       }),
   );
 
-export const readWebSocketMessageText = (data: unknown) =>
-  runRequest('ProviderUtils.readWebSocketMessageText', {}, () =>
-    sdk.readWebSocketMessageText(data),
-  );
-
-export const waitForWebSocketBufferDrain = (
-  socket: sdk.WebSocketLike,
-  options?: Parameters<typeof sdk.waitForWebSocketBufferDrain>[1],
-) =>
-  runRequest(
-    'ProviderUtils.waitForWebSocketBufferDrain',
-    options ?? {},
-    (abortSignal) =>
-      sdk.waitForWebSocketBufferDrain(socket, { ...options, abortSignal }),
-  );
-
-export const getWebSocketConstructor = (webSocket?: sdk.WebSocketConstructor) =>
-  runSync('ProviderUtils.getWebSocketConstructor', () => {
-    const Constructor = sdk.getWebSocketConstructor(webSocket);
-    return (
-      url: string | URL,
-      protocols?: string | string[],
-      options?: {
-        headers?: Record<string, string | undefined>;
-      },
-    ) =>
-      runSync(
-        'ProviderUtils.createWebSocket',
-        () => new Constructor(url, protocols, options),
-      );
-  });
-
-type NativeConnectOptions = Parameters<typeof sdk.connectToWebSocket>[0];
-type ConnectOptions<E, R> = Omit<NativeConnectOptions, 'onMessageText'> & {
-  readonly onMessageText: (text: string) => Effect.Effect<void, E, R>;
-};
-
-export const connectToWebSocket = <E = never, R = never>(
-  options: ConnectOptions<E, R>,
-) =>
-  Effect.gen(function* () {
-    const { onMessageText, ...rest } = options;
-    const owner = yield* openOperation<R>(options.abortSignal);
-    const connection = yield* Effect.acquireRelease(
-      runSync('ProviderUtils.connectToWebSocket', () =>
-        sdk.connectToWebSocket({
-          ...rest,
-          abortSignal: owner.signal,
-          onMessageText: (text) => owner.runCallback(onMessageText(text)),
-        }),
-      ),
-      (connection) =>
-        runSync('ProviderUtils.closeWebSocket', () => connection.close()).pipe(
-          Effect.catchTag('AiSdkError', (error) =>
-            Effect.logWarning('WebSocket close failed', error),
-          ),
-        ),
-    );
-    return {
-      socket: runSync(
-        'ProviderUtils.websocket.socket',
-        () => connection.socket,
-      ),
-      close: (code?: number) =>
-        runSync('ProviderUtils.closeWebSocket', () => connection.close(code)),
-    };
-  });
-
 export const convertToFormData = <A extends Record<string, unknown>>(
   value: A,
   options?: Parameters<typeof sdk.convertToFormData<A>>[1],
@@ -1045,14 +977,6 @@ export type IdGenerator = Effect.Success<ReturnType<typeof createIdGenerator>>;
 export type ToolNameMapping = Effect.Success<
   ReturnType<typeof createToolNameMapping>
 >;
-export type WebSocketConnection = Effect.Success<
-  ReturnType<typeof connectToWebSocket>
->;
-export type {
-  WebSocketConstructor,
-  WebSocketLike,
-} from '@ai-sdk/provider-utils';
-
 export type Experimental_SandboxSession =
   import('../integrations/internal/sandbox-base.js').SandboxSession;
 export type Experimental_SandboxProcess =

@@ -105,5 +105,6 @@ export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
         runCallback(effect, {
           signal: combineSignals(signal, callbackSignal),
         }),
+      runCleanup: <A, E>(effect: Effect.Effect<A, E, R>) => runCallback(effect),
     };
   });

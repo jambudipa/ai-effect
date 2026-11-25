@@ -1,5 +1,6 @@
 export * from './provider-utils-simple.js';
 export * from './provider-utils-operations.js';
+export * from './provider-utils-websocket.js';
 export * from '../internal/sdk-data/provider-utils.js';
 export type {
   EffectTools as ToolSet,
