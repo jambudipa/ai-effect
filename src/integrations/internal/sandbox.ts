@@ -48,17 +48,25 @@ export const scopedResource = <A>(
     { interruptible: true },
   );
 
-const wrapProcess = (native: NativeProcess | NativeWritableProcess) => ({
-  pid: native.pid,
-  stdout: ownStream('SandboxProcess.stdout', native.stdout),
-  stderr: ownStream('SandboxProcess.stderr', native.stderr),
-  wait: runRequest('SandboxProcess.wait', {}, () => native.wait()),
-  kill: runRequest('SandboxProcess.kill', {}, () => native.kill()),
-  ...('stdin' in native && { stdin: native.stdin }),
-});
+const processes = new WeakMap<object, NativeProcess>();
 
-type Process = ReturnType<typeof wrapProcess>;
+const wrapProcess = (native: NativeProcess | NativeWritableProcess) => {
+  const process = {
+    pid: native.pid,
+    stdout: ownStream('SandboxProcess.stdout', native.stdout),
+    stderr: ownStream('SandboxProcess.stderr', native.stderr),
+    wait: runRequest('SandboxProcess.wait', {}, () => native.wait()),
+    kill: runRequest('SandboxProcess.kill', {}, () => native.kill()),
+    ...('stdin' in native && { stdin: native.stdin }),
+  };
+  processes.set(process, native);
+  return process;
+};
+
+export type Process = ReturnType<typeof wrapProcess>;
 type WritableProcess = Process & { readonly stdin: WritableStream<Uint8Array> };
+
+export const unwrapProcess = (process: Process) => processes.get(process);
 
 const wrapSpawn = (native: NativeSandbox) => {
   function spawn(
@@ -230,9 +238,14 @@ export type SandboxProviderCreateOptions<R = never, E = never> = Omit<
   ) => Effect.Effect<void, E, R>;
 };
 
+const providers = new WeakMap<object, NativeProvider>();
+
+export const unwrapSandboxProvider = (provider: object) =>
+  providers.get(provider);
+
 export const wrapSandboxProvider = (native: NativeProvider) => {
   const resumeSession = native.resumeSession?.bind(native);
-  return {
+  const provider = {
     specificationVersion: native.specificationVersion,
     providerId: native.providerId,
     createSession: <R = never, E = never>(
@@ -273,6 +286,8 @@ export const wrapSandboxProvider = (native: NativeProvider) => {
         ),
     }),
   };
+  providers.set(provider, native);
+  return provider;
 };
 
 export type SandboxTemplate<R = never, E = never> = {
