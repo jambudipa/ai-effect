@@ -41,7 +41,7 @@ export type ExperimentalOptions<Native, Model, R> = {
       ? AdaptCallback<Native[K], R>
       : K extends 'telemetry'
         ? AdaptTelemetry<Native[K]>
-        : K extends '_internal'
+        : K extends '_internal' | 'poll'
           ? AdaptSync<Native[K]>
           : Native[K];
 };
