@@ -40,9 +40,18 @@ export const WorkflowChatTransport = {
         E,
         R
       >(options, callbacks, owner);
-      return yield* runSync('WorkflowChatTransport.make', () =>
-        wrapChatTransport(new NativeTransport<M>(nativeOptions)),
-      );
+      return yield* runSync('WorkflowChatTransport.make', () => {
+        const native = new NativeTransport<M>(nativeOptions);
+        return wrapChatTransport<M>({
+          sendMessages: ({ messageId, abortSignal, ...rest }) =>
+            native.sendMessages({
+              ...rest,
+              ...(messageId && { messageId }),
+              ...(abortSignal && { abortSignal }),
+            }),
+          reconnectToStream: native.reconnectToStream.bind(native),
+        });
+      });
     }),
 };
 
