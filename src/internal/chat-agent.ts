@@ -14,6 +14,10 @@ import {
 import { Effect, Stream } from 'effect';
 import type { ServerResponse } from 'node:http';
 import type { TimeoutConfiguration } from '../core-data.js';
+import {
+  unwrapSmoothStream,
+  type SmoothStream,
+} from '../core-stream-operations.js';
 import type { ToolLoopAgent } from '../core.js';
 import {
   unwrapSandbox,
@@ -50,6 +54,8 @@ type AgentTransform<Tools extends EffectTools> = (options: {
   TextStreamPart<BoundTools<Tools>>,
   TextStreamPart<BoundTools<Tools>>
 >;
+type Transform<Tools extends EffectTools> =
+  AgentTransform<Tools> | SmoothStream;
 
 export type AgentUIMessageStreamOptions<
   CallOptions,
@@ -81,7 +87,7 @@ export type AgentUIMessageStreamOptions<
   readonly experimental_sandbox?: SandboxSession;
   readonly experimental_steering?: Steering;
   readonly experimental_transform?:
-    AgentTransform<Tools> | readonly AgentTransform<Tools>[];
+    Transform<Tools> | readonly Transform<Tools>[];
   readonly options?: CallOptions;
   readonly onStepEnd?: GenerationStep<Tools, Services>;
   readonly onStepFinish?: GenerationStep<Tools, Services>;
@@ -149,14 +155,22 @@ const openAgentStream = <
           tools: agent.tools,
           stopStream: () => Effect.sync(stopStream),
         });
-    const transforms = experimental_transform
-      ? {
-          experimental_transform:
-            typeof experimental_transform === 'function'
-              ? bindTransform(experimental_transform)
-              : experimental_transform.map(bindTransform),
-        }
-      : {};
+    const transformList = experimental_transform
+      ? Array.isArray(experimental_transform)
+        ? (experimental_transform as readonly Transform<T>[])
+        : [experimental_transform as Transform<T>]
+      : [];
+    const transforms = yield* Effect.forEach(transformList, (transform) =>
+      Effect.gen(function* () {
+        if (typeof transform === 'function') return bindTransform(transform);
+        const smooth = yield* runSync(operation, () =>
+          unwrapSmoothStream<BoundTools<T>>(transform, owner),
+        );
+        return smooth
+          ? smooth
+          : yield* Effect.fail(sdkError(operation, 'Unknown stream transform'));
+      }),
+    );
     const ui = bindUiOptions(operation, owner, {
       ...uiOptions,
       ...(onUIMessageStepEnd ? { onStepEnd: onUIMessageStepEnd } : {}),
@@ -183,7 +197,7 @@ const openAgentStream = <
           ...(timeout === undefined ? {} : { timeout }),
           ...(sandbox ? { experimental_sandbox: sandbox } : {}),
           ...(steering ? { experimental_steering: steering } : {}),
-          ...transforms,
+          ...(transforms.length ? { experimental_transform: transforms } : {}),
           ...(onStepEnd ? { onStepEnd: bindStep('onStepEnd', onStepEnd) } : {}),
           ...(onStepFinish
             ? { onStepFinish: bindStep('onStepFinish', onStepFinish) }

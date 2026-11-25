@@ -28,6 +28,7 @@ import {
   type ChatState,
 } from '../src/core-chat.js';
 import { ToolLoopAgent } from '../src/core.js';
+import { smoothStream } from '../src/core-stream-operations.js';
 import { makeChatTransport } from '../src/internal/chat-transport.js';
 import { wrapLanguageModel } from '../src/internal/language-model.js';
 import { AiSdkError } from '../src/internal/operation.js';
@@ -250,10 +251,12 @@ describe('Core chat', () => {
         delta: 'hello',
       });
 
+      const transform = yield* smoothStream({ delayInMs: 0 });
       const result = yield* Stream.runCollect(
         createAgentUIStream({
           agent: new ToolLoopAgent({ model: createModel() }),
           uiMessages: messages,
+          experimental_transform: transform,
           onUIMessageStepEnd: ({ responseMessage }) =>
             Effect.gen(function* () {
               expect(yield* RequestToken).toBe('agent');
