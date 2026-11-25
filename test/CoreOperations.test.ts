@@ -4,6 +4,7 @@ import type { Scope } from 'effect/Scope';
 import { expectTypeOf } from 'vitest';
 import {
   SerialJobExecutor,
+  ToolLoopAgent,
   defaultSettingsMiddleware,
   generateObject,
   generateText,
@@ -11,6 +12,7 @@ import {
   stepCountIs,
   streamObject,
   streamText,
+  tool,
   wrapLanguageModel,
 } from '../src/core.js';
 import type {
@@ -144,6 +146,46 @@ describe('Core operations', () => {
     }).pipe(Effect.provideService(Temperature, 4)),
   );
 
+  it.effect('validates agent call options inside the generation scope', () =>
+    Effect.gen(function* () {
+      const schema = yield* jsonSchema<{ count: number }, Temperature>(
+        {
+          type: 'object',
+          properties: { count: { type: 'number' } },
+          required: ['count'],
+        },
+        {
+          validate: () =>
+            Temperature.pipe(
+              Effect.map((count) => ({ success: true, value: { count } })),
+            ),
+        },
+      );
+      const model = yield* MockLanguageModelV4({ doGenerate: result('agent') });
+      const agent = new ToolLoopAgent({
+        model,
+        callOptionsSchema: schema,
+        prepareCall: ({ options, ...settings }) =>
+          Effect.succeed({
+            ...settings,
+            instructions: `Count ${options.count}`,
+          }),
+      });
+      const request = agent.generate({
+        prompt: 'Check call options',
+        options: { count: 1 },
+      });
+      expectTypeOf<
+        Effect.Services<typeof request>
+      >().toEqualTypeOf<Temperature>();
+      expect((yield* request).text).toBe('agent');
+      expect(model.doGenerateCalls[0]?.prompt[0]).toMatchObject({
+        role: 'system',
+        content: 'Count 4',
+      });
+    }).pipe(Effect.provideService(Temperature, 4)),
+  );
+
   it.effect('streams through a transform that needs an Effect service', () =>
     Effect.gen(function* () {
       const metadata = result('unused');
@@ -194,12 +236,25 @@ describe('Core operations', () => {
       const model = yield* MockLanguageModelV4({
         doGenerate: result('telemetry'),
       });
-      const request = generateText({ model, prompt: 'Test telemetry' });
+      const probe = tool({
+        inputSchema: Schema.Struct({ count: Schema.Number }).annotate({
+          identifier: 'TelemetryToolInput',
+        }),
+        execute: ({ count }) => Effect.succeed(count),
+      });
+      const request = generateText({
+        model,
+        prompt: 'Test telemetry',
+        tools: { probe },
+      });
       yield* Effect.scoped(
         Effect.gen(function* () {
           yield* registerTelemetry({
-            onStart: () =>
+            onStart: (event) =>
               Effect.sync(() => {
+                expect('tools' in event ? event.tools?.probe : void 0).toBe(
+                  probe,
+                );
                 calls++;
               }),
           });
