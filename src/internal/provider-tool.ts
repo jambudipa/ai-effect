@@ -36,11 +36,11 @@ export interface ProviderToolHandle<Input, Output, Services> {
   };
 }
 
-type AdaptSandboxArgument<Arg> = 'experimental_sandbox' extends keyof Arg
-  ? Omit<Arg, 'experimental_sandbox'> & {
-      experimental_sandbox?: SandboxSession;
-    }
-  : Arg;
+type AdaptSandboxArgument<Arg> = {
+  [Key in keyof Arg]: Key extends 'experimental_sandbox'
+    ? SandboxSession
+    : Arg[Key];
+};
 
 const wrapSandboxArgument = (value: unknown): unknown => {
   if (
@@ -138,22 +138,63 @@ const bindArguments = <Args extends unknown[], R>(
       : options,
   ) as Args;
 
+type Field<Options, Key> = Options extends object
+  ? Key extends keyof Options
+    ? Options[Key]
+    : never
+  : never;
+
+type CallbackEffect<C> = C extends (...args: never[]) => infer A ? A : never;
+
+type EmittedOutput<A> = A extends AsyncIterable<infer Output> ? Output : A;
+
+type ExecutionOutput<Args extends unknown[]> = EmittedOutput<
+  Effect.Success<CallbackEffect<Field<Args[number], 'execute'>>>
+>;
+
+type ToolRequirements<Args extends unknown[]> = Effect.Services<
+  CallbackEffect<Field<Args[number], CallbackName>>
+>;
+
+type ToolOutput<
+  Definition extends NativeProviderTool,
+  Args extends unknown[],
+> = Definition extends { readonly isProviderExecuted: false }
+  ? unknown extends InferToolOutput<Definition>
+    ? [ExecutionOutput<Args>] extends [never]
+      ? InferToolOutput<Definition>
+      : ExecutionOutput<Args>
+    : InferToolOutput<Definition>
+  : InferToolOutput<Definition>;
+
+type AdaptedTool<Args extends unknown[], Tool extends NativeProviderTool> = <
+  Provided extends AdaptArguments<Args, unknown>,
+>(
+  ...args: Provided
+) => Effect.Effect<
+  ProviderToolHandle<
+    InferToolInput<Tool>,
+    ToolOutput<Tool, Provided>,
+    ToolRequirements<Provided>
+  >,
+  import('./operation.js').AiSdkError
+>;
 export const adaptProviderTool =
   <Args extends unknown[], Result extends NativeProviderTool>(
     operation: string,
     factory: (...args: Args) => Result,
   ) =>
-  <R>(...args: AdaptArguments<Args, R>) =>
+  <Provided extends AdaptArguments<Args, unknown>>(...args: Provided) =>
     runSync(
       operation,
       (): ProviderToolHandle<
         InferToolInput<Result>,
-        InferToolOutput<Result>,
-        R
+        ToolOutput<Result, Provided>,
+        ToolRequirements<Provided>
       > => {
         // Factories read options while building their descriptors. They do not
         // execute user callbacks. Bind those callbacks to the owner for each run.
-        const preview = factory(...(args as Args));
+        const preview = factory(...(args as unknown as Args));
         const {
           type,
           id,
@@ -171,23 +212,66 @@ export const adaptProviderTool =
             : {}),
         };
         providerTools.set(handle, (owner) =>
-          factory(...bindArguments<Args, R>(args, owner as Owner<R>)),
+          factory(
+            ...bindArguments<Args, ToolRequirements<Provided>>(
+              args as AdaptArguments<Args, ToolRequirements<Provided>>,
+              owner as Owner<ToolRequirements<Provided>>,
+            ),
+          ),
         );
         return handle;
       },
     );
 
+type BashToolName = 'bash_20241022' | 'bash_20250124';
+type BashInput = { command: string; restart?: boolean };
+type DefaultBashOutput = Pick<
+  Effect.Success<ReturnType<SandboxSession['run']>>,
+  'exitCode' | 'stdout' | 'stderr'
+>;
+type BashCallbacks<Output, R> = AdaptOptions<
+  Pick<Tool<BashInput, Output, {}>, Exclude<CallbackName, 'execute'>>,
+  R
+>;
+type AdaptSandboxArguments<Args extends unknown[]> = {
+  [Key in keyof Args]: AdaptSandboxArgument<Args[Key]>;
+};
+type BashExecution<R, Output> = (
+  ...args: AdaptSandboxArguments<BashExecutionArgs>
+) => Effect.Effect<Output | AsyncIterable<Output>, unknown, R>;
+type BashExecutionArgs = Parameters<
+  NonNullable<Tool<BashInput, unknown, {}>['execute']>
+>;
+
+interface AdaptedBashTool {
+  <R = never>(
+    options?: BashCallbacks<DefaultBashOutput, R> & { execute?: undefined },
+  ): Effect.Effect<
+    ProviderToolHandle<BashInput, DefaultBashOutput, R>,
+    import('./operation.js').AiSdkError
+  >;
+  <Output = never, R = never>(
+    options: BashCallbacks<Output, R> & { execute: null },
+  ): Effect.Effect<
+    ProviderToolHandle<BashInput, Output, R>,
+    import('./operation.js').AiSdkError
+  >;
+  <Output, R = never>(
+    options: BashCallbacks<Output, R> & { execute: BashExecution<R, Output> },
+  ): Effect.Effect<
+    ProviderToolHandle<BashInput, Output, R>,
+    import('./operation.js').AiSdkError
+  >;
+}
+
 export type AdaptedTools<Tools> = {
-  [Name in keyof Tools]: Tools[Name] extends (...args: infer Args) => infer Tool
-    ? Tool extends NativeProviderTool
-      ? <R>(
-          ...args: AdaptArguments<Args, R>
-        ) => Effect.Effect<
-          ProviderToolHandle<InferToolInput<Tool>, InferToolOutput<Tool>, R>,
-          import('./operation.js').AiSdkError
-        >
-      : never
-    : never;
+  [Name in keyof Tools]: Name extends BashToolName
+    ? AdaptedBashTool
+    : Tools[Name] extends (...args: infer Args) => infer Tool
+      ? Tool extends NativeProviderTool
+        ? AdaptedTool<Args, Tool>
+        : never
+      : never;
 };
 
 type ToolFactories = Readonly<
