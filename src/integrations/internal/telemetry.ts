@@ -3,9 +3,10 @@ import { Effect } from 'effect';
 import type { ToolSet as NativeTools } from '@ai-sdk/provider-utils';
 import type { EffectTools } from '../../internal/tool.js';
 import {
-  type AiSdkError,
+  AiSdkError,
   openOperation,
   runRequest,
+  sdkError,
 } from '../../internal/operation.js';
 import { unwrapOutput, wrapOutput } from '../../internal/output.js';
 import type { OutputSpecification } from '../../internal/output.js';
@@ -71,7 +72,9 @@ export type TelemetryEvent<T> = T extends object
           ? WrappedIntegrations<T[K]>
           : K extends 'tools'
             ? WrappedTools<T[K]>
-            : T[K];
+            : K extends 'error'
+              ? AiSdkError | undefined
+              : T[K];
     }
   : T;
 
@@ -161,16 +164,31 @@ export const rememberTelemetry = (
   return native;
 };
 
-export const wrapTelemetryEvent = <T>(event: T): TelemetryEvent<T> => {
+export const wrapTelemetryEvent = <T>(
+  event: T,
+  operation = 'Telemetry.callback',
+): TelemetryEvent<T> => {
   if (typeof event !== 'object' || !event) return event as TelemetryEvent<T>;
 
-  const { output, integrations, tools } = event as {
+  const { chunk, error, output, integrations, tools } = event as {
+    readonly chunk?: unknown;
+    readonly error?: unknown;
     readonly output?: unknown;
     readonly integrations?: unknown;
     readonly tools?: unknown;
   };
-  if (!output && !integrations && !tools) return event as TelemetryEvent<T>;
+  const hasChunkError = chunk && typeof chunk === 'object' && 'error' in chunk;
+  if (
+    !output &&
+    !integrations &&
+    !tools &&
+    error === undefined &&
+    !hasChunkError
+  )
+    return event as TelemetryEvent<T>;
 
+  const redact = (cause: unknown) =>
+    cause instanceof AiSdkError ? cause : sdkError(operation, cause);
   const publicOutput =
     output &&
     typeof output === 'object' &&
@@ -183,6 +201,10 @@ export const wrapTelemetryEvent = <T>(event: T): TelemetryEvent<T> => {
     wrapTelemetry('Telemetry.integration', integration);
   const publicEvent = {
     ...event,
+    ...(error === undefined ? {} : { error: redact(error) }),
+    ...(hasChunkError
+      ? { chunk: { ...chunk, error: redact(chunk.error) } }
+      : {}),
     ...(tools ? { tools: wrapTelemetryTools(tools) } : {}),
     ...(output ? { output: publicOutput } : {}),
     ...(integrations

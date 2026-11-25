@@ -12,7 +12,13 @@ import {
 import { createServer, type RequestListener } from 'node:http';
 import { inspect } from 'node:util';
 import { expectTypeOf } from 'vitest';
-import { generateText, Output, ToolLoopAgent, tool } from '../src/core.js';
+import {
+  generateText,
+  Output,
+  streamText,
+  ToolLoopAgent,
+  tool,
+} from '../src/core.js';
 import {
   asSchema,
   callCompletionApi,
@@ -20,7 +26,11 @@ import {
   jsonSchema,
   processDataStream,
 } from '../src/integrations/ui-utils.js';
-import { openOperation, sdkError } from '../src/internal/operation.js';
+import {
+  AiSdkError,
+  openOperation,
+  sdkError,
+} from '../src/internal/operation.js';
 import { wrapLanguageModel } from '../src/internal/language-model.js';
 import { cerebras, createCerebras } from '../src/providers/cerebras.js';
 
@@ -120,6 +130,25 @@ describe('Cerebras', () => {
           [String(error), inspect(error), JSON.stringify(error)].join(' '),
         ).not.toContain(secret);
         expect(inspect(Redacted.value(error.cause))).toContain(secret);
+        const reported = yield* Deferred.make<AiSdkError | undefined>();
+        const stream = yield* streamText({
+          model,
+          prompt: 'Hello',
+          maxRetries: 0,
+          onError: ({ error }) =>
+            Deferred.succeed(reported, error).pipe(Effect.asVoid),
+        });
+        yield* Effect.exit(Stream.runDrain(stream.fullStream));
+        const streamError = yield* Deferred.await(reported);
+        expect(streamError).toBeInstanceOf(AiSdkError);
+        expect(streamError).toMatchObject({
+          category: 'AI_APICallError',
+          status: 401,
+          requestId: 'fixture-401',
+        });
+        expect(
+          [inspect(streamError), JSON.stringify(streamError)].join(' '),
+        ).not.toContain(secret);
         const unsupported = yield* Effect.flip(
           provider.textEmbeddingModel('unknown'),
         );

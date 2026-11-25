@@ -55,7 +55,9 @@ export type CoreEvent<
                 ? PublicTools<Event[K], Tools>
                 : K extends 'inputSchema'
                   ? PublicInputSchema<Event[K]>
-                  : Event[K];
+                  : K extends 'error'
+                    ? AiSdkError | undefined
+                    : Event[K];
       }
     : Event;
 
@@ -214,7 +216,7 @@ export function modelForSdk(model: LanguageModel) {
 
 function publicEvent(event: unknown, tools: object | undefined) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) return event;
-  const exposed = wrapTelemetryEvent(event);
+  const exposed = wrapTelemetryEvent(event, 'Core.callback');
   const { model, experimental_sandbox, inputSchema, ...data } = exposed as {
     readonly model?: sdk.LanguageModel;
     readonly tools?: object;
