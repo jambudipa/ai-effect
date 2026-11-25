@@ -1,3 +1,4 @@
+import { jsonSchema as nativeJsonSchema } from '@ai-sdk/provider-utils';
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Ref, Schema, Stream } from 'effect';
 import * as v from 'valibot';
@@ -11,6 +12,7 @@ import {
 import { tool } from '../src/internal/tool.js';
 import { createCodex } from '../src/integrations/harness-codex.js';
 import { harnessV1BridgeReadySchema } from '../src/integrations/harness.js';
+import { wrapSchema } from '../src/integrations/internal/schema.js';
 import { toUIMessageStream } from '../src/integrations/llamaindex.js';
 import { createMCPClient } from '../src/integrations/mcp.js';
 import { createTestServer } from '../src/integrations/test-server.js';
@@ -182,6 +184,16 @@ describe('Code mode integration', () => {
 });
 
 describe('Harness declaration boundary', () => {
+  it.effect('passes through the input of a schema without a validator', () =>
+    Effect.gen(function* () {
+      const schema = wrapSchema(
+        'Harness.schema',
+        nativeJsonSchema<number>({ type: 'number' }),
+      );
+      expect(yield* schema.validate(7)).toBe(7);
+    }),
+  );
+
   it.effect('retains the harness identity and validates a bridge frame', () =>
     Effect.gen(function* () {
       const harness = yield* createCodex();

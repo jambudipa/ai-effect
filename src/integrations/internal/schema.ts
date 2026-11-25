@@ -11,11 +11,16 @@ export const wrapSchema = <A>(
 ) => ({
   jsonSchema: runValue(operation, () => asSchema(source).jsonSchema),
   validate: (input: unknown) =>
-    runValue(operation, () => asSchema(source).validate?.(input)).pipe(
+    runValue(operation, () => {
+      const schema = asSchema(source);
+      return schema.validate
+        ? schema.validate(input)
+        : { success: true as const, value: input as A };
+    }).pipe(
       Effect.flatMap((result) =>
-        result?.success
+        result.success
           ? Effect.succeed(result.value)
-          : Effect.fail(sdkError(operation, result?.error)),
+          : Effect.fail(sdkError(operation, result.error)),
       ),
     ),
 });
