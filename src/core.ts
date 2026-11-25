@@ -26,6 +26,7 @@ import {
   type LanguageModelV4,
 } from './internal/language-model.js';
 import { unwrapLegacyModel } from './internal/legacy-model.js';
+import { registerNativeAgent } from './internal/native-agent.js';
 import { openOperation, runRequest, runSync } from './internal/operation.js';
 import { unwrapOutput, type OutputSpecification } from './internal/output.js';
 import { wrapTextStream } from './internal/text-stream.js';
@@ -196,6 +197,9 @@ export class ToolLoopAgent<
 
   constructor(settings: AgentSettings<C, T, R, A, P, I>) {
     this.#settings = settings;
+    registerNativeAgent(this, (owner: Owner<ToolServices<T>>) =>
+      this.#agent(owner),
+    );
   }
 
   get id() {
