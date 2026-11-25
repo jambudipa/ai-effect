@@ -122,7 +122,7 @@ const fixture = Effect.gen(function* () {
   );
 });
 
-const program = fixture.pipe(Effect.provideService(Offset, 2));
+const program = fixture.pipe(Effect.provideService(Offset, 2), Effect.scoped);
 await Effect.runPromise(program);
 
 let requests = 0;
