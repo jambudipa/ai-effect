@@ -71,7 +71,7 @@ export const isProviderFacade = (value: object): value is ProviderFacade => {
   return Boolean(token && facades.has(token));
 };
 
-const rememberFacade = <Provider extends ProviderFacade>(
+export const rememberProviderFacade = <Provider extends ProviderFacade>(
   provider: Provider,
 ): Provider => {
   const token = {};
@@ -308,7 +308,7 @@ export const wrapLegacyProvider = <R>(
     skills: unavailableResource(),
     ...(retainExtensions ? adaptExtensions(provider, owner) : {}),
   };
-  return rememberFacade(wrapped);
+  return rememberProviderFacade(wrapped);
 };
 
 export const applyProviderMiddleware = (
@@ -373,5 +373,5 @@ export const applyProviderMiddleware = (
     files: provider.files,
     skills: provider.skills,
   };
-  return rememberFacade(wrapped);
+  return rememberProviderFacade(wrapped);
 };

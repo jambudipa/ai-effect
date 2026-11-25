@@ -37,6 +37,7 @@ import {
   isProviderFacade,
   type LegacyProvider,
   type ProviderFacade,
+  rememberProviderFacade,
   wrapLegacyProvider,
 } from './internal/legacy-provider.js';
 import { openOperation, runSync, sdkError } from './internal/operation.js';
@@ -132,6 +133,7 @@ const requireProvider = (provider: RegisteredProvider, operation: string) =>
         );
   });
 
+type FallbackProvider = RegisteredProvider | LegacyProvider<unknown>;
 type CustomProviderOptions = {
   readonly languageModels?: Readonly<Record<string, LanguageModel>>;
   readonly embeddingModels?: Readonly<Record<string, EmbeddingModel>>;
@@ -149,7 +151,7 @@ type CustomProviderOptions = {
   readonly extractionModels?: Readonly<
     Record<string, Experimental_ExtractionModel>
   >;
-  readonly fallbackProvider?: RegisteredProvider;
+  readonly fallbackProvider?: FallbackProvider;
   readonly files?: FilesV4Handle;
   readonly skills?: SkillsV4Handle;
 };
@@ -161,6 +163,14 @@ type DecisionIdentifiers<Options> = 'decisionModels' extends keyof Options
   ? ModelIdentifiers<Options, 'decisionModels'>
   : ModelIdentifiers<Options, 'evaluationModels'>;
 type ModelCall<Id, Model> = (modelId: Id) => Effect.Effect<Model, AiSdkError>;
+type Fallback<Options> = Options extends {
+  readonly fallbackProvider?: infer Provider;
+}
+  ? Extract<Provider, LegacyProvider<unknown>>
+  : never;
+type CustomProviderScope<Options> = [Fallback<Options>] extends [never]
+  ? never
+  : Scope.Scope | ProviderServices<Fallback<Options>, RegistryMethods>;
 type CustomApi<Options, Key extends 'files' | 'skills', Value> =
   Options extends Record<Key, Value>
     ? () => Effect.Effect<Value, AiSdkError>
@@ -292,9 +302,101 @@ const wrapCustomProvider = <Options extends CustomProviderOptions>(
     ),
   }) as unknown as CustomProvider<Options>;
 
-export const customProvider = <const Options extends CustomProviderOptions>(
+type UserModels = Pick<
+  CustomProviderOptions,
+  | 'languageModels'
+  | 'embeddingModels'
+  | 'imageModels'
+  | 'transcriptionModels'
+  | 'speechModels'
+  | 'rerankingModels'
+  | 'videoModels'
+  | 'decisionModels'
+  | 'extractionModels'
+>;
+
+const withFallback = (
+  provider: CustomProvider<CustomProviderOptions>,
+  fallback: ProviderFacade,
+  models: {
+    readonly [Key in keyof UserModels]: Readonly<Record<string, unknown>>;
+  },
+) => {
+  const select =
+    <Model>(
+      local: Readonly<Record<string, unknown>> | undefined,
+      own: ModelCall<string, Model>,
+      other?: ModelCall<string, Model>,
+    ): ModelCall<string, Model> =>
+    (id) =>
+      Effect.suspend(() =>
+        other && !(local && Object.hasOwn(local, id)) ? other(id) : own(id),
+      );
+
+  return rememberProviderFacade({
+    ...provider,
+    languageModel: select(
+      models.languageModels,
+      provider.languageModel,
+      fallback.languageModel,
+    ),
+    embeddingModel: select(
+      models.embeddingModels,
+      provider.embeddingModel,
+      fallback.embeddingModel,
+    ),
+    imageModel: select(
+      models.imageModels,
+      provider.imageModel,
+      fallback.imageModel,
+    ),
+    transcriptionModel: select(
+      models.transcriptionModels,
+      provider.transcriptionModel,
+      fallback.transcriptionModel,
+    ),
+    speechModel: select(
+      models.speechModels,
+      provider.speechModel,
+      fallback.speechModel,
+    ),
+    rerankingModel: select(
+      models.rerankingModels,
+      provider.rerankingModel,
+      fallback.rerankingModel,
+    ),
+    videoModel: select(
+      models.videoModels,
+      provider.videoModel,
+      fallback.videoModel,
+    ),
+    decisionModel: select(
+      models.decisionModels,
+      provider.decisionModel,
+      fallback.decisionModel,
+    ),
+    evaluationModel: select(
+      models.decisionModels,
+      provider.evaluationModel,
+      fallback.evaluationModel,
+    ),
+    extractionModel: select(
+      models.extractionModels,
+      provider.extractionModel,
+      fallback.extractionModel,
+    ),
+    files: provider.files ?? fallback.files,
+    skills: provider.skills ?? fallback.skills,
+  });
+};
+
+const makeCustomProvider = <const Options extends CustomProviderOptions>(
   options: Options,
-): Effect.Effect<CustomProvider<Options>, AiSdkError> =>
+): Effect.Effect<
+  CustomProvider<Options>,
+  AiSdkError,
+  Scope.Scope | ProviderServices<Fallback<Options>, RegistryMethods>
+> =>
   Effect.gen(function* () {
     const languageModels = yield* modelMap<
       Exclude<LanguageModel, string>,
@@ -357,30 +459,74 @@ export const customProvider = <const Options extends CustomProviderOptions>(
     );
     const files = yield* optionalResource(options.files, unwrapFiles);
     const skills = yield* optionalResource(options.skills, unwrapSkills);
-    const fallbackProvider =
-      options.fallbackProvider &&
-      (yield* requireProvider(options.fallbackProvider, 'customProvider'));
+    let facade: ProviderFacade | undefined;
+    let fallbackProvider: ProviderV4 | undefined;
+    const configured = options.fallbackProvider;
+    if (configured) {
+      if (isProviderFacade(configured)) {
+        facade = configured;
+      } else if (
+        !('specificationVersion' in configured) ||
+        configured.specificationVersion === 'v3'
+      ) {
+        type Services = ProviderServices<Fallback<Options>, RegistryMethods>;
+        const owner = yield* openOperation<Services>();
+        facade = yield* runSync('customProvider', () =>
+          wrapLegacyProvider(
+            configured as LegacyProvider<Services>,
+            owner,
+            true,
+          ),
+        );
+      } else {
+        fallbackProvider = yield* requireProvider(configured, 'customProvider');
+      }
+    }
 
-    return yield* runSync('customProvider', () =>
-      wrapCustomProvider<Options>(
+    const models = {
+      languageModels,
+      embeddingModels,
+      imageModels,
+      transcriptionModels,
+      speechModels,
+      rerankingModels,
+      videoModels,
+      extractionModels,
+    };
+    return yield* runSync('customProvider', () => {
+      const provider = wrapCustomProvider<CustomProviderOptions>(
         sdk.customProvider({
-          languageModels,
-          embeddingModels,
-          imageModels,
-          transcriptionModels,
-          speechModels,
-          rerankingModels,
-          videoModels,
+          ...models,
           ...(options.decisionModels ? { decisionModels } : {}),
           ...(options.evaluationModels ? { evaluationModels } : {}),
-          extractionModels,
           ...(files ? { files } : {}),
           ...(skills ? { skills } : {}),
           ...(fallbackProvider ? { fallbackProvider } : {}),
         }),
-      ),
-    );
+      );
+      return (
+        facade
+          ? withFallback(provider, facade, {
+              ...models,
+              decisionModels: options.decisionModels
+                ? decisionModels
+                : evaluationModels,
+            })
+          : provider
+      ) as CustomProvider<Options>;
+    });
   });
+
+interface CustomProviderFactory {
+  <const Options extends CustomProviderOptions>(
+    options: Options,
+  ): Effect.Effect<
+    CustomProvider<Options>,
+    AiSdkError,
+    CustomProviderScope<Options>
+  >;
+}
+export const customProvider = makeCustomProvider as CustomProviderFactory;
 
 type Names<Providers> = Extract<keyof Providers, string>;
 type LiteralModelId<Id> = Id extends string
@@ -519,6 +665,19 @@ const wrapRegistry = <Providers extends ProviderMap, Separator extends string>(
   separator: string,
 ): Experimental_ExtractionProviderRegistry<Providers, Separator> => {
   const route = registryRoutes(facades, separator);
+  const resource =
+    <Id extends string, Model>(
+      native: ModelCall<Id, Model>,
+      select: (
+        provider: ProviderFacade,
+      ) => (() => Effect.Effect<Model, AiSdkError>) | undefined,
+    ): ModelCall<Id, Model> =>
+    (id) =>
+      Effect.suspend(() => {
+        const facade = Option.getOrUndefined(HashMap.get(facades, id));
+        const read = facade && select(facade);
+        return read ? read() : native(id);
+      });
   return {
     languageModel: route(
       adaptMethod(
@@ -576,15 +735,21 @@ const wrapRegistry = <Providers extends ProviderMap, Separator extends string>(
       ),
       (provider) => provider.videoModel,
     ),
-    files: adaptMethod(
-      'ProviderRegistry.files',
-      native.files.bind(native),
-      wrapFiles,
+    files: resource(
+      adaptMethod(
+        'ProviderRegistry.files',
+        native.files.bind(native),
+        wrapFiles,
+      ),
+      (provider) => provider.files,
     ),
-    skills: adaptMethod(
-      'ProviderRegistry.skills',
-      native.skills.bind(native),
-      wrapSkills,
+    skills: resource(
+      adaptMethod(
+        'ProviderRegistry.skills',
+        native.skills.bind(native),
+        wrapSkills,
+      ),
+      (provider) => provider.skills,
     ),
     decisionModel: route(
       adaptMethod(
