@@ -1,16 +1,45 @@
 import * as sdk from '@ai-sdk/otel';
+import type {
+  Attributes,
+  Context,
+  Link,
+  SpanKind,
+  TraceState,
+} from '@opentelemetry/api';
 import { Effect } from 'effect';
 import { runSync, sdkError } from '../internal/operation.js';
 import { wrapTelemetry } from './internal/telemetry.js';
 
 export type {
-  EnrichSpan,
   OpenTelemetrySpanType,
   SemConvInputMessage,
   SemConvOutputMessage,
   SemConvPart,
   SemConvSystemInstruction,
 } from '@ai-sdk/otel';
+
+/** Add attributes synchronously when the OpenTelemetry host creates a span. */
+export type EnrichSpan = (options: {
+  spanType: sdk.OpenTelemetrySpanType;
+  operationId: string;
+  callId: string;
+  runtimeContext: Record<string, unknown> | undefined;
+}) => Attributes | undefined;
+
+type Sampler = {
+  shouldSample(
+    parentContext: Context,
+    traceId: string,
+    spanName: string,
+    spanKind: SpanKind,
+    attributes: Attributes,
+    links: Link[],
+  ): {
+    decision: 0 | 1 | 2;
+    traceState?: TraceState;
+    attributes?: Attributes;
+  };
+};
 
 const generators = new WeakMap<
   OpenTelemetryIdGenerator,
@@ -19,9 +48,7 @@ const generators = new WeakMap<
 
 /** Access the durable telemetry identifier generator through Effect. */
 export class OpenTelemetryIdGenerator {
-  static make(
-    options?: ConstructorParameters<typeof sdk.OpenTelemetryIdGenerator>[0],
-  ) {
+  static make(options?: { readonly sampler?: Sampler }) {
     return runSync('OpenTelemetryIdGenerator.make', () => {
       const native = new sdk.OpenTelemetryIdGenerator(options);
       const wrapped = new OpenTelemetryIdGenerator(native);
@@ -74,8 +101,19 @@ export class OpenTelemetryIdGenerator {
   }
 }
 
-export type OpenTelemetryOptions = Omit<sdk.OpenTelemetryOptions, 'durable'> & {
+export type OpenTelemetryOptions = Omit<
+  sdk.OpenTelemetryOptions,
+  'durable' | 'agentSpanName' | 'enrichSpan'
+> & {
   readonly durable?: OpenTelemetryIdGenerator;
+  readonly agentSpanName?:
+    | 'modelId'
+    | 'functionId'
+    | ((options: {
+        modelId: string;
+        functionId: string | undefined;
+      }) => string | undefined);
+  readonly enrichSpan?: EnrichSpan;
 };
 
 export const OpenTelemetry = {
