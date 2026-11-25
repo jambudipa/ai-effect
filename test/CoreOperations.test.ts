@@ -102,6 +102,27 @@ describe('Core operations', () => {
     }),
   );
 
+  it.effect('runs object text repair in the call context', () =>
+    Effect.gen(function* () {
+      const model = yield* MockLanguageModelV4({
+        doGenerate: result('invalid JSON'),
+      });
+      const generated = yield* generateObject({
+        model,
+        prompt: 'Return an object',
+        schema: Schema.Struct({ count: Schema.Number }),
+        repairText: ({ text }) =>
+          Temperature.pipe(
+            Effect.map((count) => {
+              expect(text).toBe('invalid JSON');
+              return `{"count":${count}}`;
+            }),
+          ),
+      });
+      expect(generated.object).toEqual({ count: 3 });
+    }).pipe(Effect.provideService(Temperature, 3)),
+  );
+
   it.effect('preserves schema services in the JSON and object overloads', () =>
     Effect.gen(function* () {
       const schema = yield* jsonSchema<{ count: number }, Temperature>(

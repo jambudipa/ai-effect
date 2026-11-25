@@ -125,6 +125,7 @@ type DirectCallback =
   | 'prepareCall'
   | 'repairToolCall'
   | 'experimental_repairToolCall'
+  | 'repairText'
   | 'experimental_repairText'
   | 'download'
   | 'experimental_download';
@@ -273,6 +274,7 @@ const directNames = HashSet.fromIterable<string>([
   'prepareCall',
   'repairToolCall',
   'experimental_repairToolCall',
+  'repairText',
   'experimental_repairText',
   'download',
   'experimental_download',
