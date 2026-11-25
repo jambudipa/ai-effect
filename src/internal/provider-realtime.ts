@@ -223,20 +223,27 @@ type AdaptedRealtimeMethod<T> = T extends (...args: infer Args) => infer A
     ) => Effect.Effect<Awaited<A>, import('./operation.js').AiSdkError>
   : T;
 
+type AdaptedEventParser<T> = T extends (...args: infer Args) => infer Parser
+  ? (
+      ...args: Args
+    ) => Effect.Effect<
+      AdaptedRealtimeMethod<Parser>,
+      import('./operation.js').AiSdkError
+    >
+  : T;
+
 type RefinedRealtimeMembers<Native extends SdkRealtimeModel> = {
   [
-    Key in keyof Native as Key extends keyof RealtimeModelV4 ? Key : never
+    Key in keyof Native as Key extends Exclude<
+      keyof RealtimeModelV4,
+      'provider'
+    >
+      ? Key
+      : never
   ]: Key extends 'createTransport'
     ? RealtimeModelV4['createTransport']
     : Key extends 'createServerEventParser'
-      ? Native[Key] extends (...args: infer Args) => infer A
-        ? (
-            ...args: Args
-          ) => Effect.Effect<
-            AdaptedRealtimeMethod<A>,
-            import('./operation.js').AiSdkError
-          >
-        : Native[Key]
+      ? AdaptedEventParser<Native[Key]>
       : AdaptedRealtimeMethod<Native[Key]>;
 };
 
