@@ -26,9 +26,10 @@ import {
   type SandboxTemplate,
   unwrapSandbox,
   unwrapSandboxProvider,
+  wrapSandbox,
 } from '../internal/sandbox.js';
 import { wrapTools } from '../internal/sdk-tool.js';
-import { wrapTelemetry } from '../internal/telemetry.js';
+import { type EffectTelemetry, wrapTelemetry } from '../internal/telemetry.js';
 
 export {
   HarnessCapabilityUnsupportedError,
@@ -65,6 +66,7 @@ type SettingsKeys =
   | 'headers'
   | 'permissionMode'
   | 'debug'
+  | 'toolApproval'
   | (typeof constructorCallbacks)[number];
 
 export type HarnessAgentSettings<
@@ -82,6 +84,8 @@ export type HarnessAgentSettings<
   readonly sandbox?: ReturnType<
     typeof import('../internal/sandbox.js').wrapSandboxProvider
   >;
+  readonly sandboxConfig?: HarnessAgentSandboxConfig<E, R>;
+  readonly onSandboxSession?: HarnessAgentSandboxConfig<E, R>['onSession'];
 };
 
 type NativeSession = sdk.HarnessAgentSession;
@@ -94,7 +98,7 @@ type NativeSessionOptions = NonNullable<
   Parameters<NativeAgent['createSession']>[0]
 >;
 type SessionOptions = Omit<NativeSessionOptions, 'sandboxSession'> & {
-  readonly sandboxSession?: SandboxSession;
+  readonly sandboxSession?: SandboxSession | HarnessAgentSandboxCreator;
 };
 
 /** An Effect handle for a running harness session. */
@@ -356,7 +360,14 @@ export class HarnessAgent {
     settings: HarnessAgentSettings<T, E, R>,
   ) {
     return Effect.gen(function* () {
-      const { harness, tools, sandbox, ...options } = settings;
+      const {
+        harness,
+        tools,
+        sandbox,
+        sandboxConfig,
+        onSandboxSession,
+        ...options
+      } = settings;
       const nativeHarness = unwrapHarness(harness);
       const nativeSandbox = sandbox && unwrapSandboxProvider(sandbox);
       if (!nativeHarness || (sandbox && !nativeSandbox)) {
@@ -377,6 +388,16 @@ export class HarnessAgent {
           harness: nativeHarness,
           ...(tools && { tools: bindTools(tools, owner) }),
           ...(nativeSandbox && { sandbox: nativeSandbox }),
+          ...(sandboxConfig && {
+            sandboxConfig: bindSandboxConfig(sandboxConfig, owner),
+          }),
+          ...(onSandboxSession && {
+            onSandboxSession: ({ session, ...input }) =>
+              owner.runCallback(
+                onSandboxSession({ ...input, session: wrapSandbox(session) }),
+                input.abortSignal,
+              ),
+          }),
         });
         const agent = new HarnessAgent(native);
         agents.set(agent, native);
@@ -412,7 +433,31 @@ export class HarnessAgent {
   createSession(options: SessionOptions = {}) {
     return Effect.gen({ self: this }, function* () {
       const { sandboxSession, ...rest } = options;
-      const sandbox = sandboxSession && unwrapSandbox(sandboxSession);
+      const owner = yield* openOperation(options.abortSignal);
+      const sandbox =
+        sandboxSession && 'createSandboxSession' in sandboxSession
+          ? {
+              defaultWorkingDirectory: sandboxSession.defaultWorkingDirectory,
+              createSandboxSession: (input: { abortSignal?: AbortSignal }) =>
+                owner.runCallback(
+                  Effect.flatMap(
+                    sandboxSession.createSandboxSession(input),
+                    (session) => {
+                      const native = unwrapSandbox(session);
+                      return native
+                        ? Effect.succeed(native)
+                        : Effect.fail(
+                            sdkError(
+                              'HarnessAgent.createSession',
+                              'Invalid sandbox session',
+                            ),
+                          );
+                    },
+                  ),
+                  input.abortSignal,
+                ),
+            }
+          : sandboxSession && unwrapSandbox(sandboxSession);
       if (sandboxSession && !sandbox) {
         return yield* Effect.fail(
           sdkError('HarnessAgent.createSession', 'Invalid sandbox session'),
@@ -556,7 +601,7 @@ export const collectHarnessAgentToolResultContinuations = (
 
 export const createFileReporter = (
   ...args: Parameters<typeof sdk.createFileReporter>
-) =>
+): Effect.Effect<FileReporter, AiSdkError> =>
   runSync('HarnessAgent.createFileReporter', () => {
     const native = sdk.createFileReporter(...args);
     return {
@@ -568,9 +613,7 @@ export const createFileReporter = (
     };
   });
 
-export type FileReporter = Effect.Success<
-  ReturnType<typeof createFileReporter>
->;
+export type FileReporter = EffectTelemetry & HarnessDiagnosticConsumer;
 
 export const createTraceTreeReporter = (
   ...args: Parameters<typeof sdk.createTraceTreeReporter>
@@ -615,3 +658,77 @@ export type {
   HarnessV1PromptTurnOptions as HarnessAgentPromptTurnOptions,
   HarnessV1StartOptions as HarnessAgentStartOptions,
 } from '../internal/harness.js';
+
+export type { HarnessAgentToolApprovalConfiguration } from '@ai-sdk/harness/agent';
+
+type NativeSandboxConfig = sdk.HarnessAgentSandboxConfig;
+type SandboxBootstrapInput = Omit<
+  Parameters<NonNullable<NativeSandboxConfig['onBootstrap']>>[0],
+  'session'
+> & { readonly session: SandboxSession };
+type SandboxSessionInput = Omit<
+  Parameters<NonNullable<NativeSandboxConfig['onSession']>>[0],
+  'session'
+> & { readonly session: SandboxSession };
+
+export type HarnessAgentSandboxConfig<E = never, R = never> = Omit<
+  NativeSandboxConfig,
+  'onBootstrap' | 'onSession'
+> & {
+  readonly onBootstrap?: (
+    options: SandboxBootstrapInput,
+  ) => Effect.Effect<void, E, R>;
+  readonly onSession?: (
+    options: SandboxSessionInput,
+  ) => Effect.Effect<void, E, R>;
+};
+
+const bindSandboxConfig = <E, R>(
+  input: HarnessAgentSandboxConfig<E, R>,
+  owner: Effect.Success<ReturnType<typeof openOperation<R>>>,
+): NativeSandboxConfig => {
+  const { onBootstrap, onSession, ...rest } = input;
+  return {
+    ...rest,
+    ...(onBootstrap && {
+      onBootstrap: ({
+        session,
+        ...options
+      }: Parameters<NonNullable<NativeSandboxConfig['onBootstrap']>>[0]) =>
+        owner.runCallback(
+          onBootstrap({ ...options, session: wrapSandbox(session) }),
+          options.abortSignal,
+        ),
+    }),
+    ...(onSession && {
+      onSession: ({
+        session,
+        ...options
+      }: Parameters<NonNullable<NativeSandboxConfig['onSession']>>[0]) =>
+        owner.runCallback(
+          onSession({ ...options, session: wrapSandbox(session) }),
+          options.abortSignal,
+        ),
+    }),
+  };
+};
+
+export interface HarnessAgentSandboxCreator {
+  readonly defaultWorkingDirectory: string;
+  readonly createSandboxSession: (options: {
+    readonly abortSignal?: AbortSignal;
+  }) => Effect.Effect<SandboxSession, AiSdkError>;
+}
+
+export type HarnessAgentBuiltinTools = ReturnType<typeof wrapTools>;
+
+export type HarnessAllTools<
+  Harness extends { readonly builtinTools: Record<string, object> },
+  Tools extends EffectTools,
+> = Omit<Harness['builtinTools'], keyof Tools> & Tools;
+
+export interface HarnessDiagnosticConsumer {
+  readonly ingestDiagnostic?: (
+    diagnostic: sdk.HarnessDiagnostic,
+  ) => Effect.Effect<void, AiSdkError>;
+}
