@@ -1,5 +1,8 @@
 import * as sdk from '@ai-sdk/provider-utils';
-import type { LanguageModelV4StreamPart } from '@ai-sdk/provider';
+import type {
+  LanguageModelV4StreamPart,
+  SharedV4ProviderMetadata,
+} from '@ai-sdk/provider';
 import { Effect, Option, Redacted, Ref, type Schema, Stream } from 'effect';
 import {
   abortable,
@@ -393,6 +396,17 @@ export const parseJsonEventStream = <A, R = never>(options: {
 
 type TrackerController = { enqueue(part: LanguageModelV4StreamPart): void };
 
+export type StreamingToolCallTrackerOptions<
+  D extends sdk.StreamingToolCallDelta = sdk.StreamingToolCallDelta,
+> = {
+  readonly generateId?: () => string;
+  readonly typeValidation?: 'none' | 'if-present' | 'required';
+  readonly extractMetadata?: (delta: D) => SharedV4ProviderMetadata | undefined;
+  readonly buildToolCallProviderMetadata?: (
+    metadata: SharedV4ProviderMetadata | undefined,
+  ) => SharedV4ProviderMetadata | undefined;
+};
+
 export class StreamingToolCallTracker<
   D extends sdk.StreamingToolCallDelta = sdk.StreamingToolCallDelta,
 > {
@@ -400,7 +414,7 @@ export class StreamingToolCallTracker<
     D extends sdk.StreamingToolCallDelta = sdk.StreamingToolCallDelta,
   >(
     controller: TrackerController,
-    options?: sdk.StreamingToolCallTrackerOptions<D>,
+    options?: StreamingToolCallTrackerOptions<D>,
   ) {
     return runSync(
       'ProviderUtils.StreamingToolCallTracker.make',
@@ -441,11 +455,25 @@ export const withTelemetryRedaction = <A extends Record<string, unknown>>(
     sdk.withTelemetryRedaction(value, redact),
   );
 
-type RetryOptions<E, R> = Omit<
-  Parameters<typeof sdk.retryWithExponentialBackoff>[0],
-  'shouldRetry'
-> & {
+export type RetryDelayProvider = (options: {
+  error: unknown;
+  exponentialBackoffDelay: number;
+}) => number;
+
+export type RetryErrorFactory = (options: {
+  message: string;
+  reason: sdk.RetryErrorReason;
+  errors: unknown[];
+}) => unknown;
+
+type RetryOptions<E, R> = {
+  readonly maxRetries?: number;
+  readonly initialDelayInMs?: number;
+  readonly backoffFactor?: number;
+  readonly abortSignal?: AbortSignal;
   readonly shouldRetry: (error: unknown) => Effect.Effect<boolean, E, R>;
+  readonly getDelayInMs?: RetryDelayProvider;
+  readonly createRetryError?: RetryErrorFactory;
 };
 
 export const retryWithExponentialBackoff =
@@ -464,7 +492,10 @@ export const retryWithExponentialBackoff =
               ...options,
               abortSignal,
               shouldRetry: (cause) =>
-                owner.runCallback(options.shouldRetry(cause), abortSignal),
+                owner.runCallback(
+                  Effect.suspend(() => options.shouldRetry(cause)),
+                  abortSignal,
+                ),
             })(() => owner.runCallback(operation, abortSignal)),
         );
       }),
@@ -495,11 +526,20 @@ export const resolveWith = <A, B, E = never, R = never, F = never, S = never>(
   transform: (value: A) => ResolvedValue<B, F, S>,
 ) => Effect.flatMap(resolve(input), (value) => resolve(() => transform(value)));
 
+type ModelHeaders = Record<string, string | undefined>;
+type SerializableConfiguration = {
+  readonly headers?:
+    | ModelHeaders
+    | PromiseLike<ModelHeaders>
+    | (() => ModelHeaders | PromiseLike<ModelHeaders>);
+};
+
 export const serializeModelOptions = <
-  C extends Parameters<typeof sdk.serializeModelOptions>[0]['config'],
->(
-  options: Parameters<typeof sdk.serializeModelOptions<C>>[0],
-) =>
+  C extends SerializableConfiguration,
+>(options: {
+  readonly modelId: string;
+  readonly config: C;
+}) =>
   runSync('ProviderUtils.serializeModelOptions', () =>
     sdk.serializeModelOptions(options),
   );
@@ -1001,12 +1041,6 @@ export type ShouldRetryFunction<E = never, R = never> = RetryOptions<
   E,
   R
 >['shouldRetry'];
-export type RetryDelayProvider = NonNullable<
-  RetryOptions<never, never>['getDelayInMs']
->;
-export type RetryErrorFactory = NonNullable<
-  RetryOptions<never, never>['createRetryError']
->;
 export type IdGenerator = Effect.Success<ReturnType<typeof createIdGenerator>>;
 export type ToolNameMapping = Effect.Success<
   ReturnType<typeof createToolNameMapping>
@@ -1017,7 +1051,6 @@ export type WebSocketConnection = Effect.Success<
 export type {
   WebSocketConstructor,
   WebSocketLike,
-  StreamingToolCallTrackerOptions,
 } from '@ai-sdk/provider-utils';
 
 export type Experimental_SandboxSession =
