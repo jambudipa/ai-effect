@@ -4,7 +4,12 @@ import {
   type ToolExecutionOptions,
   type ToolSet,
 } from 'ai';
-import type { ToolResultOutput as NativeToolResult } from '@ai-sdk/provider-utils';
+import {
+  experimental_toolCaller as sdkToolCaller,
+  type Experimental_ToolCallerTool as NativeToolCaller,
+  type ProviderOptions,
+  type ToolResultOutput as NativeToolResult,
+} from '@ai-sdk/provider-utils';
 import { Effect, Scope, Stream } from 'effect';
 import type {
   FlexibleSchema,
@@ -17,7 +22,12 @@ import {
 } from '../integrations/internal/sandbox.js';
 import { rememberTelemetryTools } from '../integrations/internal/telemetry.js';
 import { bindLazySchema } from './lazy-schema.js';
-import { type openOperation, runRequest, sdkError } from './operation.js';
+import {
+  type AiSdkError,
+  type openOperation,
+  runRequest,
+  sdkError,
+} from './operation.js';
 import {
   bindProviderTool,
   isProviderTool,
@@ -239,19 +249,90 @@ export function tool(options: EffectTools[string]): EffectTools[string] {
   return options;
 }
 
-export type ToolRequirements<Definition> =
+type DefinitionRequirements<Definition> =
   Definition extends ProviderToolHandle<unknown, unknown, infer Services>
     ? Services
     : Definition extends ToolTypes<unknown, unknown, unknown, infer Services>
       ? Services
       : FunctionRequirements<Definition>;
 
+type CallerRequirements<Definition> = Definition extends {
+  readonly experimental_toolCaller: ToolCaller<infer R, infer Bound>;
+}
+  ? | R
+    | (EffectTools[string] extends Bound
+        ? never
+        : DefinitionRequirements<Bound>)
+  : never;
+
+export type ToolRequirements<Definition> = Definition extends unknown
+  ? DefinitionRequirements<Definition> | CallerRequirements<Definition>
+  : never;
+
 export type EffectTools = Readonly<
   Record<
     string,
-    FunctionToolDefinition | ProviderToolHandle<unknown, unknown, unknown>
+    (FunctionToolDefinition | ProviderToolHandle<unknown, unknown, unknown>) & {
+      readonly providerOptions?: ProviderOptions | undefined;
+    }
   >
 >;
+
+export type ToolCaller<
+  R = never,
+  Bound extends EffectTools[string] = EffectTools[string],
+> =
+  | {
+      readonly type: 'local';
+      readonly bind: (
+        tools: EffectTools,
+      ) => Effect.Effect<Bound, AiSdkError, R>;
+      readonly prepareModelMessage?: (
+        tools: EffectTools,
+      ) => Effect.Effect<string | undefined, AiSdkError, R>;
+    }
+  | {
+      readonly type: 'provider';
+      readonly prepareProviderOptions: (
+        options: ProviderOptions | undefined,
+      ) => Effect.Effect<ProviderOptions, AiSdkError, R>;
+    };
+
+export type ToolWithCaller<
+  T extends object,
+  R = never,
+  Bound extends EffectTools[string] = EffectTools[string],
+> = T & {
+  readonly experimental_toolCaller: ToolCaller<R, Bound>;
+};
+
+const toolCallers = new WeakMap<
+  EffectTools[string],
+  {
+    readonly original: EffectTools[string];
+    readonly caller: ToolCaller<unknown>;
+  }
+>();
+
+export const annotateToolCaller = <
+  T extends EffectTools[string],
+  R,
+  Bound extends EffectTools[string],
+>(
+  tool: T,
+  caller: ToolCaller<R, Bound>,
+): ToolWithCaller<T, R, Bound> => {
+  const annotated = Object.defineProperty(
+    { ...tool },
+    'experimental_toolCaller',
+    { value: caller },
+  ) as ToolWithCaller<T, R, Bound>;
+  toolCallers.set(annotated, {
+    original: toolCallers.get(tool)?.original ?? tool,
+    caller,
+  });
+  return annotated;
+};
 
 export type InferToolInput<Definition> =
   Definition extends ProviderToolHandle<infer Input, unknown, unknown>
@@ -327,7 +408,10 @@ type NativeTool<Definition> = Definition extends EffectTools[string]
         InferToolInput<Definition>,
         InferToolOutput<Definition>,
         DeclaredContext<Definition>
-      >
+      > &
+        (Definition extends ToolWithCaller<object, unknown>
+          ? Pick<NativeToolCaller, 'experimental_toolCaller'>
+          : unknown)
     >
   : never;
 
@@ -542,39 +626,101 @@ const bindFunctionTool = <R>(
 
 export const bindTools = <Tools extends EffectTools>(
   tools: Tools,
-  owner: Owner<ToolServices<Tools>>,
+  owner: Owner<NoInfer<ToolServices<Tools>>>,
 ): BoundTools<Tools> => {
-  const native = Object.fromEntries(
-    Object.entries(tools).map(([name, definition]) => {
-      const bound = deferredTools.get(definition);
-      if (bound) return [name, bound(owner)];
-      if (isProviderTool(definition)) {
-        return [
-          name,
-          bindProviderTool(
-            definition as ProviderToolHandle<
-              unknown,
-              unknown,
-              ToolServices<Tools>
-            >,
-            owner,
-          ),
-        ];
+  const preparedTools = new WeakMap<EffectTools[string], ToolSet[string]>();
+  const publicTools = (
+    subset: ToolSet,
+  ): Effect.Effect<EffectTools, AiSdkError> =>
+    Effect.forEach(Object.entries(subset), ([name, selected]) => {
+      const definition = Object.hasOwn(tools, name) ? tools[name] : undefined;
+      if (!definition) {
+        return Effect.fail(sdkError('toolCaller', `Unknown tool "${name}".`));
       }
-      return [
-        name,
-        bindFunctionTool(
-          name,
-          definition as EffectToolOptions<
-            unknown,
-            unknown,
-            unknown,
-            ToolServices<Tools>
-          >,
-          owner,
-        ),
-      ];
-    }),
+      if (definition.providerOptions === selected.providerOptions) {
+        preparedTools.set(definition, selected);
+        return Effect.succeed([name, definition] as const);
+      }
+      // A provider caller can change options before a local caller reads them.
+      const withOptions = {
+        ...definition,
+        providerOptions: selected.providerOptions,
+      };
+      const caller = Object.getOwnPropertyDescriptor(
+        definition,
+        'experimental_toolCaller',
+      );
+      if (caller) {
+        Object.defineProperty(withOptions, 'experimental_toolCaller', caller);
+      }
+      preparedTools.set(withOptions, selected);
+      return Effect.succeed([name, withOptions] as const);
+    }).pipe(Effect.map(Object.fromEntries));
+
+  const bindDefinition = (
+    name: string,
+    definition: EffectTools[string],
+  ): ToolSet[string] => {
+    const attachment = toolCallers.get(definition);
+    const original = attachment?.original ?? definition;
+    const bind = deferredTools.get(original);
+    const native =
+      preparedTools.get(original) ??
+      (bind
+        ? bind(owner)
+        : isProviderTool(original)
+          ? bindProviderTool(
+              original as ProviderToolHandle<
+                unknown,
+                unknown,
+                ToolServices<Tools>
+              >,
+              owner,
+            )
+          : bindFunctionTool(
+              name,
+              original as EffectToolOptions<
+                unknown,
+                unknown,
+                unknown,
+                ToolServices<Tools>
+              >,
+              owner,
+            ));
+    if (!attachment) return native;
+    const callerTool = native as Tool;
+    const caller = attachment.caller as ToolCaller<ToolServices<Tools>>;
+    if (caller.type === 'provider') {
+      return sdkToolCaller(callerTool, {
+        type: 'provider',
+        prepareProviderOptions: (options) =>
+          owner.runSyncCallback(
+            Effect.suspend(() => caller.prepareProviderOptions(options)),
+          ),
+      });
+    }
+    const { bind: bindLocal, prepareModelMessage } = caller;
+    return sdkToolCaller(callerTool, {
+      type: 'local',
+      bind: (subset) => {
+        const definition = owner.runSyncCallback(
+          Effect.flatMap(publicTools(subset), bindLocal),
+        );
+        return bindDefinition(name, definition) as Tool;
+      },
+      ...(prepareModelMessage && {
+        prepareModelMessage: (subset) =>
+          owner.runSyncCallback(
+            Effect.flatMap(publicTools(subset), prepareModelMessage),
+          ),
+      }),
+    });
+  };
+  const native = Object.fromEntries(
+    Object.entries(tools).map(([name, definition]) => [
+      name,
+      bindDefinition(name, definition),
+    ]),
   );
   rememberTelemetryTools(native, tools);
   return native as unknown as BoundTools<Tools>;

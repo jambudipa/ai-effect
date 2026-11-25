@@ -16,9 +16,13 @@ import {
   adaptProviderTool,
   type ProviderToolHandle,
 } from '../internal/provider-tool.js';
-import type {
-  EffectToolExecutionOptions,
-  EffectToolOptions,
+import {
+  annotateToolCaller,
+  type EffectTools,
+  type EffectToolExecutionOptions,
+  type EffectToolOptions,
+  type ToolCaller,
+  type ToolWithCaller,
 } from '../internal/tool.js';
 import { toSdkSchema } from '../internal/schema.js';
 import type { FlexibleSchema } from '../core-schema.js';
@@ -802,39 +806,23 @@ export const executeTool = <I, A, C, E, R>(input: {
   );
 };
 
-type Caller =
-  | {
-      readonly type: 'local';
-      readonly bind: (
-        tools: import('../internal/tool.js').EffectTools,
-      ) => Effect.Effect<ToolWithExecute, AiSdkError>;
-      readonly prepareModelMessage?: (
-        tools: import('../internal/tool.js').EffectTools,
-      ) => Effect.Effect<string | undefined, AiSdkError>;
-    }
-  | {
-      readonly type: 'provider';
-      readonly prepareProviderOptions: (
-        options: sdk.ProviderOptions | undefined,
-      ) => Effect.Effect<sdk.ProviderOptions, AiSdkError>;
-    };
-
-export const experimental_toolCaller = <A extends object>(
+export const experimental_toolCaller = <
+  A extends EffectTools[string],
+  R = never,
+  Bound extends EffectTools[string] = EffectTools[string],
+>(
   tool: A,
-  definition: Caller,
+  definition: ToolCaller<R, Bound>,
 ) =>
-  runSync(
-    'ProviderUtils.toolCaller',
-    () =>
-      Object.defineProperty({ ...tool }, 'experimental_toolCaller', {
-        value: definition,
-      }) as A & {
-        readonly experimental_toolCaller: Caller;
-      },
+  runSync('ProviderUtils.toolCaller', () =>
+    annotateToolCaller(tool, definition),
   );
 
-export const experimental_getToolCaller = (tool?: {
-  readonly experimental_toolCaller?: Caller;
+export const experimental_getToolCaller = <
+  R,
+  Bound extends EffectTools[string],
+>(tool?: {
+  readonly experimental_toolCaller?: ToolCaller<R, Bound>;
 }) => tool?.experimental_toolCaller;
 
 type NativeProviderTool = ReturnType<Parameters<typeof adaptProviderTool>[1]>;
@@ -959,10 +947,15 @@ export const EXPERIMENTAL_TRANSCRIPTION_STREAM_START_FRAME_TYPE =
 export const WORKFLOW_SERIALIZE = sdk.WORKFLOW_SERIALIZE;
 export const WORKFLOW_DESERIALIZE = sdk.WORKFLOW_DESERIALIZE;
 
-export type Experimental_ToolCallerDefinition = Caller;
-export type Experimental_ToolCallerTool<T extends object> = T & {
-  readonly experimental_toolCaller: Experimental_ToolCallerDefinition;
-};
+export type Experimental_ToolCallerDefinition<
+  R = never,
+  Bound extends EffectTools[string] = EffectTools[string],
+> = ToolCaller<R, Bound>;
+export type Experimental_ToolCallerTool<
+  T extends object = EffectTools[string],
+  R = never,
+  Bound extends EffectTools[string] = EffectTools[string],
+> = ToolWithCaller<T, R, Bound>;
 export type ExecutableTool<T extends ToolWithExecute> = T & {
   readonly execute: NonNullable<T['execute']>;
 };

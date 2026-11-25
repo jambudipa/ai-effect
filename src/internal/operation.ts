@@ -1,4 +1,4 @@
-import { Effect, FiberSet, Redacted, Ref, Schema } from 'effect';
+import { Cause, Effect, Exit, FiberSet, Redacted, Ref, Schema } from 'effect';
 
 /** A foreign SDK failure with only safe diagnostic fields visible. */
 export class AiSdkError extends Schema.TaggedError<AiSdkError>()('AiSdkError', {
@@ -81,6 +81,7 @@ export const abortable = <A, E, R>(
 export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
   Effect.gen(function* () {
     const scope = yield* Effect.scope;
+    const context = yield* Effect.context<R>();
     const callbacks = yield* FiberSet.make();
     const runCallback = yield* FiberSet.runtimePromise(callbacks)<R>();
     const completed = yield* Ref.make(false);
@@ -105,6 +106,29 @@ export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
         runCallback(effect, {
           signal: combineSignals(signal, callbackSignal),
         }),
+      runSyncCallback: <A, E>(effect: Effect.Effect<A, E, R>): A => {
+        signal.throwIfAborted();
+        const checked: Effect.Effect<A, E | AiSdkError, R> =
+          scope.state._tag === 'Closed'
+            ? Effect.fail(
+                sdkError('runSyncCallback', 'The operation scope is closed.'),
+              )
+            : effect;
+        const exit = Effect.runSyncExitWith(context)(checked);
+        // A native synchronous hook cannot wait for a suspended Effect.
+        if (Exit.isFailure(exit)) {
+          for (const reason of exit.cause.reasons) {
+            if (
+              Cause.isDieReason(reason) &&
+              Cause.isAsyncFiberError(reason.defect)
+            ) {
+              FiberSet.addUnsafe(callbacks, reason.defect.fiber);
+              reason.defect.fiber.interruptUnsafe();
+            }
+          }
+        }
+        return Effect.runSyncWith(context)(exit);
+      },
       runCleanup: <A, E>(effect: Effect.Effect<A, E, R>) => runCallback(effect),
     };
   });

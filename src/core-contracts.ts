@@ -362,6 +362,12 @@ export type Experimental_SandboxSession = SandboxSession;
 export type Experimental_SandboxProcess = Effect.Success<
   ReturnType<SandboxSession['spawn']>
 >;
-export type Experimental_ToolCallerTool<T extends object = Tool> = T & {
-  readonly experimental_toolCaller: import('./protocols/provider-utils.js').Experimental_ToolCallerDefinition;
-};
+export type Experimental_ToolCallerTool<
+  T extends object = Tool,
+  R = never,
+  Bound extends EffectTools[string] = EffectTools[string],
+> = import('./protocols/provider-utils.js').Experimental_ToolCallerTool<
+  T,
+  R,
+  Bound
+>;
