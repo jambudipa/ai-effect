@@ -1,19 +1,23 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import {
   callCompletionApi as nativeCompletion,
   experimental_streamLanguageModelCall as nativeModelCall,
   smoothStream as nativeSmoothStream,
   type Experimental_DownloadFunction as NativeDownload,
+  type GatewayModelId,
+  type InferToolInput,
   type LanguageModel as NativeLanguageModel,
+  type LanguageModelCallOptions,
   type LanguageModelStreamPart,
   type OnLanguageModelCallEndCallback,
   type OnLanguageModelCallStartCallback,
   type OutputInterface,
+  type Prompt,
   type StreamTextTransform,
   type TextStreamPart,
   type ToolSet,
 } from 'ai';
 import { Effect, Option, Stream } from 'effect';
-import type { LanguageModel } from './core.js';
 import {
   unwrapSandbox,
   type SandboxSession,
@@ -25,7 +29,10 @@ import {
 } from './internal/chat-boundary.js';
 import { scopedStream } from './internal/chat-ui-stream.js';
 import { guardedFetch } from './internal/fetch.js';
-import { unwrapLanguageModel } from './internal/language-model.js';
+import {
+  unwrapLanguageModel,
+  type LanguageModelV4,
+} from './internal/language-model.js';
 import { unwrapLegacyModel } from './internal/legacy-model.js';
 import {
   abortable,
@@ -36,13 +43,18 @@ import {
   sdkError,
   type AiSdkError,
 } from './internal/operation.js';
-import { unwrapOutput, type OutputSpecification } from './internal/output.js';
+import { bindOutput, type OutputSpecification } from './internal/output.js';
+import { streamMethod } from './internal/provider-model.js';
 import {
   bindTools,
   type BoundTools,
   type EffectTools,
   type ToolServices,
 } from './internal/tool.js';
+import type { LanguageModelV2, LanguageModelV3 } from './protocols/provider.js';
+
+type LanguageModel =
+  GatewayModelId | LanguageModelV2 | LanguageModelV3 | LanguageModelV4;
 
 export type CallCompletionApiOptions<R = never> = {
   readonly api: string;
@@ -251,23 +263,23 @@ export const smoothStream = <R = never>({
 type ModelCallOptions<T extends EffectTools, A, P, I> = Parameters<
   typeof nativeModelCall<BoundTools<T>, OutputInterface<A, P, I>>
 >[0];
-type ModelCallData<A> = A extends unknown
-  ? Omit<
-      A,
-      | 'model'
-      | 'tools'
-      | 'output'
-      | 'experimental_sandbox'
-      | 'download'
-      | 'repairToolCall'
-      | 'refineToolInput'
-      | 'executeLanguageModelCallInTelemetryContext'
-      | 'onStart'
-      | 'onLanguageModelCallStart'
-      | 'onLanguageModelCallEnd'
-      | '_internal'
-    >
-  : never;
+type ModelCallData<T extends EffectTools> = Prompt &
+  LanguageModelCallOptions & {
+    readonly toolOrder?: NonNullable<
+      ModelCallOptions<T, string, string, never>['toolOrder']
+    >;
+    readonly toolChoice?: NonNullable<
+      ModelCallOptions<T, string, string, never>['toolChoice']
+    >;
+    readonly abortSignal?: AbortSignal;
+    readonly headers?: Record<string, string | undefined>;
+    readonly includeRawChunks?: boolean;
+    readonly providerOptions?: ProviderOptions;
+    readonly callId?: string;
+    readonly toolsContext?: NonNullable<
+      ModelCallOptions<T, string, string, never>['toolsContext']
+    >;
+  };
 type InitialEvent = Parameters<
   NonNullable<ModelCallOptions<{}, string, string, never>['onStart']>
 >[0];
@@ -281,9 +293,9 @@ type Repair<T extends EffectTools> = NonNullable<
 type Refinements<T extends EffectTools> = NonNullable<
   ModelCallOptions<T, string, string, never>['refineToolInput']
 >;
-type Refine<Input, R> = Input extends (input: infer Value) => unknown
-  ? (input: Value) => CallbackResult<Value, R>
-  : never;
+type ToolInput<T extends EffectTools, Name extends keyof T> = InferToolInput<
+  BoundTools<T>[Name]
+>;
 type RepairContext<T extends EffectTools> = Parameters<Repair<T>>[0];
 type Trace = NonNullable<
   ModelCallOptions<
@@ -296,7 +308,16 @@ type Trace = NonNullable<
 type Lifecycle<A, R> =
   | ((event: A) => CallbackResult<void, R>)
   | readonly ((event: A) => CallbackResult<void, R>)[];
-type TraceContext<A> = Omit<Parameters<Trace>[0], 'execute'> & {
+type TraceEvent = Parameters<Trace>[0];
+type TraceContext<A> = Partial<StepStart> & {
+  readonly callId: string;
+  readonly recordInputs?: boolean;
+  readonly recordOutputs?: boolean;
+  readonly functionId?: string;
+  readonly includeToolsContext?: TraceEvent['includeToolsContext'];
+  readonly aiVersion?: string;
+  readonly timestamp?: number;
+  readonly durableContext?: TraceEvent['durableContext'];
   readonly execute: Effect.Effect<A, AiSdkError>;
 };
 
@@ -306,31 +327,34 @@ export type StreamLanguageModelCallOptions<
   P = A,
   I = never,
   R = never,
-> = ModelCallData<ModelCallOptions<T, A, P, I>> & {
+  OutputServices = never,
+> = ModelCallData<T> & {
   readonly model: LanguageModel;
   readonly tools?: T;
-  readonly output?: OutputSpecification<A, P, I>;
+  readonly output?: OutputSpecification<A, P, I, OutputServices>;
   readonly experimental_sandbox?: SandboxSession;
   readonly download?: (
     requests: Parameters<NativeDownload>[0],
   ) => CallbackResult<Awaited<ReturnType<NativeDownload>>, R>;
-  readonly repairToolCall?: (
-    context: Omit<RepairContext<T>, 'tools' | 'inputSchema' | 'error'> & {
-      readonly tools: T;
-      readonly inputSchema: (
-        ...args: Parameters<RepairContext<T>['inputSchema']>
-      ) => Effect.Effect<
-        Awaited<ReturnType<RepairContext<T>['inputSchema']>>,
-        AiSdkError
-      >;
-      readonly error: AiSdkError;
-    },
-  ) => CallbackResult<Awaited<ReturnType<Repair<T>>>, R>;
-  readonly refineToolInput?: {
-    readonly [Name in keyof Refinements<T>]: Refine<
-      NonNullable<Refinements<T>[Name]>,
-      R
+  readonly repairToolCall?: (context: {
+    readonly instructions: RepairContext<T>['instructions'];
+    readonly system: RepairContext<T>['system'];
+    readonly messages: RepairContext<T>['messages'];
+    readonly toolCall: RepairContext<T>['toolCall'];
+    readonly abortSignal?: AbortSignal;
+    readonly tools: T;
+    readonly inputSchema: (
+      ...args: Parameters<RepairContext<T>['inputSchema']>
+    ) => Effect.Effect<
+      Awaited<ReturnType<RepairContext<T>['inputSchema']>>,
+      AiSdkError
     >;
+    readonly error: AiSdkError;
+  }) => CallbackResult<Awaited<ReturnType<Repair<T>>>, R>;
+  readonly refineToolInput?: {
+    readonly [Name in keyof T]?: (
+      input: ToolInput<T, Name>,
+    ) => CallbackResult<ToolInput<T, Name>, R>;
   };
   readonly executeLanguageModelCallInTelemetryContext?: <Value>(
     event: TraceContext<Value>,
@@ -353,6 +377,7 @@ export const experimental_streamLanguageModelCall = <
   P = A,
   I = never,
   R = never,
+  OutputServices = never,
 >({
   model,
   tools,
@@ -366,10 +391,10 @@ export const experimental_streamLanguageModelCall = <
   onLanguageModelCallStart,
   onLanguageModelCallEnd,
   ...options
-}: StreamLanguageModelCallOptions<T, A, P, I, R>) =>
+}: StreamLanguageModelCallOptions<T, A, P, I, R, OutputServices>) =>
   Effect.gen(function* () {
     const operation = 'experimental_streamLanguageModelCall';
-    const owner = yield* openOperation<ToolServices<T> | R>(
+    const owner = yield* openOperation<ToolServices<T> | R | OutputServices>(
       options.abortSignal,
     );
     const nativeModel =
@@ -384,7 +409,10 @@ export const experimental_streamLanguageModelCall = <
               >
             >(model);
     const sandbox = experimental_sandbox && unwrapSandbox(experimental_sandbox);
-    const nativeOutput = output && unwrapOutput(output);
+    const nativeOutput = yield* runSync(
+      operation,
+      () => output && bindOutput(output, owner),
+    );
     if (
       !nativeModel ||
       (experimental_sandbox && !sandbox) ||
@@ -419,9 +447,11 @@ export const experimental_streamLanguageModelCall = <
       : {};
     const trace: Trace = <Value>({
       execute,
+      integrations: _nativeIntegrations,
       ...event
     }: Parameters<Trace>[0] & {
       execute: () => PromiseLike<Value>;
+      integrations?: unknown;
     }) =>
       owner.runCallback(
         Effect.suspend(() =>
@@ -441,10 +471,9 @@ export const experimental_streamLanguageModelCall = <
               ),
         ),
       );
-    const { stream, ...metadata } = yield* runRequest(
+    const start = streamMethod(
       operation,
-      { abortSignal: owner.signal },
-      (abortSignal) =>
+      ({ abortSignal }: { readonly abortSignal: AbortSignal }) =>
         nativeModelCall<BoundTools<T>, OutputInterface<A, P, I>>({
           ...options,
           model: nativeModel,
@@ -518,8 +547,12 @@ export const experimental_streamLanguageModelCall = <
             : {}),
         }),
     );
-    const owned = yield* scopedStream(operation, stream);
-    const events = owned.pipe(
+    const { stream, ...metadata } = yield* abortable(
+      operation,
+      owner.signal,
+      start({ abortSignal: owner.signal }),
+    );
+    const events = stream.pipe(
       Stream.mapEffect(
         Effect.fnUntraced(function* (
           event: LanguageModelStreamPart<BoundTools<T>>,
