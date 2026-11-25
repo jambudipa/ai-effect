@@ -1,10 +1,18 @@
 import type { Effect, Scope } from 'effect';
 import type { AiSdkError } from '../internal/operation.js';
-import { createWithProviderSettings } from '../internal/provider-settings.js';
+import {
+  adaptCompatibleModel,
+  buildWithCompatibleSettings,
+} from '../internal/provider-openai-configuration.js';
 import type {
-  EffectProviderSettings,
-  StaticProviderSettings,
-} from '../internal/provider-settings.js';
+  CompatibleModelConstructor,
+  CompatibleSettings,
+  StaticCompatibleSettings,
+} from '../internal/provider-openai-configuration.js';
+export type {
+  MetadataExtractor,
+  ProviderErrorStructure,
+} from '../internal/provider-openai-configuration.js';
 import type { OpenAICompatibleProvider } from '../internal/provider-openai-compatible.js';
 import {
   createOpenAICompatible as sdkCreateOpenAICompatible,
@@ -17,7 +25,6 @@ import type { OpenAICompatibleProviderSettings as SdkSettings } from '@ai-sdk/op
 import { wrapLanguageModel } from '../internal/language-model.js';
 import { wrapOpenAICompatibleProvider } from '../internal/provider-openai-compatible.js';
 import { runRequest } from '../internal/operation.js';
-import { adaptModelConstructor } from '../internal/provider-adapter.js';
 import {
   requestMethod,
   wrapEmbeddingModel,
@@ -27,7 +34,6 @@ import {
 export type { OpenAICompatibleProvider } from '../internal/provider-openai-compatible.js';
 export { VERSION } from '@ai-sdk/openai-compatible';
 export type {
-  MetadataExtractor,
   OpenAICompatibleChatModelId,
   OpenAICompatibleCompletionModelId,
   OpenAICompatibleCompletionProviderOptions,
@@ -39,13 +45,12 @@ export type {
   OpenAICompatibleLanguageModelChatOptions,
   OpenAICompatibleLanguageModelCompletionOptions,
   OpenAICompatibleProviderOptions,
-  ProviderErrorStructure,
 } from '@ai-sdk/openai-compatible';
 
 export type OpenAICompatibleProviderSettings<
   E = never,
   R = never,
-> = EffectProviderSettings<SdkSettings, 'apiKey', E, R>;
+> = CompatibleSettings<SdkSettings, E, R>;
 
 export function createOpenAICompatible<
   Chat extends string,
@@ -53,7 +58,7 @@ export function createOpenAICompatible<
   Embedding extends string,
   Image extends string,
 >(
-  options: StaticProviderSettings<SdkSettings, 'apiKey'>,
+  options: StaticCompatibleSettings<SdkSettings>,
 ): Effect.Effect<
   OpenAICompatibleProvider<Chat, Completion, Embedding, Image>,
   AiSdkError
@@ -80,11 +85,11 @@ export function createOpenAICompatible<
   E,
   R,
 >(options: OpenAICompatibleProviderSettings<E, R>) {
-  return createWithProviderSettings<
+  return buildWithCompatibleSettings<
     SdkSettings,
     R,
     OpenAICompatibleProvider<Chat, Completion, Embedding, Image>
-  >('createOpenAICompatible', options, ['apiKey'], (settings) =>
+  >('createOpenAICompatible', options, (settings) =>
     wrapOpenAICompatibleProvider(
       'openai-compatible',
       sdkCreateOpenAICompatible<Chat, Completion, Embedding, Image>(
@@ -107,7 +112,10 @@ const wrapChatModel = (model: SdkChatModel) =>
       ),
   });
 
-export const OpenAICompatibleChatLanguageModel = adaptModelConstructor(
+export const OpenAICompatibleChatLanguageModel: CompatibleModelConstructor<
+  typeof SdkChatModel,
+  OpenAICompatibleChatLanguageModel
+> = adaptCompatibleModel(
   'OpenAICompatibleChatLanguageModel',
   SdkChatModel,
   wrapChatModel,
@@ -116,7 +124,10 @@ export type OpenAICompatibleChatLanguageModel = ReturnType<
   typeof wrapChatModel
 >;
 
-export const OpenAICompatibleCompletionLanguageModel = adaptModelConstructor(
+export const OpenAICompatibleCompletionLanguageModel: CompatibleModelConstructor<
+  typeof SdkCompletionModel,
+  OpenAICompatibleCompletionLanguageModel
+> = adaptCompatibleModel(
   'OpenAICompatibleCompletionLanguageModel',
   SdkCompletionModel,
   wrapLanguageModel,
@@ -125,7 +136,10 @@ export type OpenAICompatibleCompletionLanguageModel = ReturnType<
   typeof wrapLanguageModel
 >;
 
-export const OpenAICompatibleEmbeddingModel = adaptModelConstructor(
+export const OpenAICompatibleEmbeddingModel: CompatibleModelConstructor<
+  typeof SdkEmbeddingModel,
+  OpenAICompatibleEmbeddingModel
+> = adaptCompatibleModel(
   'OpenAICompatibleEmbeddingModel',
   SdkEmbeddingModel,
   wrapEmbeddingModel,
@@ -134,7 +148,10 @@ export type OpenAICompatibleEmbeddingModel = ReturnType<
   typeof wrapEmbeddingModel
 >;
 
-export const OpenAICompatibleImageModel = adaptModelConstructor(
+export const OpenAICompatibleImageModel: CompatibleModelConstructor<
+  typeof SdkImageModel,
+  OpenAICompatibleImageModel
+> = adaptCompatibleModel(
   'OpenAICompatibleImageModel',
   SdkImageModel,
   wrapImageModel,
