@@ -94,7 +94,15 @@ for (const item of cases) {
     const upstreamManifest = findPackageJSON(upstreamName, pathToFileURL(file));
     if (!upstreamManifest) throw new Error('Missing owned SDK dependency ' + upstreamName);
     const upstreamFile = resolve(dirname(upstreamManifest), item.upstreamTarget);
-    const upstream = commonjs ? require(upstreamFile) : await import(pathToFileURL(upstreamFile));
+    let upstream;
+    try {
+      upstream = commonjs ? require(upstreamFile) : await import(pathToFileURL(upstreamFile));
+    } catch (error) {
+      // The legacy CJS test entry requires Vitest synchronously. The wrapper
+      // reaches its ESM export inside an Effect instead of requiring Vitest.
+      if (!item.aliasTarget || !error.message.includes('Vitest cannot be imported in a CommonJS module')) throw error;
+      upstream = await import(pathToFileURL(resolve(dirname(upstreamManifest), item.aliasTarget)));
+    }
     for (const name of item.names) {
       if (!Object.hasOwn(wrapper, name)) failures.push(item.specifier + ' missing runtime export ' + name);
       else if (!Object.hasOwn(upstream, name)) failures.push(item.upstream + ' archive signature did not match loaded export ' + name);
@@ -149,6 +157,10 @@ for (const [context, { mode, flag }] of Object.entries(contexts)) {
       specifier: `${manifest.name}${path.wrapper.slice(1)}`,
       upstream: path.upstream,
       upstreamTarget,
+      aliasTarget:
+        context === 'node-require' && path.upstream === '@ai-sdk/ui-utils/test'
+          ? path.resolvers['node-import'].runtime
+          : null,
       expectedTarget,
       expectedFile: expectedTarget && resolve(root, expectedTarget),
       names: path.targets[upstreamTarget]?.names ?? [],
