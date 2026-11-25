@@ -158,6 +158,7 @@ const contexts = {
   'node-import': { mode: 'import' },
   'node-require': { mode: 'require' },
   'legacy-module': { mode: 'require', flag: 'module' },
+  svelte: { mode: 'import', flag: 'svelte' },
   'react-server': { mode: 'import', flag: 'react-server' },
 };
 
