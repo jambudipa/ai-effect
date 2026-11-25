@@ -13,11 +13,8 @@ export type {
 
 export type {
   GenerationSettings,
-  ModelCallStreamPart,
   ProviderOptions,
   WorkflowAgentTimeoutConfiguration,
-  WorkflowAgentToolExecutionEndEvent,
-  WorkflowAgentToolExecutionStartEvent,
   WorkflowToolApprovalSecret,
 } from '@ai-sdk/workflow';
 
@@ -56,17 +53,29 @@ import type { UIMessage, ToolSet } from 'ai';
 import {
   type LanguageModelV4,
   unwrapLanguageModel,
+  wrapLanguageModel,
 } from '../internal/language-model.js';
-import { openOperation, runRequest } from '../internal/operation.js';
+import { wrapLegacyModel } from '../internal/legacy-model.js';
+import {
+  abortable,
+  openOperation,
+  runRequest,
+  type AiSdkError,
+} from '../internal/operation.js';
 import {
   type OutputSpecification as EffectOutput,
   bindOutput,
 } from '../internal/output.js';
 import {
   bindTools,
+  type BoundTools,
   type EffectTools,
   type ToolServices,
 } from '../internal/tool.js';
+import type {
+  LanguageModelV2,
+  LanguageModelV3,
+} from '../protocols/provider.js';
 import {
   type WithEffectCallbacks,
   bindCallbacks,
@@ -93,6 +102,14 @@ export type {
 } from './internal/workflow.js';
 
 export type CompatibleLanguageModel = LanguageModelV4;
+export type ModelCallStreamPart<T extends EffectTools = EffectTools> =
+  sdk.ModelCallStreamPart<BoundTools<T>>;
+export type WorkflowAgentToolExecutionStartEvent<
+  T extends EffectTools = EffectTools,
+> = sdk.WorkflowAgentToolExecutionStartEvent<BoundTools<T>>;
+export type WorkflowAgentToolExecutionEndEvent<
+  T extends EffectTools = EffectTools,
+> = sdk.WorkflowAgentToolExecutionEndEvent<BoundTools<T>>;
 export type OutputSpecification<A, P = A, R = never> = EffectOutput<
   A,
   P,
@@ -101,10 +118,6 @@ export type OutputSpecification<A, P = A, R = never> = EffectOutput<
 >;
 
 const lifecycle = [
-  'onStart',
-  'experimental_onStart',
-  'onStepStart',
-  'experimental_onStepStart',
   'onStepEnd',
   'onStepFinish',
   'onEnd',
@@ -140,6 +153,83 @@ type NativeCall<A, P> = sdk.WorkflowAgentCallOptions<
   A,
   P
 >;
+type NativeStart = Parameters<
+  NonNullable<NativeSettings<never, never>['onStart']>
+>[0];
+type NativeStepStart = Parameters<
+  NonNullable<NativeSettings<never, never>['onStepStart']>
+>[0];
+type StartModel = string | LanguageModelV2 | LanguageModelV3 | LanguageModelV4;
+
+const wrapStartModel = (model: NativeStart['model']): StartModel => {
+  if (typeof model === 'string') return model;
+  switch (model.specificationVersion) {
+    case 'v2':
+      return wrapLegacyModel(model);
+    case 'v3':
+      return wrapLegacyModel(model);
+    case 'v4':
+      return wrapLanguageModel(model);
+  }
+};
+
+type StartEvent = {
+  readonly model: StartModel;
+  readonly messages: NativeStart['messages'];
+  readonly runtimeContext: NativeStart['runtimeContext'];
+  readonly toolsContext: NativeStart['toolsContext'];
+};
+type StepStartEvent = StartEvent & {
+  readonly stepNumber: number;
+  readonly steps: NativeStepStart['steps'];
+};
+type StartCallbacks<E, R> = {
+  readonly onStart?: (event: StartEvent) => Effect.Effect<void, E, R>;
+  readonly experimental_onStart?: (
+    event: StartEvent,
+  ) => Effect.Effect<void, E, R>;
+  readonly onStepStart?: (event: StepStartEvent) => Effect.Effect<void, E, R>;
+  readonly experimental_onStepStart?: (
+    event: StepStartEvent,
+  ) => Effect.Effect<void, E, R>;
+};
+
+const bindStartCallbacks = <E, R>(
+  options: StartCallbacks<E, R>,
+  owner: Effect.Success<ReturnType<typeof openOperation<R>>>,
+) => {
+  const bind =
+    <Event extends NativeStart>(
+      callback: (
+        event: Omit<Event, 'model'> & { model: StartModel },
+      ) => Effect.Effect<void, E, R>,
+    ) =>
+    ({ model, ...event }: Event) =>
+      owner.runCallback(
+        Effect.suspend(() =>
+          callback({
+            ...event,
+            model: wrapStartModel(model),
+          }),
+        ),
+      );
+  const {
+    onStart,
+    experimental_onStart,
+    onStepStart,
+    experimental_onStepStart,
+  } = options;
+  return {
+    ...(onStart && { onStart: bind<NativeStart>(onStart) }),
+    ...(experimental_onStart && {
+      experimental_onStart: bind<NativeStart>(experimental_onStart),
+    }),
+    ...(onStepStart && { onStepStart: bind<NativeStepStart>(onStepStart) }),
+    ...(experimental_onStepStart && {
+      experimental_onStepStart: bind<NativeStepStart>(experimental_onStepStart),
+    }),
+  };
+};
 
 type GeneralSettings =
   | 'id'
@@ -168,6 +258,7 @@ export type WorkflowAgentOptions<
   R
 > &
   Partial<sdk.GenerationSettings> &
+  StartCallbacks<E, R> &
   WorkflowConstructorExtras<E, R> & {
     readonly model:
       Extract<NativeSettings<A, P>['model'], string> | CompatibleLanguageModel;
@@ -186,10 +277,12 @@ type Omitted =
   | 'toolApproval'
   | 'telemetry'
   | 'prepareStep'
+  | keyof StartCallbacks<never, never>
   | 'output';
 
 type OperationOptions<N, A, P, E, R> = N extends unknown
   ? Omit<WithEffectCallbacks<N, Lifecycle, E, R>, Omitted> &
+      StartCallbacks<E, R> &
       WorkflowExtras<E, R> & {
         readonly output?: OutputSpecification<A, P, R>;
         readonly experimental_sandbox?: SandboxSession;
@@ -219,8 +312,12 @@ export type WorkflowAgentStreamOptions<
 
 export type WorkflowAgentGenerateResult<A = string> =
   sdk.WorkflowAgentGenerateResult<ToolSet, Record<string, unknown>, A>;
-export type WorkflowAgentStreamResult<A = never> =
-  sdk.WorkflowAgentStreamResult<ToolSet, A>;
+export type WorkflowAgentStreamResult<A = never> = Omit<
+  sdk.WorkflowAgentStreamResult<ToolSet, A>,
+  'error'
+> & {
+  readonly error?: AiSdkError;
+};
 
 type NativeAgent<A, P> = sdk.WorkflowAgent<
   ToolSet,
@@ -249,6 +346,10 @@ export class WorkflowAgent<A = never, P = A> {
         experimental_download,
         prepareStep,
         prepareCall,
+        onStart,
+        experimental_onStart,
+        onStepStart,
+        experimental_onStepStart,
         ...rest
       } = options;
       const nativeModel =
@@ -273,6 +374,7 @@ export class WorkflowAgent<A = never, P = A> {
         return new WorkflowAgent<A, P>(
           new sdk.WorkflowAgent<ToolSet, Record<string, unknown>, A, P>({
             ...config,
+            ...bindStartCallbacks(options, owner),
             ...extras,
             model: nativeModel,
             ...(tools && { tools: bindTools(tools, owner) }),
@@ -320,9 +422,16 @@ export class WorkflowAgent<A = never, P = A> {
       Part,
       E,
       R,
-      WorkflowAgentStreamResult<Out>
+      sdk.WorkflowAgentStreamResult<ToolSet, Out>
     >('WorkflowAgent.stream', options, (input) =>
       this.native.stream<ToolSet, Out, Part>(input),
+    ).pipe(
+      Effect.map((result): WorkflowAgentStreamResult<Out> => {
+        const { error, ...data } = result;
+        return 'error' in result
+          ? { ...data, error: sdkError('WorkflowAgent.stream', error) }
+          : data;
+      }),
     );
   }
 }
@@ -344,6 +453,10 @@ const invokeWorkflow = <N extends NativeOptions<A, P>, A, P, E, R, Result>(
         experimental_repairToolCall,
         experimental_download,
         prepareStep,
+        onStart,
+        experimental_onStart,
+        onStepStart,
+        experimental_onStepStart,
         ...rest
       } = options;
       const nativeSandbox =
@@ -358,20 +471,23 @@ const invokeWorkflow = <N extends NativeOptions<A, P>, A, P, E, R, Result>(
         lifecycle,
         owner,
       );
-      return yield* runRequest(
+      const result = yield* abortable(
         name,
-        { abortSignal: owner.signal },
-        (abortSignal) => {
+        owner.signal,
+        runRequest(name, { abortSignal: owner.signal }, (abortSignal) => {
           const nativeOutput = output && bindOutput(output, owner);
           return invoke({
             ...bound,
+            ...bindStartCallbacks(options, owner),
             ...extras,
             abortSignal,
             ...(nativeOutput && { output: nativeOutput }),
             ...(nativeSandbox && { experimental_sandbox: nativeSandbox }),
           } as N);
-        },
+        }),
       );
+      yield* owner.markComplete;
+      return result;
     }),
   );
 
