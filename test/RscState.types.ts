@@ -30,6 +30,6 @@ expectTypeOf<
 >().toEqualTypeOf<number>();
 
 // @ts-expect-error A typed provider restricts the key to its state fields.
-getAIState<Provider>('missing');
+export const invalidRead = getAIState<Provider>('missing');
 // @ts-expect-error A typed provider restricts the key to its state fields.
-getMutableAIState<Provider>('missing');
+export const invalidEdit = getMutableAIState<Provider>('missing');
