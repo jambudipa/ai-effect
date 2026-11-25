@@ -1,6 +1,7 @@
 import * as sdk from '@ai-sdk/swarm';
 import { Effect, type Schema, Stream } from 'effect';
 import {
+  type AiSdkError,
   type openOperation,
   runRequest,
   runSync,
@@ -115,7 +116,7 @@ export class Agent<C = unknown, R = never, E = never> {
   get tools() {
     return this.settings.tools;
   }
-  get toolChoice() {
+  get toolChoice(): Definition<C, R, E>['toolChoice'] {
     return this.settings.toolChoice;
   }
 }
@@ -135,10 +136,17 @@ type RunOptions<C, R, E> = Omit<
   readonly onStepFinish?: (event: StepEvent<C>) => Effect.Effect<void, E, R>;
 };
 
+export type SwarmResult<C, R = never, E = never> = Omit<
+  Awaited<ReturnType<typeof sdk.runSwarm<C>>>,
+  'activeAgent'
+> & {
+  readonly activeAgent: Agent<C, R, E>;
+};
+
 /** Run the legacy Swarm with Effect-owned tool and model callbacks. */
 export const runSwarm = <C, R = never, E = never>(
   options: RunOptions<C, R, E>,
-) =>
+): Effect.Effect<SwarmResult<C, R, E>, AiSdkError, R> =>
   Effect.scoped(
     Effect.gen(function* () {
       const owner = yield* openOwner<R>(options.abortSignal);
