@@ -1,9 +1,26 @@
 'use client';
 
 import * as sdk from '@ai-sdk/react';
-import type { UIMessage } from 'ai';
+import type {
+  DynamicToolUIPart,
+  Experimental_RealtimeClientEvent,
+  Experimental_RealtimeServerEvent,
+  Experimental_RealtimeSessionOptions as NativeRealtimeOptions,
+  Experimental_RealtimeSessionState,
+  Experimental_RealtimeStatus,
+  ToolUIPart,
+  UIMessage,
+  UITools,
+} from 'ai';
 import { Effect } from 'effect';
-import { createElement, useEffect, useMemo, type ReactElement } from 'react';
+import {
+  createElement,
+  useEffect,
+  useMemo,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { runSync, sdkError, type AiSdkError } from '../internal/operation.js';
 import {
   unwrapRealtimeModel,
@@ -29,12 +46,8 @@ import {
 export type {
   CreateUIMessage,
   Experimental_RealtimeStatus,
-  MCPAppMetadata,
-  MCPAppPermission,
-  MCPAppSandboxConfig,
-  MCPAppResource,
   UIMessage,
-} from '@ai-sdk/react';
+} from 'ai';
 export type { ChatInit } from './chat.js';
 export type { CompletionOptions as UseCompletionOptions } from './options.js';
 
@@ -113,6 +126,29 @@ export type UseChatOptions<Message extends UIMessage> = (
 ) &
   ChatControls;
 
+export type UseChatHelpers<Message extends UIMessage> = Pick<
+  HostChat<Message>,
+  | 'id'
+  | 'status'
+  | 'messages'
+  | 'experimental_queuedMessages'
+  | 'error'
+  | 'sendMessage'
+  | 'regenerate'
+  | 'resumeStream'
+  | 'stop'
+  | 'clearError'
+  | 'addToolApprovalResponse'
+  | 'addToolOutput'
+  | 'addToolResult'
+  | 'experimental_removeQueuedMessage'
+  | 'experimental_sendQueuedMessageNow'
+> & {
+  readonly setMessages: (
+    messages: Message[] | ((previous: Message[]) => Message[]),
+  ) => void;
+};
+
 type MessageTools<Message> =
   Message extends UIMessage<infer _Meta, infer _Data, infer Tools>
     ? Tools
@@ -121,7 +157,7 @@ type MessageTools<Message> =
 /** Keep the native hook synchronous and give its commands the view lifetime. */
 export function useChat<Message extends UIMessage = UIMessage>(
   options?: UseChatOptions<Message>,
-) {
+): UseChatHelpers<Message> {
   const { throttle, experimental_throttle, resume } = options ?? {};
   const controls = {
     ...(throttle === undefined ? {} : { throttle }),
@@ -215,10 +251,6 @@ export function useChat<Message extends UIMessage = UIMessage>(
   };
 }
 
-export type UseChatHelpers<Message extends UIMessage> = ReturnType<
-  typeof useChat<Message>
->;
-
 export function useCompletion<Body extends object = object>(
   options?: CompletionOptions<NoInfer<Body>> &
     Pick<ChatControls, 'throttle' | 'experimental_throttle'>,
@@ -306,7 +338,6 @@ export type Experimental_UseObjectHelpers<Result, Input> = UseObjectHelpers<
   Input
 >;
 
-type NativeRealtimeOptions = Parameters<typeof sdk.experimental_useRealtime>[0];
 type RealtimeToolCall = Parameters<
   NonNullable<NativeRealtimeOptions['onToolCall']>
 >[0];
@@ -327,9 +358,41 @@ export type Experimental_UseRealtimeOptions = {
   readonly onEvent?: (event: RealtimeEvent) => HostResult<void>;
   readonly onError?: (error: AiSdkError) => HostResult<void>;
 };
+
+type Command<Args extends unknown[] = []> = (
+  ...args: Args
+) => Effect.Effect<void, AiSdkError>;
+
+export type Experimental_UseRealtimeReturn = {
+  readonly status: Experimental_RealtimeStatus;
+  readonly messages: UIMessage[];
+  readonly events: Experimental_RealtimeServerEvent[];
+  readonly isCapturing: boolean;
+  readonly isPlaying: boolean;
+  readonly session: Experimental_RealtimeSessionState | undefined;
+  readonly connect: Command<
+    [options: { stream?: MediaStream; capture?: boolean }]
+  >;
+  readonly close: Command<[options?: { eventId?: string }]>;
+  readonly resumePlayback: Command;
+  readonly resumeAudioCapture: Command;
+  readonly disconnect: Command;
+  readonly addToolOutput: Command<[callId: string, result: unknown]>;
+  readonly sendEvent: Command<[event: Experimental_RealtimeClientEvent]>;
+  readonly sendTextMessage: Command<[text: string]>;
+  readonly sendAudio: Command<[base64Audio: string]>;
+  readonly commitAudio: Command;
+  readonly clearAudioBuffer: Command;
+  readonly requestResponse: Command<[options?: { modalities?: string[] }]>;
+  readonly cancelResponse: Command;
+  readonly startAudioCapture: Command<[stream: MediaStream]>;
+  readonly stopAudioCapture: Command;
+  readonly stopPlayback: Command;
+};
+
 export function experimental_useRealtime(
   options: Experimental_UseRealtimeOptions,
-) {
+): Experimental_UseRealtimeReturn {
   const { view, stop } = useLifetime();
   const model = unwrapRealtimeModel(options.model);
   if (!model) throw sdkError('useRealtime', 'Invalid realtime model handle');
@@ -386,7 +449,7 @@ export function experimental_useRealtime(
         native.addToolOutput(...args),
       ),
     sendEvent: (...args: Parameters<typeof native.sendEvent>) =>
-      view.action('useRealtime.sendEvent', () => native.sendEvent(...args)),
+      view.command('useRealtime.sendEvent', () => native.sendEvent(...args)),
     sendTextMessage: (...args: Parameters<typeof native.sendTextMessage>) =>
       view.action('useRealtime.sendTextMessage', () =>
         native.sendTextMessage(...args),
@@ -414,13 +477,7 @@ export function experimental_useRealtime(
   };
 }
 
-export type Experimental_UseRealtimeReturn = ReturnType<
-  typeof experimental_useRealtime
->;
-
-type DisplayMode = NonNullable<
-  NonNullable<sdk.MCPAppRendererProps['hostContext']>['displayMode']
->;
+type DisplayMode = 'inline' | 'fullscreen' | 'pip';
 type ToolCall = { name: string; arguments?: Record<string, unknown> };
 type Size = { width?: number; height?: number };
 
@@ -442,17 +499,55 @@ export type MCPAppBridgeHandlers = {
   readonly onError?: (error: AiSdkError) => HostResult<void>;
 };
 
+export type MCPAppPermission =
+  'camera' | 'microphone' | 'geolocation' | 'clipboardWrite';
+export type MCPAppResource = {
+  uri: string;
+  mimeType: 'text/html;profile=mcp-app';
+  html: string;
+  meta?: {
+    prefersBorder?: boolean;
+    csp?: {
+      connectDomains?: string[];
+      resourceDomains?: string[];
+      frameDomains?: string[];
+      baseUriDomains?: string[];
+      [key: string]: unknown;
+    };
+    permissions?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+};
+export type MCPAppMetadata = {
+  resourceUri: string;
+  mimeType: MCPAppResource['mimeType'];
+  visibility?: Array<'model' | 'app'>;
+};
+export type MCPAppSandboxConfig = {
+  url: string | URL;
+  title?: string;
+  className?: string;
+  style?: CSSProperties;
+  targetOrigin?: string;
+  outerSandbox?: string;
+  innerSandbox?: string;
+  allowedPermissions?: MCPAppPermission[];
+};
+
 export type MCPAppRendererProps = {
-  readonly part: sdk.MCPAppRendererProps['part'];
-  readonly sandbox: sdk.MCPAppSandboxConfig;
-  readonly resource?: sdk.MCPAppResource;
-  readonly loadResource?: (
-    app: sdk.MCPAppMetadata,
-  ) => HostResult<sdk.MCPAppResource>;
+  readonly part: ToolUIPart<UITools> | DynamicToolUIPart;
+  readonly sandbox: MCPAppSandboxConfig;
+  readonly resource?: MCPAppResource;
+  readonly loadResource?: (app: MCPAppMetadata) => HostResult<MCPAppResource>;
   readonly handlers?: MCPAppBridgeHandlers;
-  readonly hostInfo?: NonNullable<sdk.MCPAppRendererProps['hostInfo']>;
-  readonly hostContext?: NonNullable<sdk.MCPAppRendererProps['hostContext']>;
-  readonly fallback?: sdk.MCPAppRendererProps['fallback'];
+  readonly hostInfo?: { name: string; version: string };
+  readonly hostContext?: {
+    theme?: 'light' | 'dark';
+    displayMode?: DisplayMode;
+    availableDisplayModes?: DisplayMode[];
+    [key: string]: unknown;
+  };
+  readonly fallback?: ReactNode;
 };
 
 export function MCPAppRenderer({
