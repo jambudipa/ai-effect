@@ -5,6 +5,7 @@ import {
   openOperation,
   runRequest,
   runSync,
+  sdkError,
 } from '../internal/operation.js';
 import {
   Output,
@@ -15,6 +16,7 @@ import {
   type EffectTools,
   type ToolServices,
 } from '../internal/tool.js';
+import { wrapTools } from './internal/sdk-tool.js';
 import {
   bindCallbacks,
   type WithEffectCallbacks,
@@ -90,6 +92,8 @@ export type DurableAgentStreamOptions<
   'stopWhen' | 'experimental_transform' | 'experimental_output'
 > & {
   readonly experimental_output?: OutputSpecification<A, P>;
+  readonly experimental_transform?:
+    StreamTextTransform<E, R> | ReadonlyArray<StreamTextTransform<E, R>>;
 };
 
 export type DurableAgentStreamResult<A = never> = sdk.DurableAgentStreamResult<
@@ -187,7 +191,15 @@ export class DurableAgent {
     return Effect.scoped(
       Effect.gen(function* () {
         const owner = yield* openOperation<R>(options.abortSignal);
-        const { experimental_output, ...rest } = options;
+        const { experimental_output, experimental_transform, ...rest } =
+          options;
+        const context = yield* Effect.context<R>();
+        const transforms =
+          experimental_transform &&
+          (typeof experimental_transform === 'function'
+            ? [experimental_transform]
+            : experimental_transform
+          ).map((transform) => bindTransform(transform, context));
         const output =
           experimental_output &&
           (yield* bindOutput(experimental_output, owner));
@@ -205,6 +217,7 @@ export class DurableAgent {
               ...bound,
               abortSignal,
               ...(output && { experimental_output: output }),
+              ...(transforms && { experimental_transform: transforms }),
             }),
         );
       }),
@@ -232,3 +245,40 @@ export type StreamTextOnFinishCallback<
 export type ToolCallRepairFunction<E = never, R = never> = NonNullable<
   DurableAgentStreamOptions<never, never, E, R>['experimental_repairToolCall']
 >;
+
+type LegacyToolSet = NonNullable<sdk.DurableAgentOptions['tools']>;
+type NativeTransform = sdk.StreamTextTransform<LegacyToolSet>;
+type LegacyPart =
+  ReturnType<NativeTransform> extends TransformStream<infer I, infer _O>
+    ? I
+    : never;
+
+export interface StreamTextTransform<E = never, R = never> {
+  (options: {
+    readonly tools: ReturnType<typeof wrapTools>;
+    readonly stopStream: Effect.Effect<void, AiSdkError>;
+    readonly stream: Stream.Stream<LegacyPart, AiSdkError>;
+  }): Stream.Stream<LegacyPart, E, R>;
+}
+
+const bindTransform =
+  <E, R>(
+    transform: StreamTextTransform<E, R>,
+    context: import('effect').Context.Context<R>,
+  ): NativeTransform =>
+  ({ tools, stopStream }) => {
+    const bridge = new TransformStream<LegacyPart, LegacyPart>();
+    const stream = Stream.fromReadableStream({
+      evaluate: () => bridge.readable,
+      onError: (cause) => sdkError('DurableAgent.transform', cause),
+    });
+    const transformed = transform({
+      tools: wrapTools('DurableAgent.tools', tools),
+      stopStream: runSync('DurableAgent.stopStream', stopStream),
+      stream,
+    });
+    return {
+      writable: bridge.writable,
+      readable: Stream.toReadableStreamWith(transformed, context),
+    };
+  };
