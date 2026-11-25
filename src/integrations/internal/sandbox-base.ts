@@ -7,6 +7,7 @@ import type {
   Experimental_WritableSandboxProcess as NativeWritableProcess,
 } from '@ai-sdk/provider-utils';
 import { Effect } from 'effect';
+import type { Scope as EffectScope } from 'effect/Scope';
 import { runRequest } from '../../internal/operation.js';
 import { ownStream } from './stream.js';
 
@@ -65,21 +66,21 @@ const wrapSpawn = (native: NativeSandbox) => {
   ): Effect.Effect<
     WritableProcess,
     import('../../internal/operation.js').AiSdkError,
-    import('effect').Scope.Scope
+    EffectScope
   >;
   function spawn(
     options: SpawnOptionsWithoutStdin,
   ): Effect.Effect<
     Process,
     import('../../internal/operation.js').AiSdkError,
-    import('effect').Scope.Scope
+    EffectScope
   >;
   function spawn(
     options: SpawnOptions,
   ): Effect.Effect<
     Process,
     import('../../internal/operation.js').AiSdkError,
-    import('effect').Scope.Scope
+    EffectScope
   >;
   function spawn(options: SpawnOptions) {
     return Effect.map(
