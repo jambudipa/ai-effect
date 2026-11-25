@@ -60,7 +60,7 @@ import {
 import { openOperation, runRequest } from '../internal/operation.js';
 import {
   type OutputSpecification as EffectOutput,
-  unwrapOutput,
+  bindOutput,
 } from '../internal/output.js';
 import {
   bindTools,
@@ -93,7 +93,12 @@ export type {
 } from './internal/workflow.js';
 
 export type CompatibleLanguageModel = LanguageModelV4;
-export type OutputSpecification<A, P = A> = EffectOutput<A, P>;
+export type OutputSpecification<A, P = A, R = never> = EffectOutput<
+  A,
+  P,
+  unknown,
+  R
+>;
 
 const lifecycle = [
   'onStart',
@@ -167,7 +172,7 @@ export type WorkflowAgentOptions<
     readonly model:
       Extract<NativeSettings<A, P>['model'], string> | CompatibleLanguageModel;
     readonly tools?: T;
-    readonly output?: OutputSpecification<A, P>;
+    readonly output?: OutputSpecification<A, P, R>;
     readonly experimental_sandbox?: SandboxSession;
   };
 
@@ -186,7 +191,7 @@ type Omitted =
 type OperationOptions<N, A, P, E, R> = N extends unknown
   ? Omit<WithEffectCallbacks<N, Lifecycle, E, R>, Omitted> &
       WorkflowExtras<E, R> & {
-        readonly output?: OutputSpecification<A, P>;
+        readonly output?: OutputSpecification<A, P, R>;
         readonly experimental_sandbox?: SandboxSession;
       }
   : never;
@@ -263,20 +268,19 @@ export class WorkflowAgent<A = never, P = A> {
         E,
         R
       >(rest, lifecycle, owner);
-      return yield* runSync(
-        'WorkflowAgent.make',
-        () =>
-          new WorkflowAgent<A, P>(
-            new sdk.WorkflowAgent<ToolSet, Record<string, unknown>, A, P>({
-              ...config,
-              ...extras,
-              model: nativeModel,
-              ...(tools && { tools: bindTools(tools, owner) }),
-              ...(output && { output: unwrapOutput(output) }),
-              ...(nativeSandbox && { experimental_sandbox: nativeSandbox }),
-            } as NativeSettings<A, P>),
-          ),
-      );
+      return yield* runSync('WorkflowAgent.make', () => {
+        const nativeOutput = output && bindOutput(output, owner);
+        return new WorkflowAgent<A, P>(
+          new sdk.WorkflowAgent<ToolSet, Record<string, unknown>, A, P>({
+            ...config,
+            ...extras,
+            model: nativeModel,
+            ...(tools && { tools: bindTools(tools, owner) }),
+            ...(nativeOutput && { output: nativeOutput }),
+            ...(nativeSandbox && { experimental_sandbox: nativeSandbox }),
+          } as NativeSettings<A, P>),
+        );
+      });
     });
   }
 
@@ -357,14 +361,16 @@ const invokeWorkflow = <N extends NativeOptions<A, P>, A, P, E, R, Result>(
       return yield* runRequest(
         name,
         { abortSignal: owner.signal },
-        (abortSignal) =>
-          invoke({
+        (abortSignal) => {
+          const nativeOutput = output && bindOutput(output, owner);
+          return invoke({
             ...bound,
             ...extras,
             abortSignal,
-            ...(output && { output: unwrapOutput(output) }),
+            ...(nativeOutput && { output: nativeOutput }),
             ...(nativeSandbox && { experimental_sandbox: nativeSandbox }),
-          } as N),
+          } as N);
+        },
       );
     }),
   );
