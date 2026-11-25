@@ -46,7 +46,7 @@ function bindOptions<Native extends object, Services>(
 export function mockModel<
   Settings extends object,
   Native,
-  Model,
+  Model extends object,
   Key extends keyof Native = never,
 >(
   operation: string,
@@ -61,7 +61,8 @@ export function mockModel<
         const native = options
           ? new NativeMock(bindOptions(options, owner))
           : new NativeMock();
-        const result = { model: wrap(native) };
+        const result = wrap(native);
+        Object.defineProperty(result, 'model', { value: result });
         for (const key of history) {
           Object.defineProperty(result, key, {
             enumerable: true,
@@ -71,9 +72,9 @@ export function mockModel<
             },
           });
         }
-        return result as { readonly model: Model } & Readonly<
-          Pick<Native, Key>
-        >;
+        return result as Model & { readonly model: Model } & Readonly<
+            Pick<Native, Key>
+          >;
       });
     });
 }
