@@ -1,14 +1,24 @@
 import ts from 'typescript';
 
+const dependencyDirectory = '/node_modules/';
+const wrapperDirectory = '@jambudipa/ai-effect/';
+
 function sourcePath(declaration) {
   return declaration.getSourceFile().fileName.replaceAll('\\', '/');
+}
+
+function dependencyPath(path) {
+  const start = path.lastIndexOf(dependencyDirectory);
+  return start < 0 ? '' : path.slice(start + dependencyDirectory.length);
 }
 
 function hasSdkOrigin(declaration) {
   const path = sourcePath(declaration);
   if (path.includes('/harness-contracts/just-bash/')) return false;
+  const dependency = dependencyPath(path);
+  if (/^(?:ai|@ai-sdk\/[^/]+)\//u.test(dependency)) return true;
+  if (dependency && !dependency.startsWith(wrapperDirectory)) return false;
   return (
-    /\/node_modules\/(?:ai|@ai-sdk\/[^/]+)\//u.test(path) ||
     path.endsWith('/integrations/internal/mcp-contract.d.ts') ||
     path.endsWith('/integrations/internal/code-mode-contract.d.ts') ||
     /\/(?:integrations\/internal\/harness-contracts|internal\/provider-contracts)\/.*\.d\.ts$/u.test(
@@ -20,7 +30,7 @@ function hasSdkOrigin(declaration) {
 function hasWrapperOrigin(declaration) {
   const path = sourcePath(declaration);
   return (
-    path.includes('/node_modules/@jambudipa/ai-effect/') &&
+    dependencyPath(path).startsWith(wrapperDirectory) &&
     !path.includes('/harness-contracts/just-bash/')
   );
 }
@@ -155,8 +165,8 @@ export function findPrivateSdkImports(program, publicPaths) {
   const privateImports = [];
   for (const file of program.getSourceFiles()) {
     if (
-      !/\/node_modules\/@jambudipa\/ai-effect\//u.test(
-        file.fileName.replaceAll('\\', '/'),
+      !dependencyPath(file.fileName.replaceAll('\\', '/')).startsWith(
+        wrapperDirectory,
       )
     )
       continue;
