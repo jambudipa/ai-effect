@@ -39,8 +39,28 @@ const printer = ts.createPrinter({ removeComments: true });
 const replacements = new Map([
   ['openai', 2],
   ['heygen', 5],
+  ['azure', 0],
 ]);
 const licenses = new Map();
+
+function azureContract(source) {
+  const internal =
+    /import \{([^}]+)\} from ["']@ai-sdk\/openai\/internal["'];/u;
+  const original = source.match(internal);
+  assert.ok(original, 'Azure must declare the pinned OpenAI imports');
+  const names = original[1].split(',').map((name) => name.trim());
+  const metadata = names.filter((name) => name.startsWith('Responses'));
+  const factories = names.filter((name) => !metadata.includes(name));
+  const bindings = metadata.map((name) => `Openai${name} as ${name}`);
+  const imports = `import type { OpenAIProvider, ${bindings.join(', ')} } from './openai.js';`;
+  let result = source.replace(internal, imports);
+  for (const factory of factories) {
+    const callable = `typeof ${factory};`;
+    assert.ok(result.includes(callable), `Missing Azure tool ${factory}`);
+    result = result.replace(callable, `OpenAIProvider['tools']['${factory}'];`);
+  }
+  return result.replaceAll('"@ai-sdk/openai"', '"./openai.js"');
+}
 
 for (const [provider, expected] of replacements) {
   const upstream = `@ai-sdk/${provider}`;
@@ -59,7 +79,8 @@ for (const [provider, expected] of replacements) {
   licenses.set(license, licenseFile);
 
   const filename = `${provider}.d.ts`;
-  const text = await readFile(join(dir, target), 'utf8');
+  const original = await readFile(join(dir, target), 'utf8');
+  const text = provider === 'azure' ? azureContract(original) : original;
   const parse = (text) =>
     ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true);
   const source = parse(text);

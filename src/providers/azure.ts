@@ -1,12 +1,13 @@
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
-import type { AzureOpenAIProviderSettings as SdkSettings } from '@ai-sdk/azure';
+import type { AzureOpenAIProviderSettings as SdkSettings } from '../internal/provider-contracts/azure.js';
 import { wrapProviderTools } from '../internal/provider-tool.js';
 import {
   createAzure as sdkCreateAzure,
   azure as sdkAzure,
+  VERSION as sdkVersion,
 } from '@ai-sdk/azure';
-import type { AzureOpenAIProvider as SdkProvider } from '@ai-sdk/azure';
+import type { AzureOpenAIProvider as SdkProvider } from '../internal/provider-contracts/azure.js';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import {
@@ -16,7 +17,7 @@ import {
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
 
-export { VERSION } from '@ai-sdk/azure';
+export const VERSION: string = sdkVersion;
 export type {
   AzureDeepSeekChatOptions,
   AzureDeepSeekLanguageModelOptions,
@@ -34,7 +35,7 @@ export type {
   OpenAILanguageModelResponsesOptions,
   OpenAIResponsesProviderOptions,
   OpenAIResponsesSystemMessageOptions,
-} from '@ai-sdk/azure';
+} from '../internal/provider-contracts/azure.js';
 
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('azure', sdk, wrapLanguageModel), {
