@@ -15,6 +15,52 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./ai": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
+    },
+    "./ai/test": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
+    },
+    "./cerebras": {
+      "types": "./dist/providers/cerebras.d.ts",
+      "import": "./dist/providers/cerebras.js",
+      "default": "./dist/providers/cerebras.js"
+    },
+    "./svelte": {
+      "types": "./dist/frameworks/svelte.d.ts",
+      "svelte": "./dist/frameworks/svelte.js"
+    },
+    "./ui-utils": {
+      "import": {
+        "types": "./dist/integrations/ui-utils.d.ts",
+        "import": "./dist/integrations/ui-utils.js",
+        "default": "./dist/integrations/ui-utils.js"
+      },
+      "require": {
+        "types": "./dist/integrations/ui-utils.d.cts",
+        "default": "./dist/integrations/ui-utils.cjs"
+      }
+    },
+    "./ui-utils/test": {
+      "import": {
+        "types": "./dist/integrations/ui-utils-test.d.ts",
+        "import": "./dist/integrations/ui-utils-test.js",
+        "default": "./dist/integrations/ui-utils-test.js"
+      },
+      "module": {
+        "types": "./dist/integrations/ui-utils-test.d.ts",
+        "import": "./dist/integrations/ui-utils-test.js",
+        "default": "./dist/integrations/ui-utils-test.js"
+      },
+      "require": {
+        "types": "./dist/integrations/ui-utils-test.d.cts",
+        "default": "./dist/integrations/ui-utils-test.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -26,9 +72,9 @@
     "node": "^22.19.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && vite build --mode legacy && tsc -p tsconfig.build.json && node scripts/copy-legacy-declarations.mjs",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "format:check": "prettier --check src test *.json *.mjs *.ts",
+    "format:check": "prettier --check src test scripts/*.mjs *.json *.mjs *.ts",
     "lint": "npm run lint:eslint; e=$?; npm run lint:effect; f=$?; exit $(( e > f ? e : f ))",
     "lint:eslint": "eslint src test --max-warnings=0",
     "lint:effect": "effect-language-service diagnostics --project tsconfig.json --format text --severity ${EFFECT_SEVERITY:-error,warning} --strict",
