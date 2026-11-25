@@ -347,6 +347,8 @@ const streamTool = <A, E, R>(
         owner.runCallback(
           iterator.pipe(
             Effect.flatMap((source) =>
+              // Code Mode must see the original tool rejection.
+              // @effect-diagnostics-next-line effect/unknownInEffectCatch:off
               Effect.tryPromise({
                 try: () => source.next(),
                 catch: (cause) => cause,
