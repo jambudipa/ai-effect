@@ -12,6 +12,7 @@ const { values } = parseArgs({
   options: {
     fixture: { type: 'string' },
     entry: { type: 'string', multiple: true },
+    context: { type: 'string', multiple: true },
     'operations-only': { type: 'boolean' },
   },
 });
@@ -90,6 +91,7 @@ function inspect(context, { mode, bundler, flags }) {
     host,
   );
   const checker = program.getTypeChecker();
+  const checkedTypes = new Set();
   const failures = findPrivateSdkImports(program, publicSdkPaths).map(
     ({ source, specifier }) =>
       `Private SDK declaration import ${specifier} in ${source}`,
@@ -122,7 +124,12 @@ function inspect(context, { mode, bundler, flags }) {
           failures.push(`${path.wrapper} is missing type export ${name}`);
       }
     }
-    for (const operation of findSdkOperations(checker, symbols)) {
+    for (const operation of findSdkOperations(
+      checker,
+      symbols,
+      [],
+      checkedTypes,
+    )) {
       failures.push(
         `${path.wrapper} leaks SDK operation ${operation.path} from ${operation.source}`,
       );
@@ -135,14 +142,19 @@ function inspect(context, { mode, bundler, flags }) {
   return failures.map((failure) => `${context}: ${failure}`);
 }
 
-const failures = Object.entries(contexts).flatMap(([context, settings]) =>
-  inspect(context, settings),
-);
+const selectedContexts = values.context ?? Object.keys(contexts);
+const failures = [];
+for (const context of selectedContexts) {
+  assert.ok(Object.hasOwn(contexts, context), `Unknown context ${context}`);
+  const errors = inspect(context, contexts[context]);
+  failures.push(...errors);
+  for (const error of errors) console.error(error);
+  console.log(`${context}: checked ${paths.length} packed declaration paths`);
+}
 if (failures.length) {
-  for (const failure of failures) console.error(failure);
   process.exitCode = 1;
 } else {
   console.log(
-    `Checked ${paths.length} packed SDK declaration paths under ${Object.keys(contexts).length} resolution contexts`,
+    `Checked ${paths.length} packed SDK declaration paths under ${selectedContexts.length} resolution contexts`,
   );
 }

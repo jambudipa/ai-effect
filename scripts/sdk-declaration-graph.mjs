@@ -8,7 +8,8 @@ function hasSdkOrigin(declaration) {
   const path = sourcePath(declaration);
   return (
     /\/node_modules\/(?:ai|@ai-sdk\/[^/]+)\//u.test(path) ||
-    path.endsWith('/integrations/internal/mcp-contract.d.ts')
+    path.endsWith('/integrations/internal/mcp-contract.d.ts') ||
+    /\/integrations\/internal\/harness-contracts\/.*\.d\.ts$/u.test(path)
   );
 }
 
@@ -38,9 +39,13 @@ function typeArguments(checker, type) {
 }
 
 /** Report raw SDK calls, constructors, methods, and getters in the public types. */
-export function findSdkOperations(checker, publicSymbols, publicTypes = []) {
+export function findSdkOperations(
+  checker,
+  publicSymbols,
+  publicTypes = [],
+  visited = new Set(),
+) {
   const operations = [];
-  const visited = new Set();
 
   function report(path, declaration) {
     operations.push({ path, source: sourcePath(declaration) });
