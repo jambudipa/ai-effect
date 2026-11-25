@@ -39,13 +39,20 @@ export type ToolServices<Tools extends EffectTools> =
   | Effect.Services<ReturnType<Tools[keyof Tools]['execute']>>
   | Tools[keyof Tools]['inputSchema']['DecodingServices'];
 
+// ToolSet accepts several SDK tool variants. Keep the compatible variants
+// without intersecting their typed arguments with the untyped index signature.
+type CompatibleSdkTool<Native> = Native extends ToolSet[string]
+  ? Native
+  : never;
+
 export type BoundTools<Tools extends EffectTools> = {
-  [Name in keyof Tools]: Tool<
-    Tools[Name]['inputSchema']['Type'],
-    Effect.Success<ReturnType<Tools[Name]['execute']>>,
-    unknown
-  > &
-    ToolSet[string];
+  [Name in keyof Tools]: CompatibleSdkTool<
+    Tool<
+      Tools[Name]['inputSchema']['Type'],
+      Effect.Success<ReturnType<Tools[Name]['execute']>>,
+      unknown
+    >
+  >;
 };
 
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
