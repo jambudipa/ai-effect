@@ -8,6 +8,7 @@ import {
   sdkError,
 } from '../src/internal/operation.js';
 import { bindTools, tool, type ToolServices } from '../src/internal/tool.js';
+import { createOpenAI } from '../src/providers/openai.js';
 import {
   executeTool,
   tool as protocolTool,
@@ -63,6 +64,17 @@ it('preserves the SDK tool overloads with explicit context', () => {
   expectTypeOf(executable.execute).toBeFunction();
   expect(executable.execute).toBe(execute);
 });
+
+it.effect('keeps the type and identity of provider tools', () =>
+  Effect.gen(function* () {
+    const provider = yield* createOpenAI({ apiKey: 'fixture' });
+    const search = yield* provider.tools.webSearch({});
+    const defined = protocolTool(search);
+
+    expectTypeOf(defined).toEqualTypeOf<typeof search>();
+    expect(defined).toBe(search);
+  }),
+);
 
 it.effect('infers context, numeric results and all callback services', () =>
   Effect.gen(function* () {

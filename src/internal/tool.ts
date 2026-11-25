@@ -232,7 +232,10 @@ export function tool<Output, Context extends ContextData>(
 export function tool<Context extends ContextData>(
   options: ExplicitTool<never, never, Context>,
 ): ExplicitTool<never, never, Context>;
-export function tool(options: FunctionToolDefinition): FunctionToolDefinition {
+export function tool<
+  const Definition extends ProviderToolHandle<unknown, unknown, unknown>,
+>(options: Definition): Definition;
+export function tool(options: EffectTools[string]): EffectTools[string] {
   return options;
 }
 
