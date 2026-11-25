@@ -1,5 +1,7 @@
 import type { Telemetry as NativeTelemetry } from 'ai';
 import { Effect } from 'effect';
+import type { ToolSet as NativeTools } from '@ai-sdk/provider-utils';
+import type { EffectTools } from '../../internal/tool.js';
 import {
   type AiSdkError,
   openOperation,
@@ -67,9 +69,51 @@ export type TelemetryEvent<T> = T extends object
         ? WrappedOutput<T[K]>
         : K extends 'integrations'
           ? WrappedIntegrations<T[K]>
-          : T[K];
+          : K extends 'tools'
+            ? WrappedTools<T[K]>
+            : T[K];
     }
   : T;
+
+type WrappedTools<T> = T extends NativeTools
+  ? Pick<EffectTools, Extract<keyof T, string>>
+  : T;
+
+const nativeToolSets = new WeakMap<object, EffectTools>();
+const nativeToolHandles = new WeakMap<object, EffectTools[string]>();
+
+export function rememberTelemetryTools(
+  native: object,
+  tools: EffectTools,
+): void {
+  nativeToolSets.set(native, tools);
+  for (const [name, value] of Object.entries(native)) {
+    const tool = tools[name];
+    if (tool && value && typeof value === 'object')
+      nativeToolHandles.set(value, tool);
+  }
+}
+
+function wrapTelemetryTools(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const tools = nativeToolSets.get(value);
+  if (tools) return tools;
+  const definitions = Object.entries(value);
+  if (
+    !definitions.every(
+      ([, item]) => item && typeof item === 'object' && 'inputSchema' in item,
+    )
+  )
+    return value;
+  const entries = definitions.flatMap(([name, native]) => {
+    const tool =
+      native && typeof native === 'object'
+        ? nativeToolHandles.get(native)
+        : void 0;
+    return tool ? [[name, tool]] : [];
+  });
+  return Object.fromEntries(entries);
+}
 
 type Hook<C> = C extends (...args: infer Args) => infer A
   ? (
@@ -120,14 +164,18 @@ export const rememberTelemetry = (
 export const wrapTelemetryEvent = <T>(event: T): TelemetryEvent<T> => {
   if (typeof event !== 'object' || !event) return event as TelemetryEvent<T>;
 
-  const { output, integrations } = event as {
+  const { output, integrations, tools } = event as {
     readonly output?: unknown;
     readonly integrations?: unknown;
+    readonly tools?: unknown;
   };
-  if (!output && !integrations) return event as TelemetryEvent<T>;
+  if (!output && !integrations && !tools) return event as TelemetryEvent<T>;
 
   const publicOutput =
-    output && typeof output === 'object' && 'parseCompleteOutput' in output
+    output &&
+    typeof output === 'object' &&
+    'parseCompleteOutput' in output &&
+    typeof output.parseCompleteOutput === 'function'
       ? wrapOutput(output as NativeOutput<unknown, unknown, unknown>)
       : output;
   const wrapIntegration = (integration: NativeTelemetry) =>
@@ -135,6 +183,7 @@ export const wrapTelemetryEvent = <T>(event: T): TelemetryEvent<T> => {
     wrapTelemetry('Telemetry.integration', integration);
   const publicEvent = {
     ...event,
+    ...(tools ? { tools: wrapTelemetryTools(tools) } : {}),
     ...(output ? { output: publicOutput } : {}),
     ...(integrations
       ? {
