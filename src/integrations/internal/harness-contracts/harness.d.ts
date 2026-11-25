@@ -1198,7 +1198,8 @@ type HarnessV1CredentialForwarding = (options: {
   readonly credential: string;
   readonly environmentVariableName: string;
 }) => string | PromiseLike<string>;
-type HarnessV1MintBridgeTokenCallback = (sandboxId: string) => string;
+type HarnessV1MintBridgeTokenCallback =
+  import('../../harness.js').HarnessV1MintBridgeTokenCallback;
 export declare const HARNESS_V1_BUILTIN_TOOLS: {
   readonly read: Tool<
     {

@@ -62,6 +62,17 @@ function normalize(filename, contents) {
   const visit = (node) => {
     const edit = zodDiscriminatorEdit(node, source);
     if (edit) edits.push(edit);
+    if (
+      filename === 'harness.d.ts' &&
+      ts.isTypeAliasDeclaration(node) &&
+      node.name.text === 'HarnessV1MintBridgeTokenCallback'
+    ) {
+      edits.push([
+        node.type.getStart(source),
+        node.type.end,
+        "import('../../harness.js').HarnessV1MintBridgeTokenCallback",
+      ]);
+    }
     const parent = node.parent;
     if (
       ts.isStringLiteral(node) &&
