@@ -205,7 +205,8 @@ const openAgentStream = <
           ...(uiStepEnd ? { onUIMessageStepEnd: uiStepEnd } : {}),
         }),
     );
-    return yield* scopedStream(operation, source);
+    const stream = yield* scopedStream(operation, source);
+    return stream.pipe(Stream.onEnd(owner.markComplete));
   });
 
 export const createAgentUIStream = <

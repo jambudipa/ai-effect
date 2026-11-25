@@ -81,7 +81,8 @@ export const wrapChatTransport = <Message extends UIMessage>(
         { abortSignal: owner.signal },
         (abortSignal) => native.sendMessages({ ...options, abortSignal }),
       );
-      return yield* ownResponse(operation, source);
+      const stream = yield* ownResponse(operation, source);
+      return stream.pipe(Stream.onEnd(owner.markComplete));
     }),
     reconnectToStream: Effect.fnUntraced(function* (
       options: ChatReconnectOptions,
@@ -94,9 +95,13 @@ export const wrapChatTransport = <Message extends UIMessage>(
         (abortSignal) => native.reconnectToStream({ ...options, abortSignal }),
       );
       return yield* Option.match(Option.fromNullishOr(source), {
-        onNone: () => Effect.succeed(Option.none()),
+        onNone: () => owner.markComplete.pipe(Effect.as(Option.none())),
         onSome: (readable) =>
-          ownResponse(operation, readable).pipe(Effect.map(Option.some)),
+          ownResponse(operation, readable).pipe(
+            Effect.map((stream) =>
+              Option.some(stream.pipe(Stream.onEnd(owner.markComplete))),
+            ),
+          ),
       });
     }),
     close: () => runSync('ChatTransport.close', () => native.close?.()),

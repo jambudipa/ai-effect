@@ -643,7 +643,9 @@ export const DirectChatTransport = <
                   }).sendMessages({ ...options, abortSignal }),
               );
               const readable = yield* ownReadable(operation, response);
-            return foreignStream(operation, readable);
+            return foreignStream(operation, readable).pipe(
+              Stream.onEnd(owner.markComplete),
+            );
             }).pipe(Effect.provideContext(context)),
           ),
         ),
