@@ -51,6 +51,7 @@ import { ownReadable } from './internal/readable.js';
 import type { BoundTools, EffectTools, ToolServices } from './internal/tool.js';
 
 export type { ChatInit } from './frameworks/chat.js';
+export type { CompletionOptions as UseCompletionOptions } from './frameworks/options.js';
 export {
   createAgentUIStream,
   createAgentUIStreamResponse,
@@ -74,6 +75,10 @@ export {
   toUIMessageChunk,
   toUIMessageStream,
   type UIMessageStreamOptions,
+  type UIMessageStreamOnEndCallback,
+  type UIMessageStreamOnFinishCallback,
+  type UIMessageStreamOnStepEndCallback,
+  type UIMessageStreamOnStepFinishCallback,
   type UIMessageStreamWriter,
   type UIMessageStreamWriterWithOutcome,
   type ToUIMessageChunkOptions,
@@ -86,6 +91,18 @@ export {
   type UIDataPartSchemas,
   type ValidateUIMessagesOptions,
 } from './internal/chat-validation.js';
+
+export type ChatAddToolApproveResponseFunction =
+  HostChat<UIMessage>['addToolApprovalResponse'];
+export type ChatAddToolOutputFunction<Message extends UIMessage = UIMessage> =
+  HostChat<Message>['addToolOutput'];
+export type ChatOnErrorCallback = NonNullable<ChatInit<UIMessage>['onError']>;
+export type ChatOnDataCallback<Message extends UIMessage = UIMessage> =
+  NonNullable<ChatInit<Message>['onData']>;
+export type ChatOnFinishCallback<Message extends UIMessage = UIMessage> =
+  NonNullable<ChatInit<Message>['onFinish']>;
+export type ChatOnToolCallCallback<Message extends UIMessage = UIMessage> =
+  NonNullable<ChatInit<Message>['onToolCall']>;
 
 /** The synchronous host state contract for an abstract chat. */
 export interface ChatState<Message extends UIMessage> {
@@ -207,6 +224,17 @@ type HttpReconfiguration = {
   readonly credentials?: RequestCredentials;
 };
 
+export type PrepareSendMessagesRequest<
+  Message extends UIMessage = UIMessage,
+  R = never,
+> = (
+  options: HttpSend<Message>,
+) => CallbackResult<HttpReconfiguration & { readonly body: object }, R>;
+
+export type PrepareReconnectToStreamRequest<R = never> = (
+  options: HttpRequest,
+) => CallbackResult<HttpReconfiguration, R>;
+
 export type HttpChatTransportInitOptions<
   Message extends UIMessage,
   R = never,
@@ -216,12 +244,8 @@ export type HttpChatTransportInitOptions<
   readonly headers?: Resolvable<Record<string, string> | Headers, R>;
   readonly body?: Resolvable<object, R>;
   readonly fetch?: typeof globalThis.fetch;
-  readonly prepareSendMessagesRequest?: (
-    options: HttpSend<Message>,
-  ) => CallbackResult<HttpReconfiguration & { readonly body: object }, R>;
-  readonly prepareReconnectToStreamRequest?: (
-    options: HttpRequest,
-  ) => CallbackResult<HttpReconfiguration, R>;
+  readonly prepareSendMessagesRequest?: PrepareSendMessagesRequest<Message, R>;
+  readonly prepareReconnectToStreamRequest?: PrepareReconnectToStreamRequest<R>;
 };
 
 const bindHttp = <Message extends UIMessage, R>(
@@ -411,6 +435,20 @@ type WebSocketConstructor = new (
   options?: { headers?: Record<string, string | undefined> },
 ) => WebSocketHost;
 
+export type PrepareWebSocketChatTransportSendMessagesRequest<
+  Message extends UIMessage = UIMessage,
+  R = never,
+> = (
+  request: SocketSend<Message>,
+) => CallbackResult<
+  { messages?: Message[]; body?: object; headers?: HeadersInit },
+  R
+>;
+
+export type PrepareWebSocketChatTransportReconnectToStreamRequest<R = never> = (
+  request: SocketSettings,
+) => CallbackResult<{ body?: object; headers?: HeadersInit }, R>;
+
 export type WebSocketChatTransportInitOptions<
   Message extends UIMessage,
   R = never,
@@ -421,15 +459,11 @@ export type WebSocketChatTransportInitOptions<
   readonly body?: Resolvable<object, R>;
   readonly headers?: Resolvable<Record<string, string> | Headers, R>;
   readonly webSocket?: WebSocketConstructor;
-  readonly prepareSendMessagesRequest?: (
-    request: SocketSend<Message>,
-  ) => CallbackResult<
-    { messages?: Message[]; body?: object; headers?: HeadersInit },
+  readonly prepareSendMessagesRequest?: PrepareWebSocketChatTransportSendMessagesRequest<
+    Message,
     R
   >;
-  readonly prepareReconnectToStreamRequest?: (
-    request: SocketSettings,
-  ) => CallbackResult<{ body?: object; headers?: HeadersInit }, R>;
+  readonly prepareReconnectToStreamRequest?: PrepareWebSocketChatTransportReconnectToStreamRequest<R>;
 };
 
 export type SafeValidateWebSocketChatTransportRequestResult<
@@ -609,7 +643,7 @@ export const DirectChatTransport = <
                   }).sendMessages({ ...options, abortSignal }),
               );
               const readable = yield* ownReadable(operation, response);
-              return foreignStream(operation, readable);
+            return foreignStream(operation, readable);
             }).pipe(Effect.provideContext(context)),
           ),
         ),

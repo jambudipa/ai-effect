@@ -10,8 +10,8 @@ import {
   type InferUIMessageChunk,
   type TextStreamPart,
   type ToolSet,
-  type UIMessageStreamOnEndCallback,
-  type UIMessageStreamOnStepEndCallback,
+  type UIMessageStreamOnEndCallback as NativeEndCallback,
+  type UIMessageStreamOnStepEndCallback as NativeStepEndCallback,
   type UIMessageStreamOutcome,
   type UIMessage,
   type UIMessageChunk,
@@ -66,24 +66,55 @@ export const scopedStream = <A>(operation: string, source: ReadableStream<A>) =>
   );
 
 type StepEvent<Message extends UIMessage> = Parameters<
-  UIMessageStreamOnStepEndCallback<Message>
+  NativeStepEndCallback<Message>
 >[0];
-type EndEvent<Message extends UIMessage> = Parameters<
-  UIMessageStreamOnEndCallback<Message>
+type NativeEndEvent<Message extends UIMessage> = Parameters<
+  NativeEndCallback<Message>
 >[0];
+type EndEvent<Message extends UIMessage> = Omit<
+  NativeEndEvent<Message>,
+  'outcome'
+> & {
+  readonly outcome:
+    | Exclude<UIMessageStreamOutcome, { status: 'failed' }>
+    | {
+        readonly status: 'failed';
+        readonly error?: AiSdkError;
+      };
+};
 type MessageMetadata<Message extends UIMessage> =
   Message extends UIMessage<infer Metadata> ? Metadata : unknown;
 
 export type UiLifecycle<Message extends UIMessage, R> = {
   readonly originalMessages?: Message[];
-  readonly onStepEnd?: (event: StepEvent<Message>) => CallbackResult<void, R>;
-  readonly onStepFinish?: (
-    event: StepEvent<Message>,
-  ) => CallbackResult<void, R>;
-  readonly onEnd?: (event: EndEvent<Message>) => CallbackResult<void, R>;
-  readonly onFinish?: (event: EndEvent<Message>) => CallbackResult<void, R>;
+  readonly onStepEnd?: UIMessageStreamOnStepEndCallback<Message, R>;
+  readonly onStepFinish?: UIMessageStreamOnStepFinishCallback<Message, R>;
+  readonly onEnd?: UIMessageStreamOnEndCallback<Message, R>;
+  readonly onFinish?: UIMessageStreamOnFinishCallback<Message, R>;
   readonly onError?: (cause: AiSdkError) => string;
 };
+
+export type UIMessageStreamOnStepEndCallback<
+  Message extends UIMessage = UIMessage,
+  R = never,
+> = (event: StepEvent<Message>) => CallbackResult<void, R>;
+
+/** @deprecated Use UIMessageStreamOnStepEndCallback. */
+export type UIMessageStreamOnStepFinishCallback<
+  Message extends UIMessage = UIMessage,
+  R = never,
+> = UIMessageStreamOnStepEndCallback<Message, R>;
+
+export type UIMessageStreamOnEndCallback<
+  Message extends UIMessage = UIMessage,
+  R = never,
+> = (event: EndEvent<Message>) => CallbackResult<void, R>;
+
+/** @deprecated Use UIMessageStreamOnEndCallback. */
+export type UIMessageStreamOnFinishCallback<
+  Message extends UIMessage = UIMessage,
+  R = never,
+> = UIMessageStreamOnEndCallback<Message, R>;
 
 export type UIMessageStreamOptions<
   Message extends UIMessage = UIMessage,
@@ -116,14 +147,32 @@ export const bindLifecycle = <Message extends UIMessage, R>(
     <A>(name: string, handler: (event: A) => CallbackResult<void, R>) =>
     (event: A) =>
       owner.runCallback(invoke(`${operation}.${name}`, () => handler(event)));
+  const bindEnd =
+    (
+      name: string,
+      handler: (event: EndEvent<Message>) => CallbackResult<void, R>,
+    ) =>
+    (event: NativeEndEvent<Message>) => {
+      const outcome = event.outcome;
+      const publicOutcome =
+        outcome.status === 'failed'
+          ? {
+              status: 'failed' as const,
+              ...('error' in outcome
+                ? { error: sdkError(operation, outcome.error) }
+                : {}),
+            }
+          : outcome;
+      return bind(name, handler)({ ...event, outcome: publicOutcome });
+    };
   return {
     ...(originalMessages ? { originalMessages } : {}),
     ...(onStepEnd ? { onStepEnd: bind('onStepEnd', onStepEnd) } : {}),
     ...(onStepFinish
       ? { onStepFinish: bind('onStepFinish', onStepFinish) }
       : {}),
-    ...(onEnd ? { onEnd: bind('onEnd', onEnd) } : {}),
-    ...(onFinish ? { onFinish: bind('onFinish', onFinish) } : {}),
+    ...(onEnd ? { onEnd: bindEnd('onEnd', onEnd) } : {}),
+    ...(onFinish ? { onFinish: bindEnd('onFinish', onFinish) } : {}),
     ...(onError
       ? { onError: (cause: unknown) => onError(sdkError(operation, cause)) }
       : {}),
