@@ -1,4 +1,3 @@
-import type { StdioMCPTransport as NativeTransport } from '@ai-sdk/mcp/mcp-stdio';
-import type { StdioMCPTransport } from '../mcp/mcp-stdio.js';
+import type { MCPTransport as NativeTransport } from '@ai-sdk/mcp';
 
-export const transports = new WeakMap<StdioMCPTransport, NativeTransport>();
+export const transports = new WeakMap<object, NativeTransport>();
