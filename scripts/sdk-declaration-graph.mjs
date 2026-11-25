@@ -85,15 +85,17 @@ export function findSdkOperations(
     if (!(type.flags & ts.TypeFlags.Object)) return;
 
     const origins = type.getSymbol()?.declarations ?? [];
+    const mapped = Boolean(type.objectFlags & ts.ObjectFlags.Mapped);
     // Container arguments are public. The internals of Effect, the host, and
     // TypeScript libraries belong to those packages and can refer to themselves.
     const foreign =
+      !mapped &&
       origins.length &&
       !origins.some((decl) => hasSdkOrigin(decl) || hasWrapperOrigin(decl));
     for (const arg of typeArguments(checker, type)) {
       // A resolved mapped wrapper type can use an SDK type as input to its
       // computation. Its members below are the public result of that mapping.
-      if (foreign || arg.isTypeParameter()) visitType(arg, path);
+      if (foreign || (!mapped && arg.isTypeParameter())) visitType(arg, path);
     }
     if (foreign) return;
 

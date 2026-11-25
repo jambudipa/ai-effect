@@ -60,6 +60,15 @@ describe('packed declaration graph', () => {
     expect(operations).toEqual([]);
   });
 
+  it('checks selected members of an SDK declaration through Pick', () => {
+    const { operations } = inspect(`
+      import type { RawOperation } from 'ai';
+      export type PublicData = Pick<RawOperation, never>;
+      export type PublicCall = Pick<RawOperation, 'run'>;
+    `);
+    expect(operations.map(({ path }) => path)).toEqual(['PublicCall.run']);
+  });
+
   it('finds an SDK method inside the return of a nested callback', () => {
     const { operations } = inspect(`
       import type { RawOperation } from 'ai';
