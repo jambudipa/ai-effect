@@ -74,6 +74,23 @@ import {
 import type { SandboxSession } from './internal/sandbox.js';
 import { unwrapSandbox } from './internal/sandbox.js';
 import { wrapTools } from './internal/sdk-tool.js';
+import {
+  bindWorkflowExtras,
+  type WorkflowConstructorExtras,
+  type WorkflowExtras,
+} from './internal/workflow.js';
+
+export type {
+  DownloadFunction,
+  PrepareCallCallback,
+  PrepareCallOptions,
+  PrepareCallResult,
+  PrepareStepCallback,
+  PrepareStepInfo,
+  PrepareStepResult,
+  TelemetryOptions,
+  ToolCallRepairFunction,
+} from './internal/workflow.js';
 
 export type CompatibleLanguageModel = LanguageModelV4;
 export type OutputSpecification<A, P = A> = EffectOutput<A, P>;
@@ -145,7 +162,8 @@ export type WorkflowAgentOptions<
   E,
   R
 > &
-  Partial<sdk.GenerationSettings> & {
+  Partial<sdk.GenerationSettings> &
+  WorkflowConstructorExtras<E, R> & {
     readonly model:
       Extract<NativeSettings<A, P>['model'], string> | CompatibleLanguageModel;
     readonly tools?: T;
@@ -166,10 +184,11 @@ type Omitted =
   | 'output';
 
 type OperationOptions<N, A, P, E, R> = N extends unknown
-  ? Omit<WithEffectCallbacks<N, Lifecycle, E, R>, Omitted> & {
-      readonly output?: OutputSpecification<A, P>;
-      readonly experimental_sandbox?: SandboxSession;
-    }
+  ? Omit<WithEffectCallbacks<N, Lifecycle, E, R>, Omitted> &
+      WorkflowExtras<E, R> & {
+        readonly output?: OutputSpecification<A, P>;
+        readonly experimental_sandbox?: SandboxSession;
+      }
   : never;
 
 export type WorkflowAgentCallOptions<
@@ -214,7 +233,19 @@ export class WorkflowAgent<A = never, P = A> {
     R = never,
   >(options: WorkflowAgentOptions<T, A, P, E, R>) {
     return Effect.gen(function* () {
-      const { model, tools, output, experimental_sandbox, ...rest } = options;
+      const {
+        model,
+        tools,
+        output,
+        experimental_sandbox,
+        telemetry,
+        repairToolCall,
+        experimental_repairToolCall,
+        experimental_download,
+        prepareStep,
+        prepareCall,
+        ...rest
+      } = options;
       const nativeModel =
         typeof model === 'string' ? model : unwrapLanguageModel(model);
       const nativeSandbox =
@@ -225,6 +256,7 @@ export class WorkflowAgent<A = never, P = A> {
         );
       }
       const owner = yield* openOperation<R | ToolServices<T>>();
+      const extras = yield* bindWorkflowExtras<E, R>(options, owner);
       const config = bindCallbacks<
         Partial<NativeSettings<A, P>>,
         typeof lifecycle,
@@ -237,6 +269,7 @@ export class WorkflowAgent<A = never, P = A> {
           new WorkflowAgent<A, P>(
             new sdk.WorkflowAgent<ToolSet, Record<string, unknown>, A, P>({
               ...config,
+              ...extras,
               model: nativeModel,
               ...(tools && { tools: bindTools(tools, owner) }),
               ...(output && { output: unwrapOutput(output) }),
@@ -299,24 +332,39 @@ const invokeWorkflow = <N extends NativeOptions<A, P>, A, P, E, R, Result>(
 ) =>
   Effect.scoped(
     Effect.gen(function* () {
-      const { output, experimental_sandbox, ...rest } = options;
+      const {
+        output,
+        experimental_sandbox,
+        telemetry,
+        repairToolCall,
+        experimental_repairToolCall,
+        experimental_download,
+        prepareStep,
+        ...rest
+      } = options;
       const nativeSandbox =
         experimental_sandbox && unwrapSandbox(experimental_sandbox);
       if (experimental_sandbox && !nativeSandbox) {
         return yield* Effect.fail(sdkError(name, 'Invalid sandbox session'));
       }
-      const owner = yield* openOperation<R>();
+      const owner = yield* openOperation<R>(options.abortSignal);
+      const extras = yield* bindWorkflowExtras<E, R>(options, owner);
       const bound = bindCallbacks<NativeOptions<A, P>, typeof lifecycle, E, R>(
         rest as WithEffectCallbacks<NativeOptions<A, P>, Lifecycle, E, R>,
         lifecycle,
         owner,
       );
-      return yield* runRequest(name, { abortSignal: owner.signal }, () =>
-        invoke({
-          ...bound,
-          ...(output && { output: unwrapOutput(output) }),
-          ...(nativeSandbox && { experimental_sandbox: nativeSandbox }),
-        } as N),
+      return yield* runRequest(
+        name,
+        { abortSignal: owner.signal },
+        (abortSignal) =>
+          invoke({
+            ...bound,
+            ...extras,
+            abortSignal,
+            ...(output && { output: unwrapOutput(output) }),
+            ...(nativeSandbox && { experimental_sandbox: nativeSandbox }),
+          } as N),
       );
     }),
   );
