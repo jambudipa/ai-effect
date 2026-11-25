@@ -12,6 +12,11 @@ import {
   wrapSpeechModel,
 } from '../src/internal/provider-model.js';
 import { wrapBatch } from '../src/internal/provider-resource.js';
+import { Output, unwrapOutput } from '../src/internal/output.js';
+import {
+  unwrapTelemetry,
+  wrapTelemetryEvent,
+} from '../src/integrations/internal/telemetry.js';
 
 describe('experimental Core adapters', () => {
   it.effect('keeps decision criteria in the result type', () =>
@@ -100,6 +105,27 @@ describe('experimental Core adapters', () => {
       });
       expect(status.status).toBe('completed');
     }),
+  );
+
+  it.effect(
+    'wraps the output and integration handles in telemetry events',
+    () =>
+      Effect.gen(function* () {
+        const output = yield* Output.text();
+        const nativeOutput = unwrapOutput(output);
+        const nativeTelemetry = { onError: () => {} };
+        const event = wrapTelemetryEvent({
+          output: nativeOutput,
+          integrations: [nativeTelemetry],
+        });
+
+        expect(Effect.isEffect(event.output.responseFormat)).toBe(true);
+        expect(unwrapOutput(event.output)).toBe(nativeOutput);
+        const [integration] = event.integrations;
+        expect(integration && unwrapTelemetry(integration)).toBe(
+          nativeTelemetry,
+        );
+      }),
   );
 
   it.effect('interrupts a speech stream when its scope closes', () =>
