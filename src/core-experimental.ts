@@ -855,3 +855,43 @@ export type Experimental_TextBatchItemResult<
 export type Experimental_TextBatchGenerationResult<
   Tools extends EffectTools = {},
 > = sdk.Experimental_TextBatchGenerationResult<BoundTools<Tools>>;
+
+export const experimental_encodeRealtimeAudio = (
+  ...args: Parameters<typeof sdk.experimental_encodeRealtimeAudio>
+) => sdk.experimental_encodeRealtimeAudio(...args);
+
+export const experimental_decodeRealtimeAudio = (
+  ...args: Parameters<typeof sdk.experimental_decodeRealtimeAudio>
+) => sdk.experimental_decodeRealtimeAudio(...args);
+
+export const experimental_resampleAudio = (
+  ...args: Parameters<typeof sdk.experimental_resampleAudio>
+) => sdk.experimental_resampleAudio(...args);
+
+type RealtimeDefinitions<Native, Tools> = {
+  [K in keyof Native]: K extends 'tools' ? Tools : Native[K];
+};
+
+export const experimental_getRealtimeToolDefinitions = <
+  Tools extends EffectTools,
+>(
+  options: RealtimeDefinitions<
+    Parameters<
+      typeof sdk.experimental_getRealtimeToolDefinitions<BoundTools<Tools>>
+    >[0],
+    Tools
+  >,
+) =>
+  scopedRequest<
+    ToolServices<Tools>,
+    Awaited<
+      ReturnType<
+        typeof sdk.experimental_getRealtimeToolDefinitions<BoundTools<Tools>>
+      >
+    >
+  >('experimental_getRealtimeToolDefinitions', {}, (owner) =>
+    sdk.experimental_getRealtimeToolDefinitions<BoundTools<Tools>>({
+      ...options,
+      tools: bindTools(options.tools, owner),
+    }),
+  );
