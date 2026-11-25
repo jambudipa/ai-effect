@@ -1,6 +1,10 @@
 import type { Effect, Stream } from 'effect';
 import type { Scope } from 'effect/Scope';
 import type { createCodex } from '../src/integrations/harness-codex.js';
+import {
+  createFx,
+  type FxSessionStorage,
+} from '../src/integrations/harness-fx.js';
 import type { HarnessV1CredentialForwarding } from '../src/integrations/harness.js';
 import type { harnessV1StreamPartSchema } from '../src/integrations/internal/harness-contracts/harness.js';
 import type { createJustBashNetworkSandboxSession } from '../src/integrations/sandbox-just-bash.js';
@@ -38,4 +42,15 @@ export type SandboxReadIsStream = Expect<
 >;
 export type SandboxSpawnRequiresScope = Expect<
   Same<Effect.Services<ReturnType<Sandbox['spawn']>>, Scope>
+>;
+
+type FxStorageService = { readonly id: 'fx-storage-fixture' };
+declare const storage: FxSessionStorage<never, FxStorageService>;
+const configuredFx = createFx({ sessionStorage: storage });
+const ordinaryFx = createFx();
+export type FxStorageRequiresScope = Expect<
+  Same<Effect.Services<typeof configuredFx>, Scope | FxStorageService>
+>;
+export type OrdinaryFxIsUnscoped = Expect<
+  Same<Effect.Services<typeof ordinaryFx>, never>
 >;
