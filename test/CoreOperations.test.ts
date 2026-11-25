@@ -3,6 +3,7 @@ import { Context, Deferred, Effect, Fiber, Ref, Schema, Stream } from 'effect';
 import type { Scope } from 'effect/Scope';
 import { expectTypeOf } from 'vitest';
 import {
+  Output,
   SerialJobExecutor,
   ToolLoopAgent,
   defaultSettingsMiddleware,
@@ -15,6 +16,7 @@ import {
   tool,
   wrapLanguageModel,
 } from '../src/core.js';
+import type { AiSdkError } from '../src/internal/operation.js';
 import type {
   LanguageModelV4GenerateResult,
   LanguageModelV4StreamPart,
@@ -229,6 +231,69 @@ describe('Core operations', () => {
       ]);
     }),
   );
+
+  for (const name of [
+    'partialOutputStream',
+    'elementStream',
+    'experimental_partialOutputStream',
+  ] as const) {
+    for (const early of [false, true]) {
+      it.effect(
+        `${name} ${early ? 'aborts on early interruption' : 'completes without aborting'}`,
+        () =>
+          Effect.gen(function* () {
+            const metadata = result('unused');
+            const model = yield* MockLanguageModelV4({
+              doStream: {
+                stream: new ReadableStream<LanguageModelV4StreamPart>({
+                  start(controller) {
+                    controller.enqueue({ type: 'text-start', id: 'output' });
+                    controller.enqueue({
+                      type: 'text-delta',
+                      id: 'output',
+                      delta: '{"elements":[1,2]}',
+                    });
+                    if (early) return;
+                    controller.enqueue({ type: 'text-end', id: 'output' });
+                    controller.enqueue({
+                      type: 'finish',
+                      finishReason: metadata.finishReason,
+                      usage: metadata.usage,
+                    });
+                    controller.close();
+                  },
+                }),
+              },
+            });
+            const output = yield* Output.array({ element: Schema.Number });
+            yield* Effect.scoped(
+              Effect.gen(function* () {
+                const streamed = yield* streamText({
+                  model,
+                  output,
+                  prompt: 'Return an array of numbers',
+                });
+                const source: Stream.Stream<unknown, AiSdkError> =
+                  streamed[name];
+                if (early) {
+                  const started = yield* Deferred.make<void>();
+                  const reader = yield* Effect.forkScoped(
+                    Stream.runForEach(source, () =>
+                      Deferred.succeed(started, void 0),
+                    ),
+                  );
+                  yield* Deferred.await(started);
+                  yield* Fiber.interrupt(reader);
+                } else {
+                  expect(yield* Stream.runCollect(source)).not.toHaveLength(0);
+                }
+              }),
+            );
+            expect(model.doStreamCalls[0]?.abortSignal?.aborted).toBe(early);
+          }),
+      );
+    }
+  }
 
   it.effect('removes the telemetry registration when its scope closes', () =>
     Effect.gen(function* () {
