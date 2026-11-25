@@ -13,6 +13,7 @@ import {
   runSync,
   sdkError,
 } from '../internal/operation.js';
+import type { LanguageModelV4CallOptions } from '../protocols/provider.js';
 import { wrapMiddleware } from './internal/middleware.js';
 import { runValue } from './internal/operation.js';
 import { unwrapTools, wrapTools } from './internal/sdk-tool.js';
@@ -65,9 +66,13 @@ export const wasmPolicyClient = (
 export const normalizeOpaDecision = (input: unknown) =>
   runSync('OPA.normalizeDecision', () => sdk.normalizeOpaDecision(input));
 
-type NativeCapability = Parameters<typeof sdk.opaCapabilityMiddleware>[0];
-type CapabilityOptions<R, E> = Omit<NativeCapability, 'client'> & {
+type CapabilityOptions<R, E> = {
   readonly client: PolicyClient<R, E>;
+  readonly path: string;
+  readonly toInput?: (input: {
+    messages: LanguageModelV4CallOptions['prompt'];
+    providerOptions: LanguageModelV4CallOptions['providerOptions'];
+  }) => unknown;
 };
 
 export const opaCapabilityMiddleware = <R = never, E = never>(
