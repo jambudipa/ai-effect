@@ -32,6 +32,7 @@ jobs:
       - run: node scripts/generate-sdk-data-types.mjs --check
       - run: node scripts/generate-sdk-simple-functions.mjs --check
       - run: node scripts/generate-harness-contracts.mjs --check
+      - run: node scripts/generate-code-mode-contract.mjs --check
       - run: node scripts/generate-provider-contracts.mjs --check
       - run: npm run build
       - run: npm pack --dry-run --ignore-scripts

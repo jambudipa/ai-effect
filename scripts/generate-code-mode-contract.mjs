@@ -1,9 +1,18 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { format, resolveConfig } from 'prettier';
 import ts from 'typescript';
+
+if (process.argv.includes('--copy-to-dist')) {
+  const name = 'integrations/internal/code-mode-contract.LICENSE';
+  await copyFile(
+    new URL(`../src/${name}`, import.meta.url),
+    new URL(`../dist/${name}`, import.meta.url),
+  );
+  process.exit(0);
+}
 
 const require = createRequire(import.meta.url);
 const manifestPath = require.resolve('@ai-sdk/code-mode/package.json');
