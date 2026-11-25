@@ -8,7 +8,12 @@ import { wrapLanguageModel } from './internal/language-model.js';
 import { wrapLegacyModel } from './internal/legacy-model.js';
 import { mockModel, type MockOptions } from './internal/mock-model.js';
 import { mockProvider } from './internal/mock-provider.js';
-import { runSync } from './internal/operation.js';
+import {
+  type AiSdkError,
+  openOperation,
+  runRequest,
+  runSync,
+} from './internal/operation.js';
 import {
   wrapDecisionModel,
   wrapEmbeddingModel,
@@ -165,11 +170,78 @@ export const MockRerankingModelV4 = mockModel(
   sdk.MockRerankingModelV4,
   wrapRerankingModel,
 );
-export const MockVideoModelV4 = mockModel(
+const makeMockVideoModelV4 = mockModel(
   'MockVideoModelV4',
   sdk.MockVideoModelV4,
   (native: sdk.MockVideoModelV4) => wrapVideoModel(native as NativeVideo),
 );
+
+type MockVideoNotification = models.Experimental_VideoModelV4OperationWebhook;
+type MockVideoOptions<Services> = Omit<
+  MockOptions<
+    NonNullable<ConstructorParameters<typeof sdk.MockVideoModelV4>[0]>,
+    Services
+  >,
+  'handleWebhookOption'
+> & {
+  readonly handleWebhookOption?: (options: {
+    readonly webhook: () => Effect.Effect<
+      {
+        readonly url: string;
+        readonly received: Effect.Effect<MockVideoNotification, AiSdkError>;
+      },
+      AiSdkError
+    >;
+  }) => Effect.Effect<
+    {
+      readonly webhookUrl: string;
+      readonly received: Effect.Effect<
+        MockVideoNotification,
+        unknown,
+        Services
+      >;
+    },
+    unknown,
+    Services
+  >;
+};
+
+export const MockVideoModelV4 = <Services = never>(
+  options?: MockVideoOptions<Services>,
+) =>
+  Effect.suspend(() => {
+    const { handleWebhookOption, ...settings } = options ?? {};
+    if (handleWebhookOption === undefined) {
+      return makeMockVideoModelV4<Services>(settings);
+    }
+    return Effect.gen(function* () {
+      const owner = yield* openOperation<Services>();
+      return yield* makeMockVideoModelV4<Services>({
+        ...settings,
+        handleWebhookOption: ({ webhook }) =>
+          handleWebhookOption({
+            webhook: () =>
+              runRequest('MockVideoModelV4.webhook', {}, () => webhook()).pipe(
+                Effect.map(({ url, received }) => ({
+                  url,
+                  received: runRequest(
+                    'MockVideoModelV4.webhook.received',
+                    {},
+                    () => received,
+                  ),
+                })),
+              ),
+          }).pipe(
+            Effect.map(({ webhookUrl, received }) => {
+              const pending = owner.runCallback(received);
+              // The native caller can defer observing the delivery.
+              void pending.catch(() => {});
+              return { webhookUrl, received: pending };
+            }),
+          ),
+      });
+    });
+  });
 
 export const Experimental_DecisionMockModelV4 = mockModel(
   'Experimental_DecisionMockModelV4',
