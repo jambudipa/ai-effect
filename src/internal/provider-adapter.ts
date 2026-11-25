@@ -1,4 +1,6 @@
 import type { ProviderV4 } from '@ai-sdk/provider';
+import type { Effect } from 'effect';
+import type { AiSdkError } from './operation.js';
 import { wrapLanguageModel } from './language-model.js';
 import { runSync } from './operation.js';
 import {
@@ -97,3 +99,15 @@ export const adaptModelConstructor =
   ) =>
   (...args: Args) =>
     runSync(operation, () => wrap(new Model(...args)));
+
+export type AdaptedMethod<
+  Method extends (...args: never[]) => unknown,
+  Result,
+> = (...args: Parameters<Method>) => Effect.Effect<Result, AiSdkError>;
+
+export type AdaptedConstructor<
+  Constructor extends abstract new (...args: never[]) => unknown,
+  Model,
+> = (
+  ...args: ConstructorParameters<Constructor>
+) => Effect.Effect<Model, AiSdkError>;
