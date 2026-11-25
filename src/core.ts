@@ -13,6 +13,7 @@ export * from './core-data.js';
 export * from './core-errors.js';
 export * from './core-models.js';
 export * from './internal/sdk-data/core.js';
+export { simulateReadableStream } from './internal/simulate-readable.js';
 export type {
   ChatReconnectOptions,
   ChatSendOptions,
@@ -24,6 +25,7 @@ import {
   unwrapLanguageModel,
   type LanguageModelV4,
 } from './internal/language-model.js';
+import { unwrapLegacyModel } from './internal/legacy-model.js';
 import { openOperation, runRequest, runSync } from './internal/operation.js';
 import { unwrapOutput, type OutputSpecification } from './internal/output.js';
 import { wrapTextStream } from './internal/text-stream.js';
@@ -33,13 +35,19 @@ import {
   type EffectTools,
   type ToolServices,
 } from './internal/tool.js';
+import type { LanguageModelV2, LanguageModelV3 } from './protocols/provider.js';
 
 export { Output, type OutputSpecification } from './internal/output.js';
 export { tool, type EffectToolOptions } from './internal/tool.js';
 export type { LanguageModelV4 } from './internal/language-model.js';
 export type { ModelMessage, TextPart, UIMessage } from 'ai';
 
-type Model = Extract<SdkLanguageModel, string> | LanguageModelV4;
+export type LanguageModel =
+  | Extract<SdkLanguageModel, string>
+  | LanguageModelV2
+  | LanguageModelV3
+  | LanguageModelV4;
+type Model = LanguageModel;
 type RuntimeContext = Record<string, unknown>;
 type BoundOutput<A, P, I> = OutputInterface<A, P, I>;
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
@@ -64,7 +72,14 @@ const bindSettings = <
   owner: Owner<ToolServices<Tools>>,
 ) => {
   const { model, tools, output, ...options } = settings;
-  const native = typeof model === 'string' ? model : unwrapLanguageModel(model);
+  const native =
+    typeof model === 'string'
+      ? model
+      : model.specificationVersion === 'v4'
+        ? unwrapLanguageModel(model)
+        : unwrapLegacyModel<
+            Exclude<SdkLanguageModel, string | { specificationVersion: 'v4' }>
+          >(model);
   if (!native) {
     throw new NoSuchModelError({
       modelId: typeof model === 'string' ? model : model.modelId,

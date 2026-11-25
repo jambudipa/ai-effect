@@ -1,6 +1,8 @@
 import * as sdk from 'ai';
+import type * as native from '@ai-sdk/provider';
 import type { JSONObject } from '@ai-sdk/provider';
 import { Effect } from 'effect';
+import { unwrapLegacyModel } from './internal/legacy-model.js';
 import {
   openOperation,
   runRequest,
@@ -19,12 +21,53 @@ import {
   type SpeechModelV4,
   type TranscriptionModelV4,
 } from './internal/provider-model.js';
+import type * as legacy from './protocols/provider.js';
 
-export type EmbeddingModel = string | EmbeddingModelV4;
-export type ImageModel = string | ImageModelV4;
-export type RerankingModel = string | RerankingModelV4;
-export type SpeechModel = string | SpeechModelV4;
-export type TranscriptionModel = string | TranscriptionModelV4;
+export type EmbeddingModel =
+  | string
+  | EmbeddingModelV4
+  | legacy.EmbeddingModelV3
+  | legacy.EmbeddingModelV2<string>;
+export type ImageModel =
+  string | ImageModelV4 | legacy.ImageModelV3 | legacy.ImageModelV2;
+export type RerankingModel =
+  string | RerankingModelV4 | legacy.RerankingModelV3;
+export type SpeechModel =
+  string | SpeechModelV4 | legacy.SpeechModelV3 | legacy.SpeechModelV2;
+export type TranscriptionModel =
+  | string
+  | TranscriptionModelV4
+  | legacy.TranscriptionModelV3
+  | legacy.TranscriptionModelV2;
+
+const getEmbeddingModel = (model: Exclude<EmbeddingModel, string>) =>
+  model.specificationVersion === 'v4'
+    ? unwrapEmbeddingModel(model)
+    : unwrapLegacyModel<
+        native.EmbeddingModelV3 | native.EmbeddingModelV2<string>
+      >(model);
+
+const getImageModel = (model: Exclude<ImageModel, string>) =>
+  model.specificationVersion === 'v4'
+    ? unwrapImageModel(model)
+    : unwrapLegacyModel<native.ImageModelV3 | native.ImageModelV2>(model);
+
+const getRerankingModel = (model: Exclude<RerankingModel, string>) =>
+  model.specificationVersion === 'v4'
+    ? unwrapRerankingModel(model)
+    : unwrapLegacyModel<native.RerankingModelV3>(model);
+
+const getSpeechModel = (model: Exclude<SpeechModel, string>) =>
+  model.specificationVersion === 'v4'
+    ? unwrapSpeechModel(model)
+    : unwrapLegacyModel<native.SpeechModelV3 | native.SpeechModelV2>(model);
+
+const getTranscriptionModel = (model: Exclude<TranscriptionModel, string>) =>
+  model.specificationVersion === 'v4'
+    ? unwrapTranscriptionModel(model)
+    : unwrapLegacyModel<
+        native.TranscriptionModelV3 | native.TranscriptionModelV2
+      >(model);
 
 type Runtime = NonNullable<Parameters<typeof sdk.embed>[0]['runtimeContext']>;
 type ModelType = ConstructorParameters<
@@ -130,7 +173,7 @@ export const embed = <R extends Runtime = Runtime, Services = never>(
         'embed',
         'embeddingModel',
         { ...options, abortSignal: owner.signal },
-        unwrapEmbeddingModel,
+        getEmbeddingModel,
         (model, abortSignal) =>
           sdk.embed<R>({
             ...request,
@@ -163,7 +206,7 @@ export const embedMany = <R extends Runtime = Runtime, Services = never>(
         'embedMany',
         'embeddingModel',
         { ...options, abortSignal: owner.signal },
-        unwrapEmbeddingModel,
+        getEmbeddingModel,
         (model, abortSignal) =>
           sdk.embedMany<R>({
             ...request,
@@ -200,7 +243,7 @@ export const rerank = <
         'rerank',
         'rerankingModel',
         { ...options, abortSignal: owner.signal },
-        unwrapRerankingModel,
+        getRerankingModel,
         (model, abortSignal) =>
           sdk.rerank<Document, R>({
             ...request,
@@ -218,7 +261,7 @@ export const generateImage = (
     'generateImage',
     'imageModel',
     options,
-    unwrapImageModel,
+    getImageModel,
     (model, abortSignal) =>
       sdk.generateImage({ ...options, model, abortSignal }),
   );
@@ -230,7 +273,7 @@ export const generateSpeech = (
     'generateSpeech',
     'speechModel',
     options,
-    unwrapSpeechModel,
+    getSpeechModel,
     (model, abortSignal) =>
       sdk.generateSpeech({ ...options, model, abortSignal }),
   );
@@ -242,7 +285,7 @@ export const transcribe = (
     'transcribe',
     'transcriptionModel',
     options,
-    unwrapTranscriptionModel,
+    getTranscriptionModel,
     (model, abortSignal) => sdk.transcribe({ ...options, model, abortSignal }),
   );
 

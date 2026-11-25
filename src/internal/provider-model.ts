@@ -59,7 +59,7 @@ export const readMethod =
       return { metadata, stream };
     });
 
-const streamMethod =
+export const streamMethod =
   <Options extends AbortOptions, A, Metadata>(
     operation: string,
     request: (
@@ -84,8 +84,10 @@ const modelMetadata = (model: {
   modelId: model.modelId,
 });
 
-const lazyValue = <A>(operation: string, getValue: () => A | PromiseLike<A>) =>
-  runRequest(operation, {}, () => Promise.resolve(getValue()));
+export const lazyValue = <A>(
+  operation: string,
+  getValue: () => A | PromiseLike<A>,
+) => runRequest(operation, {}, () => Promise.resolve(getValue()));
 
 const optionalRequest = <Options extends AbortOptions, A>(
   operation: string,
