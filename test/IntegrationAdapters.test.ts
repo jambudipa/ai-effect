@@ -109,11 +109,16 @@ describe('Code mode integration', () => {
         pause: tool({
           inputSchema: Schema.Struct({}),
           execute: (_input, options: CodeModeToolExecutionOptions) =>
-            options.codeModeInterrupt
-              ? Schema.decodeUnknownEffect(Schema.String)(
-                  options.codeModeInterrupt.resolution,
-                )
-              : experimental_requestCodeModeInterrupt({ kind: 'fixture' }),
+            Effect.gen(function* () {
+              if (!options.codeModeInterrupt) {
+                return yield* experimental_requestCodeModeInterrupt({
+                  kind: 'fixture',
+                });
+              }
+              return yield* Schema.decodeUnknownEffect(Schema.String)(
+                options.codeModeInterrupt.resolution,
+              );
+            }),
         }),
       };
       const first = yield* experimental_runCodeMode({
