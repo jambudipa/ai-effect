@@ -603,7 +603,11 @@ const bindEvents = <R, E>(
       R
     >(store, storeCallbacks, owner),
     ...(validateArguments && {
-      validateArguments: (input) => owner.runCallback(validateArguments(input)),
+      validateArguments: (
+        input: Parameters<
+          NonNullable<NativeStoreEvents['validateArguments']>
+        >[0],
+      ) => owner.runCallback(validateArguments(input)),
     }),
   };
 };
