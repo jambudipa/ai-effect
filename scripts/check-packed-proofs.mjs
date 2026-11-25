@@ -85,6 +85,21 @@ try {
       .map(([path, entry]) => [path, entry.version]),
   );
   const scope = join(fixture, 'node_modules');
+  console.log(
+    JSON.stringify(
+      {
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        npm: run(fixture, 'npm', ['--version'], true).trim(),
+        packageCount: installed.length,
+        installBytes: fileBytes(scope),
+        durationMs,
+        peers,
+      },
+      null,
+      2,
+    ),
+  );
   const tsc = join(scope, 'typescript/bin/tsc');
   const vite = join(scope, 'vite/bin/vite.js');
   run(fixture, process.execPath, [tsc, '-p', 'tsconfig.json']);
@@ -103,22 +118,7 @@ try {
   const browserBytes = gzipSync(
     readFileSync(join(fixture, 'dist/host.js')),
   ).length;
-  console.log(
-    JSON.stringify(
-      {
-        node: process.version,
-        platform: `${process.platform}-${process.arch}`,
-        npm: run(fixture, 'npm', ['--version'], true).trim(),
-        packageCount: installed.length,
-        installBytes: fileBytes(scope),
-        durationMs,
-        peers,
-        browserBytes,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify({ browserBytes }));
 } finally {
   if (existing || process.env.AI_EFFECT_KEEP_FIXTURE) console.log(fixture);
   else rmSync(fixture, { recursive: true, force: true });

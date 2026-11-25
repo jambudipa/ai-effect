@@ -107,7 +107,7 @@ export function installConsumer(fixture, archive, dependencies) {
     execFileSync('npm', [...args, ...flags], {
       cwd: fixture,
       stdio: 'inherit',
-      timeout: 240_000,
+      timeout: 360_000,
     });
   }
   const durationMs = Math.round(performance.now() - start);
