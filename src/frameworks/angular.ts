@@ -2,16 +2,22 @@ import {
   Chat as NativeChat,
   Completion as NativeCompletion,
   StructuredObject as NativeStructuredObject,
-  type CompletionOptions,
 } from '@ai-sdk/angular';
 import { DestroyRef, inject } from '@angular/core';
 import type { UIMessage } from 'ai';
-import { Schema } from 'effect';
-import { toSdkSchema } from '../internal/schema.js';
 import { HostChat, nativeChatOptions, type ChatInit } from './chat.js';
 import { viewError, withLifetime } from './lifetime.js';
+import {
+  nativeCompletionOptions,
+  nativeObjectOptions,
+  nativeSchema,
+  type CompletionOptions,
+  type HostSchema,
+  type DecodedSchema,
+  type ObjectOptions,
+} from './options.js';
 
-export type { CompletionOptions };
+export type { CompletionOptions } from './options.js';
 export type { ChatInit } from './chat.js';
 
 const destroy = (cleanup: () => void) => {
@@ -41,17 +47,9 @@ export class Completion<Body extends object = object> {
   readonly #view = withLifetime(destroy, () => this.#native.stop());
 
   constructor(options?: CompletionOptions<NoInfer<Body>>) {
-    this.#native = new NativeCompletion<Body>({
-      ...options,
-      fetch: this.#view.fetch(options?.fetch),
-      onFinish: (...args) => {
-        if (!this.#view.signal.aborted) options?.onFinish?.(...args);
-      },
-      onError: (cause) => {
-        if (!this.#view.signal.aborted)
-          options?.onError?.(viewError('Completion', cause)!);
-      },
-    });
+    this.#native = new NativeCompletion<Body>(
+      nativeCompletionOptions(this.#view, options),
+    );
   }
 
   get id() {
@@ -90,36 +88,27 @@ export class Completion<Body extends object = object> {
       () => this.#native.complete(...args),
       this.#native.stop,
     );
-  readonly handleSubmit = (
-    ...args: Parameters<NativeCompletion<Body>['handleSubmit']>
-  ) =>
+  readonly handleSubmit = (event?: { preventDefault?: () => void }) =>
     this.#view.command(
       'Completion.handleSubmit',
-      () => this.#native.handleSubmit(...args),
+      () => this.#native.handleSubmit(event),
       this.#native.stop,
     );
   readonly stop = () => this.#view.action('Completion.stop', this.#native.stop);
 }
 
-type Decoder = Schema.ConstraintDecoder<unknown>;
-type NativeObjectOptions<A> = ConstructorParameters<
-  typeof NativeStructuredObject<
-    ReturnType<typeof toSdkSchema<unknown, never>>,
-    A
-  >
->[0];
-export type StructuredObjectOptions<S extends Decoder, A = S['Type']> = Omit<
-  NativeObjectOptions<A>,
-  'schema'
-> & { readonly schema: S };
+export type StructuredObjectOptions<
+  S extends HostSchema<unknown>,
+  A = DecodedSchema<S>,
+> = ObjectOptions<S, A>;
 
 export class StructuredObject<
-  S extends Decoder,
-  A = S['Type'],
+  S extends HostSchema<unknown>,
+  A = DecodedSchema<S>,
   Input = unknown,
 > {
   readonly #native: NativeStructuredObject<
-    ReturnType<typeof toSdkSchema<unknown, never>>,
+    ReturnType<typeof nativeSchema<unknown>>,
     A,
     Input
   >;
@@ -128,22 +117,9 @@ export class StructuredObject<
 
   constructor(options: StructuredObjectOptions<S, A>) {
     this.options = options;
-    this.#native = new NativeStructuredObject({
-      ...options,
-      schema: toSdkSchema(options.schema),
-      fetch: this.#view.fetch(options.fetch),
-      onFinish: (event) => {
-        if (!this.#view.signal.aborted)
-          return options.onFinish?.({
-            ...event,
-            error: viewError('StructuredObject', event.error),
-          });
-      },
-      onError: (cause) => {
-        if (!this.#view.signal.aborted)
-          options.onError?.(viewError('StructuredObject', cause)!);
-      },
-    });
+    this.#native = new NativeStructuredObject(
+      nativeObjectOptions(this.#view, options),
+    );
   }
 
   get id() {

@@ -4,18 +4,47 @@ import type {
   ChatRequestOptions,
   UIMessage,
 } from 'ai';
-import { runRequest, sdkError } from '../internal/operation.js';
+import {
+  runRequest,
+  sdkError,
+  type AiSdkError,
+} from '../internal/operation.js';
 import {
   type ChatTransport,
   unwrapChatTransport,
 } from '../internal/chat-transport.js';
-import { ViewLifetime, viewError } from './lifetime.js';
+import { ViewLifetime, viewError, type HostResult } from './lifetime.js';
+import { nativeSchema, type HostSchema } from './options.js';
 
-export type ChatInit<Message extends UIMessage> = Omit<
-  NativeInit<Message>,
-  'transport'
-> & {
+type MessageData<Message> =
+  Message extends UIMessage<infer _Meta, infer Data> ? Data : never;
+
+type ChatEvent<
+  Message extends UIMessage,
+  K extends 'onToolCall' | 'onFinish' | 'onData',
+> = Parameters<NonNullable<NativeInit<Message>[K]>>[0];
+
+export type ChatInit<Message extends UIMessage> = {
+  readonly id?: string;
+  readonly messageMetadataSchema?: HostSchema<Message['metadata']>;
+  readonly dataPartSchemas?: {
+    [K in keyof MessageData<Message>]: HostSchema<MessageData<Message>[K]>;
+  };
+  readonly messages?: Message[];
+  readonly generateId?: () => string;
   readonly transport?: ChatTransport<Message>;
+  readonly onError?: (error: AiSdkError) => HostResult<void>;
+  readonly onToolCall?: (
+    event: ChatEvent<Message, 'onToolCall'>,
+  ) => HostResult<void>;
+  readonly onFinish?: (
+    event: ChatEvent<Message, 'onFinish'>,
+  ) => HostResult<void>;
+  readonly onData?: (event: ChatEvent<Message, 'onData'>) => HostResult<void>;
+  readonly sendAutomaticallyWhen?: (options: {
+    messages: Message[];
+  }) => HostResult<boolean>;
+  readonly experimental_queue?: boolean;
 };
 
 type MessageTools<Message> =
@@ -44,29 +73,59 @@ export type ChatToolOutput<
 );
 
 export const nativeChatOptions = <Message extends UIMessage>(
-  { transport, ...init }: ChatInit<Message>,
+  {
+    transport,
+    messageMetadataSchema,
+    dataPartSchemas,
+    onError,
+    onToolCall,
+    onFinish,
+    onData,
+    sendAutomaticallyWhen,
+    ...init
+  }: ChatInit<Message>,
   view: ViewLifetime,
 ): NativeInit<Message> => {
   const native = transport ? unwrapChatTransport(transport) : undefined;
   if (transport && !native)
     throw sdkError('Chat', 'Invalid chat transport handle');
+  const schedule =
+    <A>(callback: (event: A) => HostResult<void>) =>
+    (event: A) =>
+      view.notify('Chat.callback', callback, event);
+  const awaitResult =
+    <Event, A>(callback: (event: Event) => HostResult<A>, fallback: A) =>
+    (event: Event) =>
+      view.signal.aborted
+        ? fallback
+        : view.callback('Chat.callback', () => callback(event));
   return {
     ...init,
     ...(native ? { transport: native } : {}),
-    onError: (cause) => {
-      if (!view.signal.aborted) init.onError?.(sdkError('Chat', cause));
-    },
-    onToolCall: (event) => {
-      if (!view.signal.aborted) return init.onToolCall?.(event);
-    },
-    onFinish: (event) => {
-      if (!view.signal.aborted) return init.onFinish?.(event);
-    },
-    onData: (event) => {
-      if (!view.signal.aborted) return init.onData?.(event);
-    },
-    sendAutomaticallyWhen: (options) =>
-      !view.signal.aborted && (init.sendAutomaticallyWhen?.(options) ?? false),
+    ...(messageMetadataSchema
+      ? { messageMetadataSchema: nativeSchema(messageMetadataSchema) }
+      : {}),
+    ...(dataPartSchemas
+      ? {
+          dataPartSchemas: Object.fromEntries(
+            Object.entries(dataPartSchemas).map(([name, input]) => [
+              name,
+              nativeSchema(input as HostSchema<unknown>),
+            ]),
+          ) as NonNullable<NativeInit<Message>['dataPartSchemas']>,
+        }
+      : {}),
+    ...(onError
+      ? {
+          onError: (cause: Error) => schedule(onError)(sdkError('Chat', cause)),
+        }
+      : {}),
+    ...(onToolCall ? { onToolCall: awaitResult(onToolCall, undefined) } : {}),
+    ...(onFinish ? { onFinish: schedule(onFinish) } : {}),
+    ...(onData ? { onData: schedule(onData) } : {}),
+    ...(sendAutomaticallyWhen
+      ? { sendAutomaticallyWhen: awaitResult(sendAutomaticallyWhen, false) }
+      : {}),
   };
 };
 

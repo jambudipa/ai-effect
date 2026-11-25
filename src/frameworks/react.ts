@@ -2,32 +2,41 @@
 
 import * as sdk from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
-import { Effect, Schema } from 'effect';
+import { Effect } from 'effect';
 import { createElement, useEffect, useMemo } from 'react';
-import { runSync, sdkError } from '../internal/operation.js';
+import { runSync, sdkError, type AiSdkError } from '../internal/operation.js';
 import {
   unwrapRealtimeModel,
   type RealtimeModelV4,
 } from '../internal/provider-realtime.js';
-import { toSdkSchema } from '../internal/schema.js';
 import {
   HostChat,
   nativeChatOptions,
   type ChatInit,
   type ChatToolOutput,
 } from './chat.js';
-import { ViewLifetime, viewError } from './lifetime.js';
+import { ViewLifetime, viewError, type HostResult } from './lifetime.js';
+import {
+  nativeCompletionOptions,
+  nativeObjectOptions,
+  nativeSchema,
+  type CompletionOptions,
+  type DecodedSchema,
+  type HostSchema,
+  type ObjectOptions,
+} from './options.js';
 
 export type {
   CreateUIMessage,
   Experimental_RealtimeStatus,
-  MCPAppBridgeHandlers,
   MCPAppMetadata,
   MCPAppPermission,
-  MCPAppRendererProps,
   MCPAppSandboxConfig,
+  MCPAppResource,
+  UIMessage,
 } from '@ai-sdk/react';
 export type { ChatInit } from './chat.js';
+export type { CompletionOptions as UseCompletionOptions } from './options.js';
 
 const nativeChats = new WeakMap<object, unknown>();
 
@@ -59,24 +68,19 @@ export class Chat<Message extends UIMessage> extends HostChat<Message> {
   }
 
   readonly '~registerMessagesCallback' = (
-    ...args: Parameters<sdk.Chat<Message>['~registerMessagesCallback']>
+    callback: () => void,
+    throttle?: number,
   ) =>
     this.#subscription(() =>
-      this.#native['~registerMessagesCallback'](...args),
+      this.#native['~registerMessagesCallback'](callback, throttle),
     );
-  readonly '~registerStatusCallback' = (
-    ...args: Parameters<sdk.Chat<Message>['~registerStatusCallback']>
-  ) =>
-    this.#subscription(() => this.#native['~registerStatusCallback'](...args));
-  readonly '~registerErrorCallback' = (
-    ...args: Parameters<sdk.Chat<Message>['~registerErrorCallback']>
-  ) =>
-    this.#subscription(() => this.#native['~registerErrorCallback'](...args));
-  readonly '~registerQueuedMessagesCallback' = (
-    ...args: Parameters<sdk.Chat<Message>['~registerQueuedMessagesCallback']>
-  ) =>
+  readonly '~registerStatusCallback' = (callback: () => void) =>
+    this.#subscription(() => this.#native['~registerStatusCallback'](callback));
+  readonly '~registerErrorCallback' = (callback: () => void) =>
+    this.#subscription(() => this.#native['~registerErrorCallback'](callback));
+  readonly '~registerQueuedMessagesCallback' = (callback: () => void) =>
     this.#subscription(() =>
-      this.#native['~registerQueuedMessagesCallback'](...args),
+      this.#native['~registerQueuedMessagesCallback'](callback),
     );
 }
 
@@ -142,8 +146,8 @@ export function useChat<Message extends UIMessage = UIMessage>(
     messages: native.messages,
     experimental_queuedMessages: native.experimental_queuedMessages,
     error: viewError('useChat', native.error),
-    setMessages: (...args: Parameters<typeof native.setMessages>) =>
-      native.setMessages(...args),
+    setMessages: (messages: Message[] | ((previous: Message[]) => Message[])) =>
+      native.setMessages(messages),
     sendMessage: (...args: Parameters<typeof native.sendMessage>) =>
       view.command(
         'useChat.sendMessage',
@@ -216,19 +220,16 @@ export type UseChatHelpers<Message extends UIMessage> = ReturnType<
 >;
 
 export function useCompletion<Body extends object = object>(
-  options?: Parameters<typeof sdk.useCompletion<Body>>[0],
+  options?: CompletionOptions<NoInfer<Body>> &
+    Pick<ChatControls, 'throttle' | 'experimental_throttle'>,
 ) {
   const { view, stop } = useLifetime(options?.id);
   const native = sdk.useCompletion<Body>({
-    ...options,
-    fetch: view.fetch(options?.fetch),
-    onFinish: (...args) => {
-      if (!view.signal.aborted) options?.onFinish?.(...args);
-    },
-    onError: (cause) => {
-      if (!view.signal.aborted)
-        options?.onError?.(viewError('useCompletion', cause)!);
-    },
+    ...nativeCompletionOptions(view, options),
+    ...(options?.throttle === undefined ? {} : { throttle: options.throttle }),
+    ...(options?.experimental_throttle === undefined
+      ? {}
+      : { experimental_throttle: options.experimental_throttle }),
   });
   stop.current = native.stop;
   const complete = (...args: Parameters<typeof native.complete>) =>
@@ -264,35 +265,22 @@ export type UseCompletionHelpers<Body extends object = object> = ReturnType<
   typeof useCompletion<Body>
 >;
 
-type Decoder = Schema.ConstraintDecoder<unknown>;
-type NativeSchema = ReturnType<typeof toSdkSchema<unknown, never>>;
-export type UseObjectOptions<S extends Decoder, Result = S['Type']> = Omit<
-  sdk.UseObjectOptions<NativeSchema, Result>,
-  'schema'
-> & { readonly schema: S };
+type Decoder = HostSchema<unknown>;
+type NativeSchema = ReturnType<typeof nativeSchema<unknown>>;
+export type UseObjectOptions<
+  S extends Decoder,
+  Result = DecodedSchema<S>,
+> = ObjectOptions<S, Result>;
 
 export function useObject<
   S extends Decoder,
-  Result = S['Type'],
+  Result = DecodedSchema<S>,
   Input = unknown,
 >(options: UseObjectOptions<S, Result>) {
   const { view, stop } = useLifetime(options.id);
-  const native = sdk.useObject<NativeSchema, Result, Input>({
-    ...options,
-    schema: toSdkSchema(options.schema),
-    fetch: view.fetch(options.fetch),
-    onFinish: (event) => {
-      if (!view.signal.aborted)
-        return options.onFinish?.({
-          ...event,
-          error: viewError('useObject', event.error),
-        });
-    },
-    onError: (cause) => {
-      if (!view.signal.aborted)
-        options.onError?.(viewError('useObject', cause)!);
-    },
-  });
+  const native = sdk.useObject<NativeSchema, Result, Input>(
+    nativeObjectOptions(view, options),
+  );
   stop.current = native.stop;
   return {
     object: native.object,
@@ -322,14 +310,22 @@ type NativeRealtimeOptions = Parameters<typeof sdk.experimental_useRealtime>[0];
 type RealtimeToolCall = Parameters<
   NonNullable<NativeRealtimeOptions['onToolCall']>
 >[0];
-export type Experimental_UseRealtimeOptions = Omit<
-  NativeRealtimeOptions,
-  'model' | 'onToolCall'
-> & {
+type RealtimeEvent = Parameters<
+  NonNullable<NativeRealtimeOptions['onEvent']>
+>[0];
+export type Experimental_UseRealtimeOptions = {
   readonly model: RealtimeModelV4;
-  readonly onToolCall?: (
-    event: RealtimeToolCall,
-  ) => Effect.Effect<unknown, unknown>;
+  readonly api: NativeRealtimeOptions['api'];
+  readonly sessionConfig?: NonNullable<NativeRealtimeOptions['sessionConfig']>;
+  readonly sampleRate?: number;
+  readonly maxEvents?: number;
+  readonly startupTimeoutMs?: number;
+  readonly closeTimeoutMs?: number;
+  readonly rtcDisconnectTimeoutMs?: number;
+  readonly maxPlaybackBufferSeconds?: number;
+  readonly onToolCall?: (event: RealtimeToolCall) => HostResult<unknown>;
+  readonly onEvent?: (event: RealtimeEvent) => HostResult<void>;
+  readonly onError?: (error: AiSdkError) => HostResult<void>;
 };
 export function experimental_useRealtime(
   options: Experimental_UseRealtimeOptions,
@@ -337,17 +333,30 @@ export function experimental_useRealtime(
   const { view, stop } = useLifetime();
   const model = unwrapRealtimeModel(options.model);
   if (!model) throw sdkError('useRealtime', 'Invalid realtime model handle');
-  const { onToolCall, ...settings } = options;
+  const { onToolCall, onError, onEvent, ...settings } = options;
   const native = sdk.experimental_useRealtime({
     ...settings,
     model,
     ...(onToolCall
       ? {
           onToolCall: (event: RealtimeToolCall) =>
-            Effect.runPromise(
-              Effect.suspend(() => onToolCall(event)),
-              { signal: view.signal },
+            view.callback('useRealtime.onToolCall', () => onToolCall(event)),
+        }
+      : {}),
+    ...(onError
+      ? {
+          onError: (error: Error) =>
+            view.notify(
+              'useRealtime.onError',
+              onError,
+              sdkError('useRealtime', error),
             ),
+        }
+      : {}),
+    ...(onEvent
+      ? {
+          onEvent: (event: RealtimeEvent) =>
+            view.notify('useRealtime.onEvent', onEvent, event),
         }
       : {}),
   });
@@ -409,8 +418,124 @@ export type Experimental_UseRealtimeReturn = ReturnType<
   typeof experimental_useRealtime
 >;
 
-export function MCPAppRenderer(props: sdk.MCPAppRendererProps) {
-  return createElement(sdk.MCPAppRenderer, props);
+type DisplayMode = NonNullable<
+  NonNullable<sdk.MCPAppRendererProps['hostContext']>['displayMode']
+>;
+type ToolCall = { name: string; arguments?: Record<string, unknown> };
+type Size = { width?: number; height?: number };
+
+export type MCPAppBridgeHandlers = {
+  readonly allowedTools?: string[];
+  readonly callTool?: (request: ToolCall) => HostResult<unknown>;
+  readonly readResource?: (request: { uri: string }) => HostResult<unknown>;
+  readonly listResources?: (request?: unknown) => HostResult<unknown>;
+  readonly openLink?: (request: { url: string }) => HostResult<unknown>;
+  readonly sendMessage?: (request: unknown) => HostResult<unknown>;
+  readonly updateModelContext?: (request: unknown) => HostResult<unknown>;
+  readonly requestDisplayMode?: (request: {
+    mode: DisplayMode;
+  }) => HostResult<{ mode: DisplayMode }>;
+  readonly onSizeChange?: (change: Size) => HostResult<void>;
+  readonly onInitialized?: () => HostResult<void>;
+  readonly onRequestTeardown?: (event: unknown) => HostResult<void>;
+  readonly onLog?: (event: unknown) => HostResult<void>;
+  readonly onError?: (error: AiSdkError) => HostResult<void>;
+};
+
+export type MCPAppRendererProps = {
+  readonly part: sdk.MCPAppRendererProps['part'];
+  readonly sandbox: sdk.MCPAppSandboxConfig;
+  readonly resource?: sdk.MCPAppResource;
+  readonly loadResource?: (
+    app: sdk.MCPAppMetadata,
+  ) => HostResult<sdk.MCPAppResource>;
+  readonly handlers?: MCPAppBridgeHandlers;
+  readonly hostInfo?: NonNullable<sdk.MCPAppRendererProps['hostInfo']>;
+  readonly hostContext?: NonNullable<sdk.MCPAppRendererProps['hostContext']>;
+  readonly fallback?: sdk.MCPAppRendererProps['fallback'];
+};
+
+export function MCPAppRenderer({
+  loadResource,
+  handlers,
+  ...props
+}: MCPAppRendererProps) {
+  const { view } = useLifetime();
+  const bind =
+    <Args extends unknown[], A>(
+      name: string,
+      callback: (...args: Args) => HostResult<A>,
+    ) =>
+    (...args: Args) =>
+      view.callback(name, () => callback(...args));
+  const nativeHandlers = handlers
+    ? {
+        ...(handlers.allowedTools
+          ? { allowedTools: handlers.allowedTools }
+          : {}),
+        ...(handlers.callTool
+          ? { callTool: bind('MCPApp.callTool', handlers.callTool) }
+          : {}),
+        ...(handlers.readResource
+          ? { readResource: bind('MCPApp.readResource', handlers.readResource) }
+          : {}),
+        ...(handlers.listResources
+          ? {
+              listResources: bind(
+                'MCPApp.listResources',
+                handlers.listResources,
+              ),
+            }
+          : {}),
+        ...(handlers.openLink
+          ? { openLink: bind('MCPApp.openLink', handlers.openLink) }
+          : {}),
+        ...(handlers.sendMessage
+          ? { sendMessage: bind('MCPApp.sendMessage', handlers.sendMessage) }
+          : {}),
+        ...(handlers.updateModelContext
+          ? {
+              updateModelContext: bind(
+                'MCPApp.updateModelContext',
+                handlers.updateModelContext,
+              ),
+            }
+          : {}),
+        ...(handlers.requestDisplayMode
+          ? {
+              requestDisplayMode: bind(
+                'MCPApp.requestDisplayMode',
+                handlers.requestDisplayMode,
+              ),
+            }
+          : {}),
+        onSizeChange: (size: Size) =>
+          view.notify('MCPApp.onSizeChange', handlers.onSizeChange, size),
+        onInitialized: () =>
+          view.notify('MCPApp.onInitialized', handlers.onInitialized),
+        onRequestTeardown: (event: unknown) =>
+          view.notify(
+            'MCPApp.onRequestTeardown',
+            handlers.onRequestTeardown,
+            event,
+          ),
+        onLog: (event: unknown) =>
+          view.notify('MCPApp.onLog', handlers.onLog, event),
+        onError: (error: Error) =>
+          view.notify(
+            'MCPApp.onError',
+            handlers.onError,
+            sdkError('MCPApp', error),
+          ),
+      }
+    : undefined;
+  return createElement(sdk.MCPAppRenderer, {
+    ...props,
+    ...(nativeHandlers ? { handlers: nativeHandlers } : {}),
+    ...(loadResource
+      ? { loadResource: bind('MCPApp.loadResource', loadResource) }
+      : {}),
+  });
 }
 
 export const experimental_MCPAppRenderer = MCPAppRenderer;

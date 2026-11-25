@@ -1,6 +1,6 @@
 import * as sdk from '@ai-sdk/vue';
 import type { UIMessage } from 'ai';
-import { Effect, Schema } from 'effect';
+import { Effect } from 'effect';
 import {
   computed,
   getCurrentScope,
@@ -8,7 +8,6 @@ import {
   toValue,
   type MaybeRefOrGetter,
 } from 'vue';
-import { toSdkSchema } from '../internal/schema.js';
 import {
   HostChat,
   nativeChatOptions,
@@ -16,8 +15,17 @@ import {
   type ChatToolOutput,
 } from './chat.js';
 import { viewError, withLifetime } from './lifetime.js';
+import {
+  nativeCompletionOptions,
+  nativeObjectOptions,
+  nativeSchema,
+  type CompletionOptions,
+  type DecodedSchema,
+  type HostSchema,
+  type ObjectOptions,
+} from './options.js';
 
-export type { UseCompletionOptions } from '@ai-sdk/vue';
+export type { CompletionOptions as UseCompletionOptions } from './options.js';
 export type { ChatInit } from './chat.js';
 
 const disposeWithScope = (cleanup: () => void) => {
@@ -124,20 +132,12 @@ export type UseChatHelpers<Message extends UIMessage> = ReturnType<
 >;
 
 export function useCompletion<Body extends object = object>(
-  options?: Parameters<typeof sdk.useCompletion<Body>>[0],
+  options?: CompletionOptions<NoInfer<Body>>,
 ) {
   const view = withLifetime(disposeWithScope, () => native.stop());
-  const native = sdk.useCompletion<Body>({
-    ...options,
-    fetch: view.fetch(options?.fetch),
-    onFinish: (...args) => {
-      if (!view.signal.aborted) options?.onFinish?.(...args);
-    },
-    onError: (cause) => {
-      if (!view.signal.aborted)
-        options?.onError?.(viewError('useCompletion', cause)!);
-    },
-  });
+  const native = sdk.useCompletion<Body>(
+    nativeCompletionOptions(view, options),
+  );
   const complete = (...args: Parameters<typeof native.complete>) =>
     view.command(
       'useCompletion.complete',
@@ -167,35 +167,22 @@ export type UseCompletionHelpers<Body extends object = object> = ReturnType<
   typeof useCompletion<Body>
 >;
 
-type Decoder = Schema.ConstraintDecoder<unknown>;
-type NativeSchema = ReturnType<typeof toSdkSchema<unknown, never>>;
-export type UseObjectOptions<S extends Decoder, Result = S['Type']> = Omit<
-  sdk.UseObjectOptions<NativeSchema, Result>,
-  'schema'
-> & { readonly schema: S };
+type Decoder = HostSchema<unknown>;
+type NativeSchema = ReturnType<typeof nativeSchema<unknown>>;
+export type UseObjectOptions<
+  S extends Decoder,
+  Result = DecodedSchema<S>,
+> = ObjectOptions<S, Result>;
 
 export function useObject<
   S extends Decoder,
-  Result = S['Type'],
+  Result = DecodedSchema<S>,
   Input = unknown,
 >(options: UseObjectOptions<S, Result>) {
   const view = withLifetime(disposeWithScope, () => native.stop());
-  const native = sdk.useObject<NativeSchema, Result, Input>({
-    ...options,
-    schema: toSdkSchema(options.schema),
-    fetch: view.fetch(options.fetch),
-    onFinish: (event) => {
-      if (!view.signal.aborted)
-        return options.onFinish?.({
-          ...event,
-          error: viewError('useObject', event.error),
-        });
-    },
-    onError: (cause) => {
-      if (!view.signal.aborted)
-        options.onError?.(viewError('useObject', cause)!);
-    },
-  });
+  const native = sdk.useObject<NativeSchema, Result, Input>(
+    nativeObjectOptions(view, options),
+  );
   return {
     object: native.object,
     error: computed(() => viewError('useObject', native.error.value)),

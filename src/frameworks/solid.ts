@@ -2,14 +2,33 @@ import * as sdk from '@ai-sdk/solid';
 import { jsonSchema as sdkJsonSchema } from '@ai-sdk/ui-utils';
 import { Effect, JsonSchema, Result, Schema } from 'effect';
 import { getOwner, onCleanup, type Accessor } from 'solid-js';
-import { viewError, withLifetime } from './lifetime.js';
+import type {
+  Message,
+  UseAssistantOptions,
+  UseChatOptions as LegacyChatOptions,
+  UseCompletionOptions,
+} from '../integrations/ui-utils.js';
+import {
+  viewError,
+  withLifetime,
+  type ViewLifetime,
+  type HostResult,
+} from './lifetime.js';
 
 export type {
   CreateMessage,
   Message,
-  UseChatOptions,
   UseCompletionOptions,
-} from '@ai-sdk/solid';
+} from '../integrations/ui-utils.js';
+
+export type UseChatOptions = LegacyChatOptions & {
+  readonly maxSteps?: number;
+  readonly experimental_prepareRequestBody?: (
+    data: Parameters<
+      NonNullable<sdk.UseChatOptions['experimental_prepareRequestBody']>
+    >[0],
+  ) => unknown;
+};
 
 const cleanup = (release: () => void) => {
   if (getOwner()) onCleanup(release);
@@ -18,16 +37,36 @@ const cleanup = (release: () => void) => {
 const read = <A>(value: A | Accessor<A>): A =>
   typeof value === 'function' ? (value as Accessor<A>)() : value;
 
-export function useChat(options?: Parameters<typeof sdk.useChat>[0]) {
+const responseCallback = (
+  view: ViewLifetime,
+  handler?: (response: Response) => HostResult<void>,
+) =>
+  handler
+    ? {
+        onResponse: (response: Response) =>
+          view.callback('onResponse', () => handler(response)),
+      }
+    : {};
+
+export function useChat(options?: UseChatOptions | Accessor<UseChatOptions>) {
   const view = withLifetime(cleanup, () => native.stop());
   const native = sdk.useChat(() => {
-    const input = read(options) ?? {};
+    const { onError, onFinish, onResponse, onToolCall, ...input } =
+      read(options) ?? {};
     return {
       ...input,
       fetch: view.fetch(input.fetch),
-      onError: (cause) => {
-        if (!view.signal.aborted) input.onError?.(viewError('useChat', cause)!);
-      },
+      ...responseCallback(view, onResponse),
+      ...(onToolCall
+        ? {
+            onToolCall: (
+              call: Parameters<NonNullable<LegacyChatOptions['onToolCall']>>[0],
+            ) => view.callback('useChat.onToolCall', () => onToolCall(call)),
+          }
+        : {}),
+      onError: (cause) =>
+        view.notify('useChat.onError', onError, viewError('useChat', cause)!),
+      onFinish: (...args) => view.notify('useChat.onFinish', onFinish, ...args),
     };
   });
   return {
@@ -39,8 +78,8 @@ export function useChat(options?: Parameters<typeof sdk.useChat>[0]) {
     status: () => native.status(),
     isLoading: () => native.isLoading(),
     setInput: native.setInput,
-    setMessages: (...args: Parameters<typeof native.setMessages>) =>
-      native.setMessages(...args),
+    setMessages: (messages: Message[] | ((previous: Message[]) => Message[])) =>
+      native.setMessages(messages),
     setData: (...args: Parameters<typeof native.setData>) =>
       native.setData(...args),
     handleInputChange: native.handleInputChange,
@@ -64,12 +103,24 @@ export function useChat(options?: Parameters<typeof sdk.useChat>[0]) {
 export type UseChatHelpers = ReturnType<typeof useChat>;
 
 export function useCompletion(
-  options?: Parameters<typeof sdk.useCompletion>[0],
+  options?: UseCompletionOptions | Accessor<UseCompletionOptions>,
 ) {
   const view = withLifetime(cleanup, () => native.stop());
   const native = sdk.useCompletion(() => {
-    const input = read(options) ?? {};
-    return { ...input, fetch: view.fetch(input.fetch) };
+    const { onFinish, onResponse, onError, ...input } = read(options) ?? {};
+    return {
+      ...input,
+      fetch: view.fetch(input.fetch),
+      ...responseCallback(view, onResponse),
+      onError: (cause) =>
+        view.notify(
+          'useCompletion.onError',
+          onError,
+          viewError('useCompletion', cause)!,
+        ),
+      onFinish: (...args) =>
+        view.notify('useCompletion.onFinish', onFinish, ...args),
+    };
   });
   const complete = (...args: Parameters<typeof native.complete>) =>
     view.command(
@@ -105,8 +156,22 @@ type Decoder = Schema.ConstraintDecoder<unknown>;
 export type Experimental_UseObjectOptions<
   Result,
   S extends Decoder = Schema.ConstraintDecoder<Result>,
-> = Omit<sdk.Experimental_UseObjectOptions<Result>, 'schema'> & {
+> = {
+  readonly api: string;
   readonly schema: S;
+  readonly id?: string;
+  readonly initialValue?: Exclude<
+    sdk.Experimental_UseObjectOptions<Result>['initialValue'],
+    undefined
+  >;
+  readonly fetch?: typeof globalThis.fetch;
+  readonly onFinish?: (event: {
+    object: Result | undefined;
+    error: ReturnType<typeof viewError>;
+  }) => HostResult<void>;
+  readonly onError?: NonNullable<UseAssistantOptions['onError']>;
+  readonly headers?: Record<string, string> | Headers;
+  readonly credentials?: RequestCredentials;
 };
 
 export function experimental_useObject<Result, Input = unknown>(
@@ -116,7 +181,7 @@ export function experimental_useObject<Result, Input = unknown>(
 ) {
   const view = withLifetime(cleanup, () => native.stop());
   const native = sdk.experimental_useObject<Result, Input>(() => {
-    const input = read(options);
+    const { onFinish, onError, ...input } = read(options);
     const { schema, definitions } = JsonSchema.toDocumentDraft07(
       Schema.toJsonSchemaDocument(input.schema),
     );
@@ -134,6 +199,17 @@ export function experimental_useObject<Result, Input = unknown>(
         },
       ),
       fetch: view.fetch(input.fetch),
+      onError: (cause) =>
+        view.notify(
+          'useObject.onError',
+          onError,
+          viewError('useObject', cause)!,
+        ),
+      onFinish: ({ object, error }) =>
+        view.notify('useObject.onFinish', onFinish, {
+          object,
+          error: viewError('useObject', error),
+        }),
     };
   });
   return {
@@ -150,17 +226,21 @@ export type Experimental_UseObjectHelpers<Result, Input> = ReturnType<
   typeof experimental_useObject<Result, Input>
 >;
 
-export function useAssistant(options: Parameters<typeof sdk.useAssistant>[0]) {
+export function useAssistant(
+  options: UseAssistantOptions | Accessor<UseAssistantOptions>,
+) {
   const view = withLifetime(cleanup, () => native.stop());
   const native = sdk.useAssistant(() => {
-    const input = read(options);
+    const { onError, ...input } = read(options);
     return {
       ...input,
       fetch: view.fetch(input.fetch),
-      onError: (cause) => {
-        if (!view.signal.aborted)
-          input.onError?.(viewError('useAssistant', cause)!);
-      },
+      onError: (cause) =>
+        view.notify(
+          'useAssistant.onError',
+          onError,
+          viewError('useAssistant', cause)!,
+        ),
     };
   });
   return {

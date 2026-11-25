@@ -7,6 +7,16 @@ import {
   sdkError,
 } from '../internal/operation.js';
 
+export type HostResult<A> = A | PromiseLike<A> | Effect.Effect<A, unknown>;
+
+const invoke = <A>(operation: string, callback: () => HostResult<A>) =>
+  runSync(operation, callback).pipe(
+    Effect.flatMap((result) => {
+      if (Effect.isEffect(result)) return result;
+      return runRequest(operation, {}, () => Promise.resolve(result));
+    }),
+  );
+
 /** Attach a native command and its transport to the lifetime of a host view. */
 export class ViewLifetime {
   #controller = new AbortController();
@@ -51,6 +61,23 @@ export class ViewLifetime {
         ? Effect.fail(sdkError(operation, this.signal.reason))
         : runSync(operation, run),
     );
+  }
+
+  notify<Args extends unknown[]>(
+    operation: string,
+    callback: ((...args: Args) => HostResult<void>) | undefined,
+    ...args: Args
+  ) {
+    if (!callback || this.signal.aborted) return;
+    Effect.runFork(Effect.ignore(invoke(operation, () => callback(...args))), {
+      signal: this.signal,
+    });
+  }
+
+  callback<A>(operation: string, callback: () => HostResult<A>) {
+    return Effect.runPromise(invoke(operation, callback), {
+      signal: this.signal,
+    });
   }
 
   fetch(fetcher?: typeof globalThis.fetch): typeof globalThis.fetch {
