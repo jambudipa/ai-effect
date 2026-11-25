@@ -806,13 +806,15 @@ export const executeTool = <I, A, C, E, R>(input: {
   );
 };
 
+/** Attach caller hooks that complete synchronously during native tool setup. */
 export const experimental_toolCaller = <
   A extends EffectTools[string],
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
+  Prepare = R,
 >(
   tool: A,
-  definition: ToolCaller<R, Bound>,
+  definition: ToolCaller<R, Bound, Prepare>,
 ) =>
   runSync('ProviderUtils.toolCaller', () =>
     annotateToolCaller(tool, definition),
@@ -821,9 +823,12 @@ export const experimental_toolCaller = <
 export const experimental_getToolCaller = <
   R,
   Bound extends EffectTools[string],
->(tool?: {
-  readonly experimental_toolCaller?: ToolCaller<R, Bound>;
-}) => tool?.experimental_toolCaller;
+  Prepare,
+>(
+  tool?: EffectTools[string] & {
+    readonly experimental_toolCaller?: ToolCaller<R, Bound, Prepare>;
+  },
+) => tool?.experimental_toolCaller;
 
 type NativeProviderTool = ReturnType<Parameters<typeof adaptProviderTool>[1]>;
 type AdaptedFactory<Fn extends (...args: never[]) => object> = ReturnType<
@@ -950,12 +955,14 @@ export const WORKFLOW_DESERIALIZE = sdk.WORKFLOW_DESERIALIZE;
 export type Experimental_ToolCallerDefinition<
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
-> = ToolCaller<R, Bound>;
+  Prepare = R,
+> = ToolCaller<R, Bound, Prepare>;
 export type Experimental_ToolCallerTool<
   T extends object = EffectTools[string],
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
-> = ToolWithCaller<T, R, Bound>;
+  Prepare = R,
+> = ToolWithCaller<T, R, Bound, Prepare>;
 export type ExecutableTool<T extends ToolWithExecute> = T & {
   readonly execute: NonNullable<T['execute']>;
 };

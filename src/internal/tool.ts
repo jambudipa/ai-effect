@@ -257,9 +257,14 @@ type DefinitionRequirements<Definition> =
       : FunctionRequirements<Definition>;
 
 type CallerRequirements<Definition> = Definition extends {
-  readonly experimental_toolCaller: ToolCaller<infer R, infer Bound>;
+  readonly experimental_toolCaller: ToolCaller<
+    infer R,
+    infer Bound,
+    infer Prepare
+  >;
 }
   ? | R
+    | Prepare
     | (EffectTools[string] extends Bound
         ? never
         : DefinitionRequirements<Bound>)
@@ -281,6 +286,7 @@ export type EffectTools = Readonly<
 export type ToolCaller<
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
+  Prepare = R,
 > =
   | {
       readonly type: 'local';
@@ -289,7 +295,7 @@ export type ToolCaller<
       ) => Effect.Effect<Bound, AiSdkError, R>;
       readonly prepareModelMessage?: (
         tools: EffectTools,
-      ) => Effect.Effect<string | undefined, AiSdkError, R>;
+      ) => Effect.Effect<string | undefined, AiSdkError, Prepare>;
     }
   | {
       readonly type: 'provider';
@@ -302,8 +308,9 @@ export type ToolWithCaller<
   T extends object,
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
+  Prepare = R,
 > = T & {
-  readonly experimental_toolCaller: ToolCaller<R, Bound>;
+  readonly experimental_toolCaller: ToolCaller<R, Bound, Prepare>;
 };
 
 const toolCallers = new WeakMap<
@@ -318,15 +325,16 @@ export const annotateToolCaller = <
   T extends EffectTools[string],
   R,
   Bound extends EffectTools[string],
+  Prepare,
 >(
   tool: T,
-  caller: ToolCaller<R, Bound>,
-): ToolWithCaller<T, R, Bound> => {
+  caller: ToolCaller<R, Bound, Prepare>,
+): ToolWithCaller<T, R, Bound, Prepare> => {
   const annotated = Object.defineProperty(
     { ...tool },
     'experimental_toolCaller',
     { value: caller },
-  ) as ToolWithCaller<T, R, Bound>;
+  ) as ToolWithCaller<T, R, Bound, Prepare>;
   toolCallers.set(annotated, {
     original: toolCallers.get(tool)?.original ?? tool,
     caller,
@@ -633,10 +641,10 @@ export const bindTools = <Tools extends EffectTools>(
     subset: ToolSet,
   ): Effect.Effect<EffectTools, AiSdkError> =>
     Effect.forEach(Object.entries(subset), ([name, selected]) => {
-      const definition = Object.hasOwn(tools, name) ? tools[name] : undefined;
-      if (!definition) {
+      if (!Object.hasOwn(tools, name) || !tools[name]) {
         return Effect.fail(sdkError('toolCaller', `Unknown tool "${name}".`));
       }
+      const definition = tools[name];
       if (definition.providerOptions === selected.providerOptions) {
         preparedTools.set(definition, selected);
         return Effect.succeed([name, definition] as const);

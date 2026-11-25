@@ -366,8 +366,10 @@ export type Experimental_ToolCallerTool<
   T extends object = Tool,
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
+  Prepare = R,
 > = import('./protocols/provider-utils.js').Experimental_ToolCallerTool<
   T,
   R,
-  Bound
+  Bound,
+  Prepare
 >;
