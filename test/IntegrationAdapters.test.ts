@@ -147,40 +147,44 @@ describe('Just Bash integration', () => {
 });
 
 describe('Code mode integration', () => {
-  it.effect('continues an interruption requested by an Effect tool', () =>
-    Effect.gen(function* () {
-      const tools = {
-        pause: tool({
-          inputSchema: Schema.Struct({}),
-          execute: (_input, options: CodeModeToolExecutionOptions) =>
-            Effect.gen(function* () {
-              if (!options.codeModeInterrupt) {
-                return yield* experimental_requestCodeModeInterrupt({
-                  kind: 'fixture',
-                });
-              }
-              return yield* Schema.decodeUnknownEffect(Schema.String)(
-                options.codeModeInterrupt.resolution,
-              );
-            }),
-        }),
-      };
-      const first = yield* experimental_runCodeMode({
-        js: 'return await tools.pause({})',
-        tools,
-      });
-      const interrupt = experimental_getCodeModeInterrupt(first);
-      expect(interrupt?.payload.kind).toBe('fixture');
-      if (interrupt) {
-        const result = yield* experimental_continueCodeModeInterrupt({
-          interrupt,
-          resolution: 'confirmed',
+  for (const mode of ['Effect', 'Stream'] as const) {
+    it.effect(`continues an interruption from a tool that returns ${mode}`, () =>
+      Effect.gen(function* () {
+        const tools = {
+          pause: tool({
+            inputSchema: Schema.Struct({}),
+            execute: (_input, options: CodeModeToolExecutionOptions) => {
+              const result = Effect.gen(function* () {
+                if (!options.codeModeInterrupt) {
+                  return yield* experimental_requestCodeModeInterrupt({
+                    kind: 'fixture',
+                  });
+                }
+                return yield* Schema.decodeUnknownEffect(Schema.String)(
+                  options.codeModeInterrupt.resolution,
+                );
+              });
+              return mode === 'Effect' ? result : Stream.fromEffect(result);
+            },
+          }),
+        };
+        const first = yield* experimental_runCodeMode({
+          js: 'return await tools.pause({})',
           tools,
         });
-        expect(result).toBe('confirmed');
-      }
-    }),
-  );
+        const interrupt = experimental_getCodeModeInterrupt(first);
+        expect(interrupt?.payload.kind).toBe('fixture');
+        if (interrupt) {
+          const result = yield* experimental_continueCodeModeInterrupt({
+            interrupt,
+            resolution: 'confirmed',
+            tools,
+          });
+          expect(result).toBe('confirmed');
+        }
+      }),
+    );
+  }
 });
 
 describe('Harness declaration boundary', () => {

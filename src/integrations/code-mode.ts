@@ -1,5 +1,5 @@
 import * as sdk from '@ai-sdk/code-mode';
-import { Effect, Redacted } from 'effect';
+import { Effect, Redacted, Stream } from 'effect';
 import {
   AiSdkError,
   openOperation,
@@ -192,21 +192,27 @@ const bindCodeTools = <T extends EffectTools>(
   bindTools(
     Object.fromEntries(
       Object.entries(tools).map(([name, definition]) => {
-        if (!('execute' in definition)) return [name, definition];
+        if (
+          !('execute' in definition) ||
+          typeof definition.execute !== 'function'
+        )
+          return [name, definition];
         const execute = definition.execute;
+        const unwrapInterrupt = (error: unknown) =>
+          error instanceof AiSdkError &&
+          error.operation === 'CodeMode.requestInterrupt'
+            ? Redacted.value(error.cause)
+            : error;
         return [
           name,
           {
             ...definition,
-            execute: (...args: never[]) =>
-              execute(...args).pipe(
-                Effect.mapError((error) =>
-                  error instanceof AiSdkError &&
-                  error.operation === 'CodeMode.requestInterrupt'
-                    ? Redacted.value(error.cause)
-                    : error,
-                ),
-              ),
+            execute: (...args: never[]) => {
+              const result = execute(...args);
+              return Effect.isEffect(result)
+                ? Effect.mapError(result, unwrapInterrupt)
+                : Stream.mapError(result, unwrapInterrupt);
+            },
           },
         ];
       }),
