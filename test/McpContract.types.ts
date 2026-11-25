@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 import type { Effect } from 'effect';
+import type { Scope } from 'effect/Scope';
 import {
   createMCPClient,
   type Experimental_MCPEventAdapter,
@@ -69,6 +70,17 @@ const managed = createMCPClient({
   transport,
   experimental_events: { adapter },
 });
+
+type CallbackService = { readonly id: 'mcp-test-service' };
+declare const callback: Effect.Effect<void, never, CallbackService>;
+const configured = createMCPClient({
+  transport,
+  onUncaughtError: () => callback,
+});
+
+export type ClientRequiresScopeAndCallbackServices = Expect<
+  Same<Effect.Services<typeof configured>, Scope | CallbackService>
+>;
 
 export type StandardEventsAreExact = Expect<
   'refresh' extends keyof Effect.Success<typeof standard>['experimental_events']

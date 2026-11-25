@@ -367,7 +367,13 @@ export function createMCPClient<R = never, E = never>(
 >;
 export function createMCPClient<R = never, E = never>(
   config: MCPClientConfig<R, E>,
-) {
+): Effect.Effect<
+  MCPClient<R> | Experimental_ManagedMCPClient<R>,
+  AiSdkError,
+  R | Scope.Scope
+> {
+  // The Effect diagnostic compares the overload's R with the implementation's R.
+  // @effect-diagnostics-next-line effect/missingEffectContext:off
   return Effect.gen(function* () {
     const operation = 'MCP.createMCPClient';
     const {
