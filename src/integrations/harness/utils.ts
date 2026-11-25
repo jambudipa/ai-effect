@@ -775,6 +775,8 @@ export class SandboxChannel<Out extends Frame, In extends Frame = Frame> {
       return runSync('SandboxChannel.send', () =>
         this.native.send(message, rest),
       );
+    // The callback overload declares the services for this branch.
+    // @effect-diagnostics-next-line effect/missingEffectContext:off
     return this.sendAcknowledged(message, rest, onSent);
   }
 
