@@ -6,6 +6,8 @@ import type {
   Tool,
 } from '@ai-sdk/provider-utils';
 import { Effect } from 'effect';
+import { wrapSandbox } from '../integrations/internal/sandbox.js';
+import type { SandboxSession } from '../integrations/internal/sandbox.js';
 import { runSync, sdkError } from './operation.js';
 import type { openOperation } from './operation.js';
 
@@ -34,10 +36,33 @@ export interface ProviderToolHandle<Input, Output, Services> {
   };
 }
 
+type AdaptSandboxArgument<Arg> = 'experimental_sandbox' extends keyof Arg
+  ? Omit<Arg, 'experimental_sandbox'> & {
+      experimental_sandbox?: SandboxSession;
+    }
+  : Arg;
+
+const wrapSandboxArgument = (value: unknown): unknown => {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('experimental_sandbox' in value) ||
+    !value.experimental_sandbox
+  )
+    return value;
+  return {
+    ...value,
+    experimental_sandbox: wrapSandbox(
+      value.experimental_sandbox as Parameters<typeof wrapSandbox>[0],
+    ),
+  };
+};
 type AdaptCallback<Value, R> = Value extends (
   ...args: infer Args
 ) => infer Result
-  ? (...args: Args) => Effect.Effect<Awaited<Result>, unknown, R>
+  ? (
+      ...args: { [K in keyof Args]: AdaptSandboxArgument<Args[K]> }
+    ) => Effect.Effect<Awaited<Result>, unknown, R>
   : Value;
 
 type AdaptOptions<Options, R> = {
@@ -96,7 +121,9 @@ const bindArguments = <Args extends unknown[], R>(
             callbackNames.includes(key) && typeof value === 'function'
               ? (...callbackArgs: unknown[]) =>
                   owner.runCallback(
-                    Effect.suspend(() => value(...callbackArgs)),
+                    Effect.suspend(() =>
+                      value(...callbackArgs.map(wrapSandboxArgument)),
+                    ),
                     callbackArgs.find(
                       (arg): arg is { abortSignal: AbortSignal } =>
                         typeof arg === 'object' &&
