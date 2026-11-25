@@ -5,7 +5,8 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import ts from 'typescript';
 import {
-  countSignatures,
+  describeConstructorAdapter,
+  describeSignatures,
   findPrivateSdkImports,
   findSdkOperations,
 } from './sdk-declaration-graph.mjs';
@@ -139,7 +140,11 @@ function inspect(context, { mode, bundler, flags }) {
     const symbols = checker.getExportsOfModule(namespace);
     if (!values['operations-only']) {
       const names = new Map(symbols.map((symbol) => [symbol.name, symbol]));
-      const target = path.resolvers[context].types;
+      const target = path.targets[path.resolvers[context].types];
+      const expectedCalls = new Map(Object.entries(target?.calls ?? {}));
+      const expectedConstructors = new Map(
+        Object.entries(target?.constructors ?? {}),
+      );
       const runtime = path.resolvers[context].runtime;
       const runtimeNames = new Set(path.targets[runtime]?.names ?? []);
       const otherRuntimeNames = new Set(
@@ -150,23 +155,40 @@ function inspect(context, { mode, bundler, flags }) {
           )
           .flatMap(([, target]) => target.names),
       );
-      for (const name of path.targets[target]?.names ?? []) {
+      for (const name of target?.names ?? []) {
         // Shared upstream declarations can describe operations exclusive to another branch.
         if (runtime && otherRuntimeNames.has(name) && !runtimeNames.has(name))
           continue;
         if (!names.has(name))
           failures.push(`${path.wrapper} is missing type export ${name}`);
       }
-      for (const [name, expected] of Object.entries(
-        path.targets[target]?.overloads ?? {},
-      )) {
+      for (const name of runtimeNames) {
         const symbol = names.get(name);
-        if (!symbol || !runtimeNames.has(name)) continue;
-        const actual = countSignatures(checker, symbol);
-        if (actual < expected) {
+        const calls = expectedCalls.get(name) ?? 0;
+        const constructors = expectedConstructors.get(name) ?? 0;
+        if (!symbol || !(calls || constructors)) continue;
+        const actual = describeSignatures(checker, symbol);
+        if (actual.calls < calls) {
           failures.push(
-            `${path.wrapper} ${name} exposes ${actual} signatures; the pinned SDK exposes ${expected}`,
+            `${path.wrapper} ${name} has ${actual.calls} call signatures. The pinned SDK has ${calls}.`,
           );
+        }
+        const directConstructors = Math.max(
+          actual.constructors,
+          actual.calls - calls,
+        );
+        if (constructors > directConstructors) {
+          const { factory, effect } = describeConstructorAdapter(
+            checker,
+            symbol,
+          );
+          const lazy =
+            effect && target.parameterlessConstructors?.includes(name);
+          if (!lazy && factory < constructors) {
+            failures.push(
+              `${path.wrapper} ${name} has ${factory} constructor adapter signatures. The pinned SDK has ${constructors} constructors.`,
+            );
+          }
         }
       }
     }

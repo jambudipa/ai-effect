@@ -55,14 +55,35 @@ function typeArguments(checker, type) {
 }
 
 /** Report raw SDK calls, constructors, methods, and getters in the public types. */
-export function countSignatures(checker, exported) {
+function exportedValueType(checker, exported) {
   const symbol =
     exported.flags & ts.SymbolFlags.Alias
       ? checker.getAliasedSymbol(exported)
       : exported;
-  if (!(symbol.flags & ts.SymbolFlags.Value) || isTypeOnly(exported)) return 0;
-  const type = checker.getTypeOfSymbol(symbol);
-  return type.getCallSignatures().length + type.getConstructSignatures().length;
+  if (!(symbol.flags & ts.SymbolFlags.Value) || isTypeOnly(exported)) return;
+  return checker.getTypeOfSymbol(symbol);
+}
+
+export function describeSignatures(checker, exported) {
+  const type = exportedValueType(checker, exported);
+  const constructors = type?.getConstructSignatures() ?? [];
+  return {
+    calls: type?.getCallSignatures().length ?? 0,
+    constructors: constructors.length,
+    parameterlessConstructor:
+      constructors.length === 1 && constructors[0].getParameters().length === 0,
+  };
+}
+
+export function describeConstructorAdapter(checker, exported) {
+  const type = exportedValueType(checker, exported);
+  const factory = type?.getProperty('make');
+  return {
+    factory: factory
+      ? checker.getTypeOfSymbol(factory).getCallSignatures().length
+      : 0,
+    effect: Boolean(type?.getProperty('~effect/Effect')),
+  };
 }
 
 export function findSdkOperations(

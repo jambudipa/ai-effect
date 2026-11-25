@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
 import ts from 'typescript';
 import { openArchives } from './sdk-archives.mjs';
-import { countSignatures } from './sdk-declaration-graph.mjs';
+import { describeSignatures } from './sdk-declaration-graph.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 const inventoryPath = join(project, '_bmad-output/sdk-upstream-inventory.json');
@@ -279,23 +279,35 @@ function describeDeclarations(files) {
         installedNamespace,
         `Missing declaration module ${installedFile}`,
       );
-      const overloads = Object.fromEntries(
-        installedChecker
-          .getExportsOfModule(installedNamespace)
-          .map((symbol) => [
-            symbol.name,
-            countSignatures(installedChecker, symbol),
-          ])
-          .filter(([, count]) => count > 1)
-          .sort(([left], [right]) => (left < right ? -1 : 1)),
-      );
+      const operations = installedChecker
+        .getExportsOfModule(installedNamespace)
+        .map((symbol) => [
+          symbol.name,
+          describeSignatures(installedChecker, symbol),
+        ])
+        .sort(([left], [right]) => (left < right ? -1 : 1));
+      const signatureTable = (kind) =>
+        Object.fromEntries(
+          operations
+            .map(([name, operation]) => [name, operation[kind]])
+            .filter(([, count]) => count > 0),
+        );
+      const calls = signatureTable('calls');
+      const constructors = signatureTable('constructors');
+      const parameterlessConstructors = operations
+        .filter(([, operation]) => operation.parameterlessConstructor)
+        .map(([name]) => name);
       return [
         file,
         {
           format: 'declaration',
           names: symbols.map(({ name }) => name),
           signatures,
-          ...(Object.keys(overloads).length ? { overloads } : {}),
+          ...(Object.keys(calls).length ? { calls } : {}),
+          ...(Object.keys(constructors).length ? { constructors } : {}),
+          ...(parameterlessConstructors.length
+            ? { parameterlessConstructors }
+            : {}),
           declarationHash: hash(printer.printFile(source)),
         },
       ];
@@ -448,11 +460,17 @@ function compareBaseline(actual, expected) {
           old.declarationHash,
           `${path.upstream} ${target} declaration body changed`,
         );
-        assert.deepEqual(
-          exports.overloads,
-          old.overloads,
-          `${path.upstream} ${target} overload drift`,
-        );
+        for (const kind of [
+          'calls',
+          'constructors',
+          'parameterlessConstructors',
+        ]) {
+          assert.deepEqual(
+            exports[kind],
+            old[kind],
+            `${path.upstream} ${target} ${kind} drift`,
+          );
+        }
       }
     }
     assert.deepEqual(path, previous, `Changed resolution for ${path.upstream}`);

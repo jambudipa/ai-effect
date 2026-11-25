@@ -1165,9 +1165,190 @@
             "wrapProvider": "326f363453c1efddf588d5f4192a77fea031d3ab0eed71c14c074253d075091d",
             "zodSchema": "2e022ed5c628b1ca725dd78e4014dc9ac6ddbf9c6ed32e197c03bc83c3120ebd"
           },
-          "overloads": {
-            "tool": 5
+          "calls": {
+            "addToolInputExamplesMiddleware": 1,
+            "asSchema": 1,
+            "callCompletionApi": 1,
+            "consumeStream": 1,
+            "convertDataContentToBase64String": 1,
+            "convertFileListToFileUIParts": 1,
+            "convertToModelMessages": 1,
+            "cosineSimilarity": 1,
+            "createAgentUIStream": 1,
+            "createAgentUIStreamResponse": 1,
+            "createDownload": 1,
+            "createGateway": 1,
+            "createIdGenerator": 1,
+            "createProviderRegistry": 1,
+            "createTextStreamResponse": 1,
+            "createUIMessageStream": 1,
+            "createUIMessageStreamResponse": 1,
+            "customProvider": 1,
+            "defaultEmbeddingSettingsMiddleware": 1,
+            "defaultInstructionsMiddleware": 1,
+            "defaultSettingsMiddleware": 1,
+            "detectToolDrift": 1,
+            "dynamicTool": 1,
+            "embed": 1,
+            "embedMany": 1,
+            "experimental_cancelBatch": 1,
+            "experimental_createProviderRegistry": 1,
+            "experimental_createSteering": 1,
+            "experimental_decide": 1,
+            "experimental_decodeRealtimeAudio": 1,
+            "experimental_encodeRealtimeAudio": 1,
+            "experimental_evaluate": 1,
+            "experimental_extract": 1,
+            "experimental_filterActiveTools": 1,
+            "experimental_generateSpeech": 1,
+            "experimental_generateVideo": 1,
+            "experimental_getBatchResults": 1,
+            "experimental_getBatchStatus": 1,
+            "experimental_getRealtimeToolDefinitions": 1,
+            "experimental_getVideoStatus": 1,
+            "experimental_listBatches": 1,
+            "experimental_resampleAudio": 1,
+            "experimental_startBatch": 1,
+            "experimental_startVideo": 1,
+            "experimental_streamLanguageModelCall": 1,
+            "experimental_streamSpeech": 1,
+            "experimental_streamTextLowMemory": 1,
+            "experimental_streamTranscribe": 1,
+            "experimental_streamTranslate": 1,
+            "experimental_toolCaller": 1,
+            "experimental_transcribe": 1,
+            "extractJsonMiddleware": 1,
+            "extractReasoningMiddleware": 1,
+            "filterActiveTools": 1,
+            "fingerprintTools": 1,
+            "gateway": 1,
+            "generateId": 1,
+            "generateImage": 1,
+            "generateObject": 1,
+            "generateSpeech": 1,
+            "generateText": 1,
+            "getChunkTimeoutMs": 1,
+            "getFirstChunkTimeoutMs": 1,
+            "getStaticToolName": 1,
+            "getStepTimeoutMs": 1,
+            "getTextFromDataUrl": 1,
+            "getToolName": 1,
+            "getToolOrDynamicToolName": 1,
+            "getToolTimeoutMs": 1,
+            "getTotalTimeoutMs": 1,
+            "hasToolCall": 1,
+            "isCustomContentUIPart": 1,
+            "isDataUIPart": 1,
+            "isDeepEqualData": 1,
+            "isDynamicToolUIPart": 1,
+            "isFileUIPart": 1,
+            "isLoopFinished": 1,
+            "isReasoningFileUIPart": 1,
+            "isReasoningUIPart": 1,
+            "isStaticToolUIPart": 1,
+            "isStepCount": 1,
+            "isTextUIPart": 1,
+            "isToolOutputErrorUIPart": 1,
+            "isToolUIPart": 1,
+            "jsonSchema": 1,
+            "lastAssistantMessageIsCompleteWithApprovalResponses": 1,
+            "lastAssistantMessageIsCompleteWithToolCalls": 1,
+            "parseJsonEventStream": 1,
+            "parsePartialJson": 1,
+            "pipeAgentUIStreamToResponse": 1,
+            "pipeTextStreamToResponse": 1,
+            "pipeUIMessageStreamToResponse": 1,
+            "pruneMessages": 1,
+            "readUIMessageStream": 1,
+            "registerTelemetry": 1,
+            "rerank": 1,
+            "safeValidateUIMessages": 1,
+            "safeValidateWebSocketChatTransportRequest": 1,
+            "simulateReadableStream": 1,
+            "simulateStreamingMiddleware": 1,
+            "smoothStream": 1,
+            "stepCountIs": 1,
+            "streamObject": 1,
+            "streamText": 1,
+            "toTextStream": 1,
+            "toUIMessageChunk": 1,
+            "toUIMessageStream": 1,
+            "tool": 5,
+            "toolSearch": 1,
+            "transcribe": 1,
+            "uiMessageChunkSchema": 1,
+            "uploadFile": 1,
+            "uploadSkill": 1,
+            "validateUIMessages": 1,
+            "wrapEmbeddingModel": 1,
+            "wrapImageModel": 1,
+            "wrapLanguageModel": 1,
+            "wrapProvider": 1,
+            "zodSchema": 1
           },
+          "constructors": {
+            "AISDKError": 1,
+            "APICallError": 1,
+            "AbstractChat": 1,
+            "DefaultChatTransport": 1,
+            "DefaultGeneratedFile": 1,
+            "DirectChatTransport": 1,
+            "DownloadError": 1,
+            "EmptyResponseBodyError": 1,
+            "Experimental_AbstractRealtimeSession": 1,
+            "Experimental_Agent": 1,
+            "Experimental_DecisionRefusalError": 1,
+            "Experimental_DecisionUnsupportedQuestionTypeError": 1,
+            "Experimental_EvaluationUnsupportedQuestionTypeError": 1,
+            "Experimental_ExtractionRefusalError": 1,
+            "Experimental_ExtractionUnsupportedFieldTypeError": 1,
+            "HttpChatTransport": 1,
+            "InvalidArgumentError": 1,
+            "InvalidDataContentError": 1,
+            "InvalidMessageRoleError": 1,
+            "InvalidPromptError": 1,
+            "InvalidResponseDataError": 1,
+            "InvalidStreamPartError": 1,
+            "InvalidToolApprovalError": 1,
+            "InvalidToolApprovalSignatureError": 1,
+            "InvalidToolInputError": 1,
+            "JSONParseError": 1,
+            "JsonToSseTransformStream": 1,
+            "LoadAPIKeyError": 1,
+            "LoadSettingError": 1,
+            "MessageConversionError": 1,
+            "MissingToolResultsError": 1,
+            "NoContentGeneratedError": 1,
+            "NoImageGeneratedError": 1,
+            "NoObjectGeneratedError": 1,
+            "NoOutputGeneratedError": 1,
+            "NoSpeechGeneratedError": 1,
+            "NoSuchModelError": 1,
+            "NoSuchProviderError": 1,
+            "NoSuchProviderReferenceError": 1,
+            "NoSuchToolError": 1,
+            "NoTranscriptGeneratedError": 1,
+            "NoTranslationGeneratedError": 1,
+            "NoVideoGeneratedError": 1,
+            "RetryError": 1,
+            "SerialJobExecutor": 1,
+            "StreamProviderError": 1,
+            "TextStreamChatTransport": 1,
+            "TooManyEmbeddingValuesForCallError": 1,
+            "ToolCallNotFoundForApprovalError": 1,
+            "ToolCallRepairError": 1,
+            "ToolChoiceViolationError": 1,
+            "ToolLoopAgent": 1,
+            "TypeValidationError": 1,
+            "UIMessageStreamError": 1,
+            "UnsupportedFunctionalityError": 1,
+            "UnsupportedModelVersionError": 1,
+            "WebSocketChatTransport": 1
+          },
+          "parameterlessConstructors": [
+            "JsonToSseTransformStream",
+            "SerialJobExecutor"
+          ],
           "declarationHash": "e215439581908fe6feead9d86a60f01dd0f33f3a93e1be27f33fbebf5c85f1f4"
         },
         "./dist/index.js": {
@@ -1475,6 +1656,37 @@
             "mockValues": "c561346f846f32b3322b2ceb4ffacb47b5444f16aa6684df2bb57d939be36abb",
             "simulateReadableStream": "ad97b1c2b6104808f5641d48c2f17a6d61e080ca625d249dd2d5901fc3b242d3"
           },
+          "calls": {
+            "convertArrayToAsyncIterable": 1,
+            "convertArrayToReadableStream": 1,
+            "convertReadableStreamToArray": 1,
+            "mockId": 1,
+            "mockValues": 1,
+            "simulateReadableStream": 1
+          },
+          "constructors": {
+            "Experimental_DecisionMockModelV4": 1,
+            "Experimental_EvaluationMockModelV4": 1,
+            "Experimental_ExtractionMockModelV4": 1,
+            "Experimental_MockSpeechTranslationModelV4": 1,
+            "Experimental_MockStreamingSpeechModelV4": 1,
+            "MockEmbeddingModelV3": 1,
+            "MockEmbeddingModelV4": 1,
+            "MockImageModelV3": 1,
+            "MockImageModelV4": 1,
+            "MockLanguageModelV3": 1,
+            "MockLanguageModelV4": 1,
+            "MockProviderV3": 1,
+            "MockProviderV4": 1,
+            "MockRerankingModelV3": 1,
+            "MockRerankingModelV4": 1,
+            "MockSpeechModelV3": 1,
+            "MockSpeechModelV4": 1,
+            "MockTranscriptionModelV3": 1,
+            "MockTranscriptionModelV4": 1,
+            "MockVideoModelV3": 1,
+            "MockVideoModelV4": 1
+          },
           "declarationHash": "8a7eca2095eb860d5883b266d8923e9b45aa16fd193d5a979dfaa851731753b6"
         },
         "./dist/test/index.js": {
@@ -1603,6 +1815,10 @@
             "alibaba": "06f302d926a6ae70f0a6049c88fdeb6cbaa6b12a7984ae89f8528b8c19de492f",
             "createAlibaba": "329345e621232dcacfec73e5ef2d328b7f42fba543c5fee535c9b78454bd59a0"
           },
+          "calls": {
+            "alibaba": 1,
+            "createAlibaba": 1
+          },
           "declarationHash": "1fc9017ac7ba69b67cafe82a948c8057331c01ac00cfbd9c554d2ceed1317bcc"
         },
         "./dist/index.js": {
@@ -1707,6 +1923,11 @@
             "bedrock": "c140096611ae911802e53bef64e6af2a1bd880066eda25b5dc0d7592bfddd321",
             "createAmazonBedrock": "a3041bc480409ffe5c672e6ef4be400c8514bf78b92f820767a28f287317a7ec"
           },
+          "calls": {
+            "amazonBedrock": 1,
+            "bedrock": 1,
+            "createAmazonBedrock": 1
+          },
           "declarationHash": "e9b6af48439139d78a89e423675ddb0e96a0aa9d3bc9eb54c7d29607289cb57e"
         },
         "./dist/index.js": {
@@ -1800,6 +2021,12 @@
             "createAmazonBedrockAnthropic": "03c82face35a134d56d8df443db9e6eb7d939cb44ab626669c3673b7ba5ce062",
             "createBedrockAnthropic": "03c82face35a134d56d8df443db9e6eb7d939cb44ab626669c3673b7ba5ce062"
           },
+          "calls": {
+            "amazonBedrockAnthropic": 1,
+            "bedrockAnthropic": 1,
+            "createAmazonBedrockAnthropic": 1,
+            "createBedrockAnthropic": 1
+          },
           "declarationHash": "d73b0cada26a26f3aac770aa17725477f44f24dbe3cce759042e6ecd1bd09f78"
         },
         "./dist/anthropic/index.js": {
@@ -1882,6 +2109,10 @@
             "BedrockMantleProviderSettings": "0082013cd9c64423952cf6b29eeaed6f3f4c0585b51c1229cfe8192768b13c74",
             "bedrockMantle": "3e30a42057170c018a79c4de7acf15f6831a633fa01274ed0832aa4f0a9de5f9",
             "createBedrockMantle": "9d69b3a7b9bce10307891a00717755d4f0492d233fd04b1803c047121e019b86"
+          },
+          "calls": {
+            "bedrockMantle": 1,
+            "createBedrockMantle": 1
           },
           "declarationHash": "07ba33f5609bdcb7f5320dd02d5430f5f83e44aaa719a41e949ec4ed623561b9"
         },
@@ -1970,6 +2201,11 @@
             "CompletionOptions": "c4539ba6270b9b47dfc493bbff5ab7d1edd763db361823ed632772bafffcb421",
             "StructuredObject": "ba3861a16f19c34c55084ff6176e45586c23198487bb2e5dd507334379d7c4ee",
             "StructuredObjectOptions": "0a77734515492e47dddebb6092dfdd6089782c19bf998c4eda2d2cfc6cc333da"
+          },
+          "constructors": {
+            "Chat": 1,
+            "Completion": 1,
+            "StructuredObject": 1
           },
           "declarationHash": "8a0dd9d0ddf377cd33b6172a9987a695fceab4c693f7881bd46c8db911c18330"
         },
@@ -2071,6 +2307,11 @@
             "createAnthropic": "9f126c6e8c966e83e44025872f5f4a341b6bccdb6638b26230d384b85430cf98",
             "forwardAnthropicContainerIdFromLastStep": "e720241005ae8f0da141ed4215020fd620cd7a143f0432d5502e9be81ffec6ff"
           },
+          "calls": {
+            "anthropic": 1,
+            "createAnthropic": 1,
+            "forwardAnthropicContainerIdFromLastStep": 1
+          },
           "declarationHash": "3d5b84b2303b2999400fb3e93d94907fa848621107bba9604e1b8086da79e10a"
         },
         "./dist/index.js": {
@@ -2155,6 +2396,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "anthropicAws": "7e7fcfeb3340f6fa6c3d6293a020fe86470b7efca579b2c112439a3dcded79d5",
             "createAnthropicAws": "85a2021df6135a6fc02d199d58fa60549aabcf10dd16aa6f6315fb897be3c5ed"
+          },
+          "calls": {
+            "anthropicAws": 1,
+            "createAnthropicAws": 1
           },
           "declarationHash": "be0ea4c6d97199e4cf13979c013717186ec574bd70af3c2af220ff23252e8cf8"
         },
@@ -2243,6 +2488,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "assemblyai": "ba079cab3ce9cb16a4813deef5fbdc03502a91cb0b610cf0d1f3ec231dc025df",
             "createAssemblyAI": "002230d3997b9775c3117837f4fb7f3010125efd29b07abc4105e1dfb2544e1f"
+          },
+          "calls": {
+            "assemblyai": 1,
+            "createAssemblyAI": 1
           },
           "declarationHash": "755827f97e79ab07fecafed2c6499b58d4ee899922bc943487522a761e63a621"
         },
@@ -2358,6 +2607,10 @@
             "azure": "09d5ba587581c3d133c177e16a687bd7a53e658164aa200d8d76963c5e882b8c",
             "createAzure": "dbf2a25132309727b50ebc668f469b100e669b7ad7d9c81a9472429ede283997"
           },
+          "calls": {
+            "azure": 1,
+            "createAzure": 1
+          },
           "declarationHash": "356a2dd586cebf0faef42a17b2e8683cd509dd7ffca3c93d3ac31d0ca84bb7ed"
         },
         "./dist/index.js": {
@@ -2454,6 +2707,10 @@
             "baseten": "7dbc87e9ca6605b5f982615debc5c2b8c2134e86677d73fac2b3100a0b11da69",
             "createBaseten": "50a64fe0bc3d46343f24b9b15eec61060cf4898fab2598954d30887e6740b12e"
           },
+          "calls": {
+            "baseten": 1,
+            "createBaseten": 1
+          },
           "declarationHash": "bd65cd6801d3a50b256bd46b466aeb814c0d32d38a7a2fe5ebc51ddb500b3555"
         },
         "./dist/index.js": {
@@ -2548,6 +2805,9 @@
             "blackForestLabs": "6d68cad3729d721add233152fa23f8ca01501ac1a19678f3912c10ecfa4c3c5e",
             "createBlackForestLabs": "4c934185d1e4439fef347ffe30a61db32289b8794af0bace8998418601c6d52b"
           },
+          "calls": {
+            "createBlackForestLabs": 1
+          },
           "declarationHash": "c485aa14e2ea2558de74f97d463d71bba1bcca2de7d1f0c8531c7fec8022dbc4"
         },
         "./dist/index.js": {
@@ -2641,6 +2901,12 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "byteDance": "d84cfef009075c628aaa6e1e9da37423829ea7a33ccc9c10b308b6066fd869a7",
             "createByteDance": "fba73cef75946390dd380046a599ad3504d24a56f91194da69a1faf5c7a238ed"
+          },
+          "calls": {
+            "createByteDance": 1
+          },
+          "constructors": {
+            "ByteDanceImageModel": 1
           },
           "declarationHash": "e2bcd55d61ed365399cb55881915e27cc1b2247a8090f76219d56f15f15bc307"
         },
@@ -2745,6 +3011,15 @@
             "cartesia": "0d9c7490dd29e9afd5009979d8e87caa85981257d38ceef47b5d1359c5b91032",
             "createCartesia": "760d5ec2f1caaba9add0a183b8a7aedd3e81180f02b56d805fecce72d7af3965"
           },
+          "calls": {
+            "cartesia": 1,
+            "createCartesia": 1
+          },
+          "constructors": {
+            "CartesiaRealtimeModel": 1,
+            "CartesiaSpeechModel": 1,
+            "CartesiaTranscriptionModel": 1
+          },
           "declarationHash": "414aca378be71321a6fda99c84f89d185e1c312fc58efd9874fe84615fe5834e"
         },
         "./dist/index.js": {
@@ -2833,6 +3108,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "cerebras": "f45167f4adb504ecccce13bd72f95997b0e0f04d42d36970a85afa750ad6ef98",
             "createCerebras": "b10e83c922204a2d15bc0e71d154c53a8015e2e0d248a2a04051f874dd95f393"
+          },
+          "calls": {
+            "cerebras": 1,
+            "createCerebras": 1
           },
           "declarationHash": "38d18ffd71ed0e69cbb13ca38024dc1c63a2a7a63e3fa4fbc7ff9df25259f0a1"
         },
@@ -2998,6 +3277,39 @@
             "experimental_toCodeModeApprovalMessages": "3236d0e97d5f7cb382365b466203d31b8003cd08e15f56d88b0491a4b36741ef",
             "experimental_unwrapCodeModeResult": "58983657b1a2244e431ee14ad37db8669ba4419e5efe0e1573b2c00b31b10101"
           },
+          "calls": {
+            "experimental_codeModeTool": 1,
+            "experimental_continueCodeModeApproval": 1,
+            "experimental_continueCodeModeInterrupt": 1,
+            "experimental_createCodeModeTool": 1,
+            "experimental_getCodeModeApprovalResponse": 1,
+            "experimental_getCodeModeInterrupt": 1,
+            "experimental_isCodeModeApprovalInterrupt": 1,
+            "experimental_isCodeModeInterrupt": 1,
+            "experimental_requestCodeModeInterrupt": 1,
+            "experimental_runCodeMode": 1,
+            "experimental_setCodeModeContinuationSigningKey": 1,
+            "experimental_setMaxWorkers": 1,
+            "experimental_toCodeModeApprovalMessages": 1,
+            "experimental_unwrapCodeModeResult": 1
+          },
+          "constructors": {
+            "CodeModeAbortedError": 1,
+            "CodeModeBridgeLimitError": 1,
+            "CodeModeConcurrencyError": 1,
+            "CodeModeCpuTimeoutError": 1,
+            "CodeModeDetachedBridgeRequestError": 1,
+            "CodeModeError": 1,
+            "CodeModeProtocolError": 1,
+            "CodeModeSourceTooLargeError": 1,
+            "CodeModeTimeoutError": 1,
+            "CodeModeToolApprovalDeniedError": 1,
+            "CodeModeToolApprovalRequiredError": 1,
+            "CodeModeToolError": 1
+          },
+          "parameterlessConstructors": [
+            "CodeModeAbortedError"
+          ],
           "declarationHash": "a496e755dcdf4521730b36b229c1017a1f46b3d3aae6a64f652b888a202ac8b1"
         },
         "./dist/index.js": {
@@ -3116,6 +3428,10 @@
             "cohere": "6982defaeeaaf8c9d3a34ba1461ff0d87276af9fe44caa30d62535f8d017ba0b",
             "createCohere": "a208c8a256c6ad8fd982043182d48150669e2161f548b8133bf1ee805118744e"
           },
+          "calls": {
+            "cohere": 1,
+            "createCohere": 1
+          },
           "declarationHash": "43c994260b7c58332c7ca482ae0cc27dcb072014cd8273a7b9186c0be489c15d"
         },
         "./dist/index.js": {
@@ -3208,6 +3524,13 @@
             "createDeepgram": "edf8d2584d291e03f9871d4da640882b23b6140e1e957059a31c50473ad1654a",
             "deepgram": "42413a46ce1e4b9e82070fb4039a5e8c4e65fff98f741cf902f5c1306b0288cb"
           },
+          "calls": {
+            "createDeepgram": 1,
+            "deepgram": 1
+          },
+          "constructors": {
+            "DeepgramSpeechModel": 1
+          },
           "declarationHash": "2ef335352e0d878d004b47c39a8b53bf5fc95cbf59c68f0bff9d81e85f33e5f0"
         },
         "./dist/index.js": {
@@ -3296,6 +3619,11 @@
             "createDeepInfra": "e64206fc568880ea18b17f99d78805764fb13e3e4e09f2962818697b884a8e66",
             "deepInfra": "9275a627eec304d74e5ce39e15176427f33a5f368dbc4f57e30ca9a76a7097f8",
             "deepinfra": "9275a627eec304d74e5ce39e15176427f33a5f368dbc4f57e30ca9a76a7097f8"
+          },
+          "calls": {
+            "createDeepInfra": 1,
+            "deepInfra": 1,
+            "deepinfra": 1
           },
           "declarationHash": "d06dcffeec8f7342fa52aa0491b76f98774abcf4148c1e5108d3bf589ddecba0"
         },
@@ -3400,6 +3728,11 @@
             "deepSeek": "71d8363cda7b79dee7785644297eecabec7b7c79e44ac2e459048bdb3cf1f220",
             "deepseek": "71d8363cda7b79dee7785644297eecabec7b7c79e44ac2e459048bdb3cf1f220"
           },
+          "calls": {
+            "createDeepSeek": 1,
+            "deepSeek": 1,
+            "deepseek": 1
+          },
           "declarationHash": "e51de9bf7ab666f4a83b344104ef6c9f47caa895e92aedca318daa30e1b06e64"
         },
         "./dist/index.js": {
@@ -3478,6 +3811,10 @@
             "DevToolsTelemetry": "238737006f769b99d689fde478cc6375cf2e5ed25fccccca3317497402f03c47",
             "DevToolsTelemetryOptions": "960c89de6320dc60007e93e5bae0245f849b947ac71416ed2794ca8215761e44",
             "devToolsMiddleware": "400948cd62af1602d391828d5fb73cf49dccddd58792132e5a0f47f6eb9dd33e"
+          },
+          "calls": {
+            "DevToolsTelemetry": 1,
+            "devToolsMiddleware": 1
           },
           "declarationHash": "9e265ba806539ffee92f1a9f899470f78e096595fec364a85c82f103bf52b977"
         },
@@ -3588,6 +3925,9 @@
             "TelemetrySettings": "6994e59fbf6d848a8e73ffc346148e4b9e5f5968ec1b8e61fc2232d0d2c9a0e6",
             "ToolCallRepairFunction": "34b5106ece3b07c527e21825d866d9ba5b612c208d1b3085900e9828ba217454"
           },
+          "constructors": {
+            "DurableAgent": 1
+          },
           "declarationHash": "c48d0f567d75272a758450473f3951151fda4240dc353facb34fe5171f7c878a"
         },
         "./dist/index.mjs": {
@@ -3686,6 +4026,11 @@
             "elevenLabs": "5c48e75d3fa028e46dd4e74537d4b444a5a0f713fb14a88592183cff29981922",
             "elevenlabs": "5c48e75d3fa028e46dd4e74537d4b444a5a0f713fb14a88592183cff29981922"
           },
+          "calls": {
+            "createElevenLabs": 1,
+            "elevenLabs": 1,
+            "elevenlabs": 1
+          },
           "declarationHash": "b9bf1211649b4775244a01b2f483512d2446a2ee74712bcf9f52e36d0e2d4db5"
         },
         "./dist/index.js": {
@@ -3782,6 +4127,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createFal": "62801e8077cd5a4a705657584f1730c5187777c578a0a2b53bc8f54825256c89",
             "fal": "1d7030a40640c55281d956ad150cf62e7c5cecf24caab021d82815a6458f19d8"
+          },
+          "calls": {
+            "createFal": 1
           },
           "declarationHash": "4708d31eb0f551d2edd390498ef570cec15c9a4710eac042cbea1372130f97f5"
         },
@@ -3883,6 +4231,13 @@
             "createFireworks": "e827529728ac328cc60bcaadb1507c8cfd9284d7cde636d57cecc84ef42a880b",
             "fireworks": "201fe4ecf37db2787345f14916689235ecf130378543429810ac039ad758980f"
           },
+          "calls": {
+            "createFireworks": 1,
+            "fireworks": 1
+          },
+          "constructors": {
+            "FireworksImageModel": 1
+          },
           "declarationHash": "4e6c503fb42f91544b06bd8a5bf51cf15cb254c7ad50a0b31ff034631c5ff09f"
         },
         "./dist/index.js": {
@@ -3979,6 +4334,14 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createFishAudio": "541c3e3f34ff7da5b76f4630a4a22c222a257deb813396995946f507dbe5c76a",
             "fishAudio": "eec00ce1d2c1a0394df9193db875713d4d7faab491a147bdef1e593921c60707"
+          },
+          "calls": {
+            "createFishAudio": 1,
+            "fishAudio": 1
+          },
+          "constructors": {
+            "FishAudioSpeechModel": 1,
+            "FishAudioTranscriptionModel": 1
           },
           "declarationHash": "221ce454ba6444e4f6f5fe2d7047da63944efda73e9fa1b311c3a61f7a1d2984"
         },
@@ -4170,6 +4533,29 @@
             "getGatewaySpeechProtocols": "7365a212f3768c7119568642803290ef36f749aa2b10bcecfd57348e7a9d9f95",
             "getGatewayTranscriptionProtocols": "b52470945fb05393554595600342d3469ceaf6c5f7b8ff1d2be4391b0aa1bd72"
           },
+          "calls": {
+            "createGateway": 1,
+            "createGatewayProvider": 1,
+            "gateway": 1,
+            "getGatewayRealtimeAuthToken": 1,
+            "getGatewayRealtimeProtocols": 1,
+            "getGatewayRealtimeTeamIdOrSlug": 1,
+            "getGatewaySpeechProtocols": 1,
+            "getGatewayTranscriptionProtocols": 1
+          },
+          "constructors": {
+            "GatewayAccessPolicyDeniedError": 1,
+            "GatewayAuthenticationError": 1,
+            "GatewayError": 1,
+            "GatewayFailedDependencyError": 1,
+            "GatewayForbiddenError": 1,
+            "GatewayInternalServerError": 1,
+            "GatewayInvalidRequestError": 1,
+            "GatewayModelNotFoundError": 1,
+            "GatewayNotFoundError": 1,
+            "GatewayRateLimitError": 1,
+            "GatewayResponseError": 1
+          },
           "declarationHash": "b61af08c7f37dde33d3de07db0cc653b49e98dbff7ee0600832f170c2be99c3d"
         },
         "./dist/index.js": {
@@ -4278,6 +4664,10 @@
             "createGladia": "528abaa0f0ada95ccbdfefb6789086055e0a8cdb36784bad839c8655993615f5",
             "gladia": "176773283b4e1e087004d3033fda8c4c184b5715ef991c5c6945a1b0bfc4e434"
           },
+          "calls": {
+            "createGladia": 1,
+            "gladia": 1
+          },
           "declarationHash": "38f5048349301a441caa7dac63d5e1974eedfd5859fa422537334af25bd316f6"
         },
         "./dist/index.js": {
@@ -4361,6 +4751,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createGmicloud": "211103f82989ca232044faa945f8741b445e3036a27000b03a27977922c39b9f",
             "gmicloud": "4fadc6a1df607afd30b9fad682e8ec64b2337ffb02b4114dc9a6d58f28465dc5"
+          },
+          "calls": {
+            "createGmicloud": 1,
+            "gmicloud": 1
           },
           "declarationHash": "b66dde406e5b51411224f7944b577a6d8f8d847d02c0dde9603f2594cecc03b1"
         },
@@ -4532,6 +4926,17 @@
             "createGoogleGenerativeAI": "26e2be4ab7a8054aec029e082a025a6484fca19d3f7a30bae7ad6523a2025be5",
             "google": "16f8555bc1645e953569b9d4cb4b759c5e8275112722f0388ba73da08069a31c"
           },
+          "calls": {
+            "createGoogle": 1,
+            "createGoogleGenerativeAI": 1,
+            "google": 1
+          },
+          "constructors": {
+            "Experimental_GoogleRealtimeModel": 1,
+            "Experimental_GoogleSpeechTranslationModel": 1,
+            "Experimental_GoogleTranslationModel": 1,
+            "GoogleTranscriptionModel": 1
+          },
           "declarationHash": "537fe66b3569d2f521cd1dde7f4f7a268ea7ac0abea0dbfb84d51c885ea6a7df"
         },
         "./dist/index.js": {
@@ -4649,6 +5054,15 @@
             "googleVertex": "1ae1305998e9c7370550ca4f4c3be0942bf9971a6489938bc522a77802b3c0ea",
             "vertex": "1ae1305998e9c7370550ca4f4c3be0942bf9971a6489938bc522a77802b3c0ea"
           },
+          "calls": {
+            "createGoogleVertex": 1,
+            "createVertex": 1,
+            "googleVertex": 1,
+            "vertex": 1
+          },
+          "constructors": {
+            "GoogleVertexGeminiTranscriptionModel": 1
+          },
           "declarationHash": "e72967601363fb3491cca127c27ed2952b4e17f03fea95135a96065255bc79b3"
         },
         "./dist/index.js": {
@@ -4736,6 +5150,12 @@
             "googleVertexAnthropic": "087474d6fd29804e0dd93f2a037f47081e0ae3e4e75e2fb6738d680ab5085491",
             "vertexAnthropic": "087474d6fd29804e0dd93f2a037f47081e0ae3e4e75e2fb6738d680ab5085491"
           },
+          "calls": {
+            "createGoogleVertexAnthropic": 1,
+            "createVertexAnthropic": 1,
+            "googleVertexAnthropic": 1,
+            "vertexAnthropic": 1
+          },
           "declarationHash": "b18a55ba524ed97c7ec26698b5e5aec8527530124245c5231f9892d6997b883c"
         },
         "./dist/anthropic/index.js": {
@@ -4821,6 +5241,12 @@
             "googleVertexAnthropic": "087474d6fd29804e0dd93f2a037f47081e0ae3e4e75e2fb6738d680ab5085491",
             "vertexAnthropic": "087474d6fd29804e0dd93f2a037f47081e0ae3e4e75e2fb6738d680ab5085491"
           },
+          "calls": {
+            "createGoogleVertexAnthropic": 1,
+            "createVertexAnthropic": 1,
+            "googleVertexAnthropic": 1,
+            "vertexAnthropic": 1
+          },
           "declarationHash": "3b8546f3732e790a8a0cee5bce9f622ca1f085750f630f4a27d9efd235909575"
         },
         "./dist/anthropic/edge/index.js": {
@@ -4905,6 +5331,12 @@
             "createVertex": "2d2a5bffad63c771d5b5fdde9ad9f2c9d294fd3aaee2772cc383e957bfab45ff",
             "googleVertex": "1ae1305998e9c7370550ca4f4c3be0942bf9971a6489938bc522a77802b3c0ea",
             "vertex": "1ae1305998e9c7370550ca4f4c3be0942bf9971a6489938bc522a77802b3c0ea"
+          },
+          "calls": {
+            "createGoogleVertex": 1,
+            "createVertex": 1,
+            "googleVertex": 1,
+            "vertex": 1
           },
           "declarationHash": "314d46dfa4d0469bcde5a2d091bdd1898ba5d3a10af4d73af8829221f93063fd"
         },
@@ -4993,6 +5425,12 @@
             "googleVertexMaas": "1385c62fa0be2e028143a66d339dfba1e97fc2c8f53e26cec7f327ada54583c0",
             "vertexMaas": "1385c62fa0be2e028143a66d339dfba1e97fc2c8f53e26cec7f327ada54583c0"
           },
+          "calls": {
+            "createGoogleVertexMaas": 1,
+            "createVertexMaas": 1,
+            "googleVertexMaas": 1,
+            "vertexMaas": 1
+          },
           "declarationHash": "a67b510bf1262a73f96aac2974e8a5da64fe6c1e81a9ee76310a41fba35e3c1c"
         },
         "./dist/maas/index.js": {
@@ -5080,6 +5518,12 @@
             "googleVertexMaas": "1385c62fa0be2e028143a66d339dfba1e97fc2c8f53e26cec7f327ada54583c0",
             "vertexMaas": "1385c62fa0be2e028143a66d339dfba1e97fc2c8f53e26cec7f327ada54583c0"
           },
+          "calls": {
+            "createGoogleVertexMaas": 1,
+            "createVertexMaas": 1,
+            "googleVertexMaas": 1,
+            "vertexMaas": 1
+          },
           "declarationHash": "f355d99e6a0385815e522e89f570431bf563363805c0beba673907c38eb4b709"
         },
         "./dist/maas/edge/index.js": {
@@ -5163,6 +5607,10 @@
             "createGoogleVertexXai": "9f53c3999714ee04964180eb8fdc3914696821add81b3b89f759e6f5c5cbea04",
             "googleVertexXai": "273be3c38561c7e9370a0767b580ad681c1485bb37190876f079c3e6584de6e2"
           },
+          "calls": {
+            "createGoogleVertexXai": 1,
+            "googleVertexXai": 1
+          },
           "declarationHash": "f3122ca51942b274f0eaf17c0020ffeb83b7331dec27576aaf3c2e368890bf5b"
         },
         "./dist/xai/index.js": {
@@ -5243,6 +5691,10 @@
             "GoogleVertexXaiProviderSettings": "eaab41994122d59bc63cc35ec5cfdd54b239f6b0f3fb36e6ce94e3bf48091f01",
             "createGoogleVertexXai": "9f53c3999714ee04964180eb8fdc3914696821add81b3b89f759e6f5c5cbea04",
             "googleVertexXai": "273be3c38561c7e9370a0767b580ad681c1485bb37190876f079c3e6584de6e2"
+          },
+          "calls": {
+            "createGoogleVertexXai": 1,
+            "googleVertexXai": 1
           },
           "declarationHash": "a8c3a9fe3363fa77bff2ff165b6cd48068b413f17df544269da5607b3f3c6469"
         },
@@ -5334,6 +5786,11 @@
             "browserSearch": "0eb22d36aa0ca9596a181cd745d923e2613743ba08143d3a30ecb89a21074c7e",
             "createGroq": "7a5814a59e46c3e7fab94df7266f45330d4f3dc2c5bf0c8cea69dd51067f0702",
             "groq": "ad8aee9fe8ff40c60780a1ed3d75e8d5aa7f887639341d961292e30ba37d9c69"
+          },
+          "calls": {
+            "browserSearch": 1,
+            "createGroq": 1,
+            "groq": 1
           },
           "declarationHash": "e0c57fac23d8d11f67f2aaa64aeef9652431e95d379e1fa546acb96c0b8492be"
         },
@@ -5660,6 +6117,20 @@
             "harnessV1ToolResultPartSchema": "21264ff0313a844f55a6c67f2ade3e027f0defc0214ced2a6ec34c48b5f08e21",
             "isHarnessV1BuiltinToolIncluded": "db24bc97315047c459c57852563c941311fc66fe3a6bc068928408b2436a2551"
           },
+          "calls": {
+            "commonTool": 1,
+            "getHarnessV1BuiltinToolFilteringDenialReason": 1,
+            "harnessSessionDataDirectoryPath": 1,
+            "harnessStateDirectoryPath": 1,
+            "harnessV1DiagnosticFromBridgeFrame": 1,
+            "isHarnessV1BuiltinToolIncluded": 1
+          },
+          "constructors": {
+            "HarnessCapabilityUnsupportedError": 1,
+            "HarnessError": 1,
+            "HarnessHistoryUnavailableError": 1,
+            "HarnessSandboxAuthenticationError": 1
+          },
           "declarationHash": "2e60160f981f4b0bd036eb9455aeb7d5889ca004fbf0d1d38ec1498c6269c025"
         },
         "./dist/index.js": {
@@ -5879,6 +6350,24 @@
             "prepareSandboxForHarness": "a2f7838d8ba1dfb9adfc30ddff78ec47602be757255ff162fd8e19073793ccf8",
             "prewarmHarness": "4ec42e84b556abdbe6aeac1addad1dc221993f488af2092b909922d92109c45d"
           },
+          "calls": {
+            "collectHarnessAgentToolApprovalContinuations": 1,
+            "collectHarnessAgentToolResultContinuations": 1,
+            "createFileReporter": 1,
+            "createHarnessSandboxTemplate": 1,
+            "createTraceTreeReporter": 1,
+            "getHarnessErrorMessage": 1,
+            "prepareHarnessSandboxTemplate": 1,
+            "prepareSandboxForHarness": 1,
+            "prewarmHarness": 1
+          },
+          "constructors": {
+            "HarnessAgent": 1,
+            "HarnessAgentSession": 1,
+            "HarnessCapabilityUnsupportedError": 1,
+            "HarnessError": 1,
+            "HarnessSandboxAuthenticationError": 1
+          },
           "declarationHash": "5e6e582508e0dd0127306e1ba042e011f9e3f7dcc565eb39bd3de0dbb1ec5dc7"
         },
         "./dist/agent/index.js": {
@@ -5989,6 +6478,14 @@
             "convertHarnessToolModelOutput": "d68211acea030eb0e3864b98981a0b92b1a5f22a1e2768a1272687513715b8c0",
             "isWriteProtectedPath": "f47eb340c3f8d9f99bef95d13b606505de5a2291883b0f5056a1ade1d2f17496",
             "runBridge": "c91d445acd2837850cb7cd91bd76d7e02798511a1b6a8b4af6654f4386f29eec"
+          },
+          "calls": {
+            "convertHarnessToolModelOutput": 1,
+            "isWriteProtectedPath": 1,
+            "runBridge": 1
+          },
+          "constructors": {
+            "HarnessBridgeCapabilityUnsupportedError": 1
           },
           "declarationHash": "86768fb139c7b76e5460390124de10cb9337a6b3ac83968575cdab3b2d5cc906"
         },
@@ -6219,6 +6716,61 @@
             "writeInstructions": "c5276876ccec2ea26541abf4bf3611d22a9176ab1a2beb7b80817bb80dbb201a",
             "writeSkills": "215634775fb0ad2737aa23fd9212d3ade52a8722a0a06d550a730497f1066ff3"
           },
+          "calls": {
+            "applyCredentialForwarding": 1,
+            "classifyDiskLog": 1,
+            "convertHarnessToolModelOutput": 1,
+            "createBridgeAuthKeyPair": 1,
+            "createBridgeErrorHandler": 1,
+            "createBridgeStartupError": 1,
+            "createBridgeWebSocketConnect": 1,
+            "createCredentialRequestTransformation": 1,
+            "createReadBridgeAsset": 1,
+            "drainBridgeProcessStream": 1,
+            "encodeHarnessPathSegment": 1,
+            "experimental_createBridgeUserMessageSubmitter": 1,
+            "extractHarnessPromptContent": 1,
+            "formatBridgeError": 1,
+            "forwardBridgeProcessStream": 1,
+            "generateSandboxCredentialPlaceholder": 1,
+            "getAiGatewayAuthFromEnv": 1,
+            "getJwtExpiresAt": 1,
+            "getRestrictedSandboxSession": 1,
+            "isAccessTokenExpiringSoon": 1,
+            "isHarnessAuthenticationEnvironment": 1,
+            "isLinux": 1,
+            "isMacOS": 1,
+            "isSandboxCredentialPlaceholder": 1,
+            "isSandboxWriteProtectedPath": 1,
+            "isWindows": 1,
+            "logBridgeError": 1,
+            "markBridgeStarting": 1,
+            "maskSandboxCredentials": 1,
+            "normalizeHarnessToolModelOutput": 1,
+            "parseJwtPayload": 1,
+            "readLinuxSecretServicePassword": 1,
+            "readMacOSKeychainPassword": 1,
+            "readWindowsCredentialManagerPassword": 1,
+            "refreshOAuthAccessToken": 1,
+            "resolveBridgeEndpoint": 1,
+            "resolveBridgePort": 1,
+            "resolveSandboxCredentialEnvironment": 1,
+            "resolveSandboxDefaultWorkingDirectory": 1,
+            "resolveSandboxHomeDir": 1,
+            "shellQuote": 1,
+            "shouldResolveNativeSubscription": 1,
+            "sleep": 1,
+            "stopPreviousBridge": 1,
+            "validateBridgeSandboxSettings": 1,
+            "waitForBridgeReady": 1,
+            "warnCredentialBrokeringUnavailable": 1,
+            "warnMintBridgeTokenIgnored": 1,
+            "writeInstructions": 1,
+            "writeSkills": 1
+          },
+          "constructors": {
+            "SandboxChannel": 1
+          },
           "declarationHash": "000f4202311023e2d556df46d19a7b3634b3c9be45faa29135801aa8cc61787e"
         },
         "./dist/utils/index.js": {
@@ -6427,6 +6979,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createACP": "b1ab62adf9dbe047d16c197d71abf9576775f072758d8c0ba601dbdf46879236"
           },
+          "calls": {
+            "createACP": 1
+          },
           "declarationHash": "90ea65ef1d3e0d82014922b6e9c03122d95c99a8df8613ac004b67306822480b"
         },
         "./dist/index.js": {
@@ -6512,6 +7067,9 @@
             "claudeCode": "cb92c364fb7315b0c8511f95ce0f20a4846199d1370386082fe89325008b7b8f",
             "createClaudeCode": "4c3e1ee4546e5f167205c850257b3d8316f685ee39161166ca1a51f7dba94b25"
           },
+          "calls": {
+            "createClaudeCode": 1
+          },
           "declarationHash": "f11eaf4fe697f0b7f64f7e31fd3200c020eef02b9206d41d14e4387841db3332"
         },
         "./dist/index.js": {
@@ -6593,6 +7151,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "cline": "ab35a942e1e5cea994387d0e9e4044cc5eaf724ae08bb0b4e9df27f8f7062d72",
             "createCline": "5d60df666e662682f52265ffe4ff198af60f61365d3a2cb43edaca8f24f0d35d"
+          },
+          "calls": {
+            "createCline": 1
           },
           "declarationHash": "23d7d37365fff227507cff8ef86f4b9e4463ee413c82b07d1f18a95bedb4191c"
         },
@@ -6678,6 +7239,9 @@
             "codex": "241a5b8ab49fb56a77ca905e5ce13ce234e4bc244e5179bbaa96df0e240fd47a",
             "createCodex": "670060a0659dacd9b22165c7b44063f58e7b78ca51b6d7378183010e8743f2cd"
           },
+          "calls": {
+            "createCodex": 1
+          },
           "declarationHash": "7e4e56dda03a758c671318b175cbca5c473a7886c822f68e225caa2b8f2d92cf"
         },
         "./dist/index.js": {
@@ -6761,6 +7325,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createCursor": "9ad1269df5a3e68976acaef4ada72d9807982db8e833dbfb6fcf57c78e696212",
             "cursor": "d500edd4940d73d4a099f8debf0ab07a8980ba64290e978ff7b599cf466322aa"
+          },
+          "calls": {
+            "createCursor": 1
           },
           "declarationHash": "557018a21e34c5f96c03c23fe36d112f762946423771ddab075976405fa04e82"
         },
@@ -6846,6 +7413,9 @@
             "createDeepAgents": "342f5ac1d5f08517cdbc334d910921bbdcb5dc09c6c73c5a842b3cd81075808a",
             "deepAgents": "6d1b5723f4e75c5cb9a6c5dc39a8c1e6c5c3f7e30a8f2a2f43d0b22f41ef50c1"
           },
+          "calls": {
+            "createDeepAgents": 1
+          },
           "declarationHash": "98a3fa121bf57045b083b49852f24f91faf6c8227bf5209b73131411d4dcf3da"
         },
         "./dist/index.js": {
@@ -6929,6 +7499,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createFx": "8c27789df8b5ef0641d7f7a6117b108ce0d18a2a062f93d9a77a8b8752dc0591",
             "fx": "6e914768788fffa11984d5ca1850031b7ff75f267766f7db4e8bfb3a689825e8"
+          },
+          "calls": {
+            "createFx": 1
           },
           "declarationHash": "cbae771ab8acd7eea49b5f56880050e03526680d33f9b99da4cee2e85509946c"
         },
@@ -7016,6 +7589,9 @@
             "createGitHubCopilot": "3958785034ece9e7df2109ee8080189f7fa6b754b2a2a615105480521369c6fa",
             "githubCopilot": "c9eae042b85482946993f2ec721c70e5b04f0d9a227f99270bad2b99e6410a8c"
           },
+          "calls": {
+            "createGitHubCopilot": 1
+          },
           "declarationHash": "334d92a6a17dfcddaca3a14f8c0b3536cc23b69bd21b86496d6439c3de665db0"
         },
         "./dist/index.js": {
@@ -7100,6 +7676,9 @@
             "createGrokBuild": "00d3df00d3a761e7da2d2996cf615d4bde0687d933ba1169d2298462b5c7c551",
             "grokBuild": "4b9f662c5f80cd5813e43691ea55859b6e6f726836573f1aa4080f1c48206e6e"
           },
+          "calls": {
+            "createGrokBuild": 1
+          },
           "declarationHash": "3101586b28a0eceb6b740e6da0c01a17c4b64ae6a7d6ab11812c677835d1a6d5"
         },
         "./dist/index.js": {
@@ -7183,6 +7762,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createOpenCode": "f6e4c9152359e3ebbc06262559f1f141f4eef059049e9c28003c4c351b58526a",
             "openCode": "a68aa2dea6959fb90dc8e7bef814ea69e69d4807f6a6eb337fa66ee7efa364ba"
+          },
+          "calls": {
+            "createOpenCode": 1
           },
           "declarationHash": "8b111812b625e665d7346192d99ffa0b023e6130a2f3a5c029982a353baa3020"
         },
@@ -7284,6 +7866,9 @@
             "createPi": "a628ea007721d61d8207e486c8c9c03866bab61d1da5512d0f7bb9d3c8a862b6",
             "pi": "fb3f2a48a1f15023ee67375393649393b1046b1aaa14a81de664e8bf7d91c6f8"
           },
+          "calls": {
+            "createPi": 1
+          },
           "declarationHash": "441b97471c291f1f3efd24a508365540a96a21e2db396b8d5f7448c476b26300"
         },
         "./dist/index.js": {
@@ -7376,6 +7961,9 @@
             "createHeyGen": "22d7aab4246af4c3cdb1570ed5ceb274ff579a0fa33c48c4f35cfbac3b9cdff2",
             "heygen": "f07dafa2101fa0c582a7e769e163f4d196628bb6f64810275ef9e38c4f4eb288"
           },
+          "calls": {
+            "createHeyGen": 1
+          },
           "declarationHash": "b03f770b37c333a9d85a32ae750eba1f51f2d8fe333c5fca526ac0d393a9482e"
         },
         "./dist/index.js": {
@@ -7466,6 +8054,11 @@
             "huggingFace": "ce8434f605bbb28879071a0bdcbdf00b525ef03407688294d0d03442b4d605ad",
             "huggingface": "ce8434f605bbb28879071a0bdcbdf00b525ef03407688294d0d03442b4d605ad"
           },
+          "calls": {
+            "createHuggingFace": 1,
+            "huggingFace": 1,
+            "huggingface": 1
+          },
           "declarationHash": "e7b6b64239d453499730408e29dbb62f046ec1e203d059a377bd7e7327e3cd02"
         },
         "./dist/index.js": {
@@ -7550,6 +8143,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createHume": "39e8974a79ff5d8059a414699d01c6fbad823d239f5b3ea31e3e76cd4623575a",
             "hume": "ea993c3d7060c59e4d43614767b74b075c510ab759dbb7ac9ef67e89f6e5a9ec"
+          },
+          "calls": {
+            "createHume": 1,
+            "hume": 1
           },
           "declarationHash": "1ae2e933b89d7b3804f74b30f0cedfa5c2efe3c2912601cf5c36b5dba5f1e755"
         },
@@ -7683,6 +8280,9 @@
             "createKlingAI": "8f66fc6025ced5281abced42796b740e7aef84111e7bdd49c525825340da64a8",
             "klingai": "6e744db5a8d26b5f180899a0525d2bbfa1686d153362e4c3f6fd0c63c7c0359d"
           },
+          "calls": {
+            "createKlingAI": 1
+          },
           "declarationHash": "96bcd2d9cd3b5982b87bf93abeba56a79130524bf339d1e6a646ddbb350e8023"
         },
         "./dist/index.js": {
@@ -7768,6 +8368,14 @@
             "convertModelMessages": "21e12f8c3cb2ea5320c9afecf12d3a8050385dc9bca80f8749a56e3cd60362e2",
             "toBaseMessages": "fccdba1fbabee48e55db101da27fecc2c46cac04f8bec621ced6718efa885ae9",
             "toUIMessageStream": "0dafc666b17a47a19237699da1abcfeff68a860f41b0b45a519ca77a36a0ac3a"
+          },
+          "calls": {
+            "convertModelMessages": 1,
+            "toBaseMessages": 1,
+            "toUIMessageStream": 1
+          },
+          "constructors": {
+            "LangSmithDeploymentTransport": 1
           },
           "declarationHash": "d2787a101ab5cdcac772d33469bb192e5676309c3d67438457d45871edc48843"
         },
@@ -7856,6 +8464,9 @@
             "createLiquid": "27b66a384ecfb73c01eded40f14c0c73f45e9e5e2dac9f597fc4653cbb266f28",
             "liquid": "ba007d2f91360aaf030d7ffd063acce950e5e1fa92659b32f57b15b07176a746"
           },
+          "calls": {
+            "createLiquid": 1
+          },
           "declarationHash": "6321a855d3ba50176e1068dcd7208c126f47328e675910c7bc13c0f32af400d3"
         },
         "./dist/index.js": {
@@ -7933,6 +8544,9 @@
             "EngineResponse": "4f16ff4060cf8695487a7ed65ba760c3d7866a24896bf5c421df4af80623d238",
             "StreamCallbacks": "f45084aeda9d98c7ae7584ff3a15073d45dbcb097387695e31fec3cbb0331d62",
             "toUIMessageStream": "ba84497911f7b48fb6ef2decfe576c4b0df97b77d6f417eb24c70578289db18b"
+          },
+          "calls": {
+            "toUIMessageStream": 1
           },
           "declarationHash": "59381598507e899fbce9883e3c21afed1f4b67fea2fd9fc190500765af7e1540"
         },
@@ -8015,6 +8629,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createLMNT": "716618eacab96d95b40e2cd5c11079eff6a388a7b94a2a7e8ac1f843dfb8c923",
             "lmnt": "e4c45774943f9ec3f4ba09043504fe330f3dfbe63df1eb6eb2cdd3112980a1af"
+          },
+          "calls": {
+            "createLMNT": 1,
+            "lmnt": 1
           },
           "declarationHash": "72c72fe3c6014a397c374d8114a6a42cd6c92535079336664e38c04286f775de"
         },
@@ -8103,6 +8721,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createLuma": "06d9b97214b42533e671a7cc43a855d84f47cee4407f70b34f04d44d4ba4f9c6",
             "luma": "4aee8b516edb6853eb8cb037828ccc75341f93a698da586479f9b0a9cf920ca4"
+          },
+          "calls": {
+            "createLuma": 1
           },
           "declarationHash": "9a9095b03068e8d3b27c727730ed3a2cb0e1075b911745d01ed9a28242114b0c"
         },
@@ -8318,9 +8939,24 @@
             "splitMCPAppTools": "8d6296a10b812dc54a5c53e9ea85f8ffeb7963068f0959d95eed136065c098eb",
             "validateJSONRPCMessage": "6bb43625b5ce295944ed459294ed99757dd17cf122c0f6996625d5fa81d5e135"
           },
-          "overloads": {
+          "calls": {
+            "auth": 1,
             "createMCPClient": 3,
-            "experimental_createMCPClient": 3
+            "createMCPTools": 1,
+            "detectMCPAppResourceDrift": 1,
+            "experimental_createMCPClient": 3,
+            "experimental_createMCPEventWebhook": 1,
+            "fingerprintMCPAppResource": 1,
+            "readMCPAppResource": 1,
+            "splitMCPAppTools": 1,
+            "validateJSONRPCMessage": 1
+          },
+          "constructors": {
+            "AuthorizationServerMismatchError": 1,
+            "Experimental_WebMCPTransport": 1,
+            "MCPClientError": 1,
+            "MCPClientOAuthError": 1,
+            "UnauthorizedError": 1
           },
           "declarationHash": "883cbf95522b38ded3737653142d29510c5726ca00ea7502b52d18ab093372db"
         },
@@ -8415,6 +9051,10 @@
             "Experimental_StdioMCPTransport": "ff04b55fa2829604e76f818014e163b68dca1b3a0d7c7504e5e94ca0ad6dcdaa",
             "StdioConfig": "ea186fca6289dd72145bbed3eacf16e4d8b7351aa5095c02f13287c0101bccc7",
             "StdioMCPTransport": "f55aed6a49b557e7045b57acac8f3318e28e0d121269aa0c5dbb4d7c12207ea0"
+          },
+          "constructors": {
+            "Experimental_StdioMCPTransport": 1,
+            "StdioMCPTransport": 1
           },
           "declarationHash": "b1a893d0c2e080ef3aeb1003391019c3e3725eb96364864a27971a8b606271b2"
         },
@@ -8516,6 +9156,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createMiniMax": "1d3b774346738b929ed79b27dc0b38b99902d7674c5b217f1cff23b8dcc1868f",
             "minimax": "93e12605555501b10618fe14c48646646f8e9d01a2aed40bd9ec4d069151ad17"
+          },
+          "calls": {
+            "createMiniMax": 1,
+            "minimax": 1
           },
           "declarationHash": "82280a044d2941bc3d995923fd568aab085e7d3dbd79256786936922ace5b3f6"
         },
@@ -8621,6 +9265,10 @@
             "createMistral": "8fbfc2540136f9a6c690c5b9897db069ddcb2f0524d2646a22ec86f9700f6b47",
             "mistral": "16358574ce89d0405f0a233da276677757f0cab8dcf52e4e2dab85524dcc5983"
           },
+          "calls": {
+            "createMistral": 1,
+            "mistral": 1
+          },
           "declarationHash": "9dd487ee2ab1b32ff476601bd0c37658ba2c374d191bb58601cfcaee9bfd8a70"
         },
         "./dist/index.js": {
@@ -8714,6 +9362,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createMoonshotAI": "354d247f400c44739f42af580577253e7039f7b0eb2e2afbe005b6c14e3709a6",
             "moonshotai": "26c8f73bf28129b63ec52b4584d487d3b624c50b1a874e7745ea41203733382e"
+          },
+          "calls": {
+            "createMoonshotAI": 1,
+            "moonshotai": 1
           },
           "declarationHash": "e2760a2b54f1ade94d0b383df4beb8423ff49de6db51b1a0c1d47684e3d81854"
         },
@@ -8818,6 +9470,9 @@
             "OpenResponsesProviderSettings": "710aff118b4d6e7a2429fbdf25abaa5d59364cd4eb3611118a8c5a3a751d3c97",
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createOpenResponses": "64dac32318dddfcca66b422bc52391e138ec393a21eba7bc10a213537eb72e1c"
+          },
+          "calls": {
+            "createOpenResponses": 1
           },
           "declarationHash": "bb7f62fad5b39a7dab4014f7a49665b035b7ae581e57e9d4ac7fd3b668a309c5"
         },
@@ -8980,6 +9635,16 @@
             "createOpenAI": "a6ab3eef56cebe473e5d2fdffe58354794c31389449912e7eec9ab99ad01f618",
             "openai": "99a94daecc7cb32098036774c9558d3b245d81a070b1dee2c651058f1752adc9"
           },
+          "calls": {
+            "createOpenAI": 1,
+            "openai": 1
+          },
+          "constructors": {
+            "Experimental_OpenAIRealtimeModel": 1,
+            "Experimental_OpenAIRealtimeModelLive": 1,
+            "Experimental_OpenAISpeechTranslationModel": 1,
+            "Experimental_OpenAITranslationModel": 1
+          },
           "declarationHash": "1a1f5a81c8bf8cc84f49754a894befad0962b914442bb0c006fd7f21893ce111"
         },
         "./dist/index.js": {
@@ -9098,6 +9763,15 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createOpenAICompatible": "4c34e4b7188788d640ea1945c9c6b2b2c625710ece2d574d06b0b307a23f115e"
           },
+          "calls": {
+            "createOpenAICompatible": 1
+          },
+          "constructors": {
+            "OpenAICompatibleChatLanguageModel": 1,
+            "OpenAICompatibleCompletionLanguageModel": 1,
+            "OpenAICompatibleEmbeddingModel": 1,
+            "OpenAICompatibleImageModel": 1
+          },
           "declarationHash": "f6facaf99af7fd64922d1d06b585557e99d85828c8779dabd9729ca05d1d35b5"
         },
         "./dist/index.js": {
@@ -9205,6 +9879,19 @@
             "formatOutputMessages": "4954363dcb6eb3e1df7292cbc4f391efe105891cd4035abd8ffbd1a664caf8d5",
             "formatSystemInstructions": "79a20ee2aa1e7a8468834fbed14793355ae6341f70176841edf29d7952f6e5d6"
           },
+          "calls": {
+            "formatInputMessages": 1,
+            "formatModelMessages": 1,
+            "formatObjectOutputMessages": 1,
+            "formatOutputContent": 1,
+            "formatOutputMessages": 1,
+            "formatSystemInstructions": 1
+          },
+          "constructors": {
+            "LegacyOpenTelemetry": 1,
+            "OpenTelemetry": 1,
+            "OpenTelemetryIdGenerator": 1
+          },
           "declarationHash": "df6ff32f6dbd82a25be59b54630be42d25a95e9afa0573f9e18e4c8846329d87"
         },
         "./dist/index.js": {
@@ -9298,6 +9985,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createParallel": "b14ab6c32c83f3e951b8986d1225c1baedd74df0c1dcc876ec9e25dadc6b5020",
             "parallel": "3d040b12503a2a92ce810def56fb1cbec00a16c21545e1b5d7e329b9dd4fdb3d"
+          },
+          "calls": {
+            "createParallel": 1
           },
           "declarationHash": "1900fb8852bb99bada83bf8beae5a9945217c19579e58e3dccfd775a4c76ff5a"
         },
@@ -9394,6 +10084,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createPerplexity": "70e8eaed33d9f7a034aa49298f337f076c6893471c44bea8e25ebbfbf3e30e20",
             "perplexity": "89f9bb77ace702ce63d8b324c1a301dafbea3a92f6d29269b741812bf95556bd"
+          },
+          "calls": {
+            "createPerplexity": 1,
+            "perplexity": 1
           },
           "declarationHash": "a0c68182523945587a31107494bc9ff54b1a3318054cb6a71c95de302c319a04"
         },
@@ -9495,6 +10189,16 @@
             "wasmPolicyClient": "49711c869e3a77c587abb829ce4d104e3b388e551b3290d2cd7947d022ea8481",
             "wrapMcpTools": "34535f03fe27a329c8f0028c15ffb82060c7c4546ed933e6e66d70e2e00cb8a5"
           },
+          "calls": {
+            "httpPolicyClient": 1,
+            "normalizeOpaDecision": 1,
+            "opaCapabilityMiddleware": 1,
+            "opaPolicy": 1,
+            "optionalOpaPolicy": 1,
+            "shadow": 1,
+            "wasmPolicyClient": 1,
+            "wrapMcpTools": 1
+          },
           "declarationHash": "bf38e718097a4f74689d6c5d70c9ceac896abf78798b933d9d37be3fc349a2b1"
         },
         "./dist/index.js": {
@@ -9595,6 +10299,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createProdia": "2fdc507fe622a3a54745f556d16413b7844203c32cc3893af7169b9448ee83f5",
             "prodia": "3d751f780efd2d740cff4a5a50665afe15a69140af83efbba0b1a2b513876514"
+          },
+          "calls": {
+            "createProdia": 1
           },
           "declarationHash": "d334a72492b1b8166d309fd63e6cf7544c27222c023028a51d913cdb380cb78a"
         },
@@ -10270,6 +10977,34 @@
             "isJSONObject": "b826f3858e762a16175991dc61e9cf75b53f60ff0d4fa525130797f296b2e0ab",
             "isJSONValue": "afddfaf55e361621b3be5a100fe58083066433f9492d1f7f3a90865633f99458"
           },
+          "calls": {
+            "getErrorMessage": 1,
+            "isJSONArray": 1,
+            "isJSONObject": 1,
+            "isJSONValue": 1
+          },
+          "constructors": {
+            "AISDKError": 1,
+            "APICallError": 1,
+            "EmptyResponseBodyError": 1,
+            "Experimental_DecisionRefusalError": 1,
+            "Experimental_DecisionUnsupportedQuestionTypeError": 1,
+            "Experimental_EvaluationUnsupportedQuestionTypeError": 1,
+            "Experimental_ExtractionRefusalError": 1,
+            "Experimental_ExtractionUnsupportedFieldTypeError": 1,
+            "InvalidArgumentError": 1,
+            "InvalidPromptError": 1,
+            "InvalidResponseDataError": 1,
+            "JSONParseError": 1,
+            "LoadAPIKeyError": 1,
+            "LoadSettingError": 1,
+            "NoContentGeneratedError": 1,
+            "NoSuchModelError": 1,
+            "NoSuchProviderReferenceError": 1,
+            "TooManyEmbeddingValuesForCallError": 1,
+            "TypeValidationError": 1,
+            "UnsupportedFunctionalityError": 1
+          },
           "declarationHash": "c13a9a29b06d1fdc0ef047a9f4397ad09e0f485da82047daec42f61b671be9dd"
         },
         "./dist/index.js": {
@@ -10835,11 +11570,134 @@
             "withoutTrailingSlash": "b9a72c649a1ecf9767e9051d1e2384e0de2c5bcf2b672e76dd5d9c432b73da2c",
             "zodSchema": "366b8ac0818e4250976ad790a69eb61366051d947f2cc7ffa693b282111a490c"
           },
-          "overloads": {
+          "calls": {
+            "asArray": 1,
+            "asSchema": 1,
+            "cancelResponseBody": 1,
+            "combineHeaders": 1,
+            "connectToWebSocket": 1,
+            "convertAsyncIteratorToReadableStream": 1,
+            "convertBase64ToUint8Array": 1,
+            "convertImageModelFileToDataUri": 1,
+            "convertInlineFileDataToUint8Array": 1,
+            "convertJsonResponseToolStream": 1,
+            "convertToBase64": 1,
+            "convertToFormData": 1,
+            "convertUint8ArrayToBase64": 1,
+            "createBinaryResponseHandler": 1,
+            "createBinaryStreamResponseHandler": 1,
+            "createEventSourceResponseHandler": 1,
+            "createIdGenerator": 1,
+            "createJsonErrorResponseHandler": 1,
+            "createJsonLinesResponseHandler": 1,
+            "createJsonResponseHandler": 1,
+            "createLanguageModelResponseMetadata": 1,
+            "createNullLanguageModelUsage": 1,
+            "createProviderDefinedToolFactory": 1,
+            "createProviderDefinedToolFactoryWithOutputSchema": 1,
+            "createProviderExecutedToolFactory": 1,
+            "createProviderStreamError": 1,
+            "createStatusCodeErrorResponseHandler": 1,
+            "createTextOutputCapture": 1,
+            "createToolNameMapping": 1,
+            "delay": 1,
+            "deleteFromApi": 1,
+            "detectMediaType": 1,
+            "downloadBlob": 1,
+            "dynamicTool": 1,
+            "encodePathSegment": 1,
+            "executeTool": 1,
+            "experimental_getToolCaller": 1,
+            "experimental_parseSpeechStreamClientFrame": 1,
+            "experimental_parseSpeechStreamPart": 1,
+            "experimental_parseTranscriptionStreamClientFrame": 1,
+            "experimental_parseTranscriptionStreamPart": 1,
+            "experimental_serializeSpeechStreamPart": 1,
+            "experimental_serializeTranscriptionStreamPart": 1,
+            "experimental_toolCaller": 1,
+            "extractLines": 1,
+            "extractResponseHeaders": 1,
+            "fetchUntrustedUrl": 1,
+            "fetchWithValidatedEndpoint": 1,
+            "fetchWithValidatedRedirects": 1,
+            "filterNullable": 1,
+            "generateId": 1,
+            "getErrorMessage": 1,
+            "getFromApi": 1,
+            "getRuntimeEnvironmentUserAgent": 1,
+            "getTopLevelMediaType": 1,
+            "getWebSocketConstructor": 1,
+            "injectJsonInstructionIntoMessages": 1,
+            "isAbortError": 1,
+            "isArrayBuffer": 1,
+            "isBrowserRuntime": 1,
+            "isBuffer": 1,
+            "isCustomReasoning": 1,
+            "isExecutableTool": 1,
+            "isFullMediaType": 1,
+            "isNonNullable": 1,
+            "isParsableJson": 1,
+            "isProviderReference": 1,
+            "isProviderStreamError": 1,
+            "isRecord": 1,
+            "isSameOrigin": 1,
+            "isUint8Array": 1,
+            "isUrlSupported": 1,
+            "isValidHostnamePart": 1,
+            "jsonSchema": 1,
+            "lazySchema": 1,
+            "loadApiKey": 1,
+            "loadOptionalSetting": 1,
+            "loadSetting": 1,
+            "mapReasoningToProviderBudget": 1,
+            "mapReasoningToProviderEffort": 1,
+            "mediaTypeToExtension": 1,
+            "normalizeBatchRequestCounts": 1,
+            "normalizeHeaders": 1,
             "parseJSON": 2,
+            "parseJsonEventStream": 1,
+            "parseProviderOptions": 1,
+            "postFormDataToApi": 1,
+            "postJsonToApi": 1,
+            "postMultipartStreamToApi": 1,
+            "postToApi": 1,
+            "readResponseWithSizeLimit": 1,
+            "readWebSocketMessageText": 1,
+            "redactTelemetryValue": 1,
+            "removeUndefinedEntries": 1,
+            "resolve": 1,
+            "resolveFullMediaType": 1,
+            "resolveProviderOptions": 1,
+            "resolveProviderReference": 1,
+            "resolveWith": 1,
+            "retryWithExponentialBackoff": 1,
             "safeParseJSON": 2,
-            "tool": 5
+            "safeValidateTypes": 1,
+            "secureJsonParse": 1,
+            "serializeModelOptions": 1,
+            "stringifyWithBigIntAndCycles": 1,
+            "stripFileExtension": 1,
+            "toWebSocketUrl": 1,
+            "tool": 5,
+            "validateBaseURL": 1,
+            "validateDownloadUrl": 1,
+            "validateTypes": 1,
+            "waitForWebSocketBufferDrain": 1,
+            "withTelemetryRedaction": 1,
+            "withUserAgentSuffix": 1,
+            "withoutTrailingSlash": 1,
+            "zodSchema": 1
           },
+          "constructors": {
+            "DelayedPromise": 1,
+            "DownloadError": 1,
+            "EventSourceParserStream": 1,
+            "SerializationError": 1,
+            "StreamingToolCallTracker": 1
+          },
+          "parameterlessConstructors": [
+            "DelayedPromise"
+          ],
           "declarationHash": "19fd4a831c948a09e7fe0b54223c1d76687e5b8d79de1c28246606b24ccf623c"
         },
         "./dist/index.js": {
@@ -11043,6 +11901,9 @@
           "signatures": {
             "Experimental_DecisionLanguageModel": "4340318ab1d0a302f32d68e8f65cd426eb277ee4d425fd7aa9fda051552cb91f"
           },
+          "constructors": {
+            "Experimental_DecisionLanguageModel": 1
+          },
           "declarationHash": "a7c8cdc9dfe19b37f71ca2e3cd6f363911c0d6abcd430464cef7a360b82d939c"
         },
         "./dist/experimental-decision/index.js": {
@@ -11117,6 +11978,10 @@
             "DecisionLanguageModel": "4340318ab1d0a302f32d68e8f65cd426eb277ee4d425fd7aa9fda051552cb91f",
             "Experimental_EvaluationLanguageModel": "6b75a4bbeee7c370a2e1cf165536ee30b982cb2dd0adb8daeb5cc2baf93ef546"
           },
+          "constructors": {
+            "DecisionLanguageModel": 1,
+            "Experimental_EvaluationLanguageModel": 1
+          },
           "declarationHash": "5cebb35a8f1f8073cd6d34a0846eb521e84914ffc9a71c657bf0d72734ba50c2"
         },
         "./dist/experimental-evaluation/index.js": {
@@ -11188,6 +12053,9 @@
           ],
           "signatures": {
             "Experimental_ExtractionLanguageModel": "aec7157ae15e0410ed9ac745e7b77ebf8e5e0eee2b5d7d7f078071bdaa472432"
+          },
+          "constructors": {
+            "Experimental_ExtractionLanguageModel": 1
           },
           "declarationHash": "4d37cc435f9b542b90af39b4feaffd1003df6b8ae7dba7b0bef40d0ce744b992"
         },
@@ -11274,6 +12142,16 @@
             "isNodeVersion": "788b449b4a1c524241ff79f8ebf9031489877dea96fcdc49c282c0774e0723d7",
             "isNodeVersionAtLeast": "ecfb3273bd3113eef07f22182700fa429c84af71509b7c0e2dd58a34d5724162",
             "mockId": "a6819c3949ef294f671507c3c2644a02b2a26c49b182cd9e7cba8b324ef58cf9"
+          },
+          "calls": {
+            "convertArrayToAsyncIterable": 1,
+            "convertArrayToReadableStream": 1,
+            "convertAsyncIterableToArray": 1,
+            "convertReadableStreamToArray": 1,
+            "convertResponseStreamToArray": 1,
+            "isNodeVersion": 1,
+            "isNodeVersionAtLeast": 1,
+            "mockId": 1
           },
           "declarationHash": "8a03b9b37ba112c22035fabaeaf5e0d93735a1a57cd23b0f1e6fc6cc2cfa6249"
         },
@@ -11377,6 +12255,11 @@
             "createQuiverAI": "e06b5726fe606bcea2874a32d61ef379e87816c2d086c4088ceca6a52afde947",
             "prepareQuiverAIImageReference": "f123b02764910571ad4ae753c3f046a5ff02ef8e1145db5948bf05696e94d46c",
             "quiverai": "f0df4327ed1f41fa25eca83098b400c35449f2b1bfc2278c9f9eec34baf5dbcf"
+          },
+          "calls": {
+            "createQuiverAI": 1,
+            "prepareQuiverAIImageReference": 1,
+            "quiverai": 1
           },
           "declarationHash": "053486083fa4d6c9f3ab1f57bafd7de51fce779ee05a6fc42253593494705214"
         },
@@ -11505,6 +12388,18 @@
             "useCompletion": "3a7fdffb32aade958314f7a71767181848f5dd54159d8684d7c1c5542175ce1c",
             "useObject": "bff8b69374f07aeb35fa542ab5d0c5a42cbd2c75c2f7ad42a16b6273a661ef83"
           },
+          "calls": {
+            "MCPAppRenderer": 1,
+            "experimental_MCPAppRenderer": 1,
+            "experimental_useObject": 1,
+            "experimental_useRealtime": 1,
+            "useChat": 1,
+            "useCompletion": 1,
+            "useObject": 1
+          },
+          "constructors": {
+            "Chat": 1
+          },
           "declarationHash": "728dcf0eed70f5a41f7008cc368cab784c0813174cfd948deba9e30a8e1ea53d"
         },
         "./dist/index.js": {
@@ -11602,6 +12497,9 @@
             "createReplicate": "d3212e84f40363f47de5c4d5b13eea537b4e3d659db121ace0c3f987815aba3e",
             "replicate": "0eca15e79e4462c3b0168a11b4ac04a206f949d53b76e40e374fed8adba238a2"
           },
+          "calls": {
+            "createReplicate": 1
+          },
           "declarationHash": "538a4251b491aab326ab354165d9cfd0793e9c31c2028a72dee59f6784a56a5a"
         },
         "./dist/index.js": {
@@ -11685,6 +12583,10 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createRevai": "eaf32be577dc8ad2675a9a8d9f46cdc9d656c3e02a48c03a93b33048804a92d2",
             "revai": "bd978e49d4401fe77cc220504995ae450a53dc271a08f31674fa4c47705985ad"
+          },
+          "calls": {
+            "createRevai": 1,
+            "revai": 1
           },
           "declarationHash": "1b4dc7e7c740d31ce16a0938e3bcc85f2cffb5b00a33875699370b1a42befda5"
         },
@@ -11823,10 +12725,19 @@
             "useSyncUIState": "4076053574f3f62bc206b75d368ca30df4b633a5ec3f89d78232bdd955bb123c",
             "useUIState": "7435e7e90ba96547b31b74d76dc1b123040d51c9a32aca86005846b5c4c63383"
           },
-          "overloads": {
+          "calls": {
+            "createAI": 1,
+            "createStreamableUI": 1,
+            "createStreamableValue": 1,
             "getAIState": 2,
             "getMutableAIState": 2,
-            "useAIState": 2
+            "readStreamableValue": 1,
+            "streamUI": 1,
+            "useAIState": 2,
+            "useActions": 1,
+            "useStreamableValue": 1,
+            "useSyncUIState": 1,
+            "useUIState": 1
           },
           "declarationHash": "1aae71b48c4b3c927b657f7ac7c18a1820a73a0f0a4f41aa01b0ba13626f27e0"
         },
@@ -11934,6 +12845,16 @@
             "createJustBashSandboxSessionFromNativeSandbox": "4cf18ed788ffcb2bf9533178fb56344ce55f6573b1d7de9040cb31f1190fc6a1",
             "resumeJustBashNetworkSandboxSession": "c05d870a13088a07be7e12a8abb5aff7b2b6ce3cd202c76ebac74e46378b11be"
           },
+          "calls": {
+            "createJustBashNetworkSandboxSession": 1,
+            "createJustBashNetworkSandboxSessionFromNativeSandbox": 1,
+            "createJustBashSandbox": 1,
+            "createJustBashSandboxSessionFromNativeSandbox": 1,
+            "resumeJustBashNetworkSandboxSession": 1
+          },
+          "constructors": {
+            "JustBashSandboxProvider": 1
+          },
           "declarationHash": "ba8bedb090ec2a13ce873fb0af552d0f524c78c2efab217b6edfc966d49cfe37"
         },
         "./dist/index.js": {
@@ -12029,6 +12950,16 @@
             "createVercelSandboxSessionFromNativeSandbox": "9250b6c39fdea8b504c9a838f0ee637104af29e1316c211cd54d1f1bfe441002",
             "resumeVercelNetworkSandboxSession": "282f0d88d10eb3a45e04ae7e03a1d8e8788346260d30b26b8f920733ab57c809"
           },
+          "calls": {
+            "createVercelNetworkSandboxSession": 1,
+            "createVercelNetworkSandboxSessionFromNativeSandbox": 1,
+            "createVercelSandbox": 1,
+            "createVercelSandboxSessionFromNativeSandbox": 1,
+            "resumeVercelNetworkSandboxSession": 1
+          },
+          "constructors": {
+            "VercelSandboxProvider": 1
+          },
           "declarationHash": "674eae6ba1dc63bc125e83da78bf7453df1cfb771702b87cc50cf4ffaf389ebc"
         },
         "./dist/index.js": {
@@ -12123,6 +13054,9 @@
             "createScaleDown": "369b23e836bcde23622f82340dd92b317281b3d7c2c1d779ec6f3d5aba3557c9",
             "scaleDown": "bc8976b84e77d7989799ed705f8088b36968d9ff7bbd6b7041cc1cbcf6c3e72a",
             "scaledown": "5d25c9e6752ab4cb6a0bf58468e0fe0c30c56f931c55a244e6df4084de286efa"
+          },
+          "calls": {
+            "createScaleDown": 1
           },
           "declarationHash": "6aabbfcc63cc10c34a0ee60b611e5542ea86e06b1a475f734041bbee40da581f"
         },
@@ -12223,6 +13157,12 @@
             "useChat": "37cae02f5d14f770a7495b0d5823a3f9a0f0a766016c288dca24f6ce2a2d6691",
             "useCompletion": "a39c193ef66ddce0e131c3cbe53c10e84ebe5d36d81f1a1e5c29a1fde966abd2"
           },
+          "calls": {
+            "experimental_useObject": 1,
+            "useAssistant": 1,
+            "useChat": 1,
+            "useCompletion": 1
+          },
           "declarationHash": "fd3f805ccb98cc5aa2e2ab8a9deed6af6f2651d913e9ea307dbbd5341d133865"
         },
         "./dist/index.mjs": {
@@ -12318,6 +13258,15 @@
             "UIMessage": "bc71643b1b820bcb9424775ede06dc8779da7eb68916b57498961356383828a9",
             "createAIContext": "470971391fd95533296e2e3d51480ea0107ba75aae7cfaad98e484a41b47cc18"
           },
+          "calls": {
+            "createAIContext": 1
+          },
+          "constructors": {
+            "Chat": 1,
+            "Completion": 1,
+            "Experimental_StructuredObject": 1,
+            "StructuredObject": 1
+          },
           "declarationHash": "31e95b0826100aea1f165f0f6e54722832de27355d01a1021f139ddaa1ad4f53"
         },
         "./dist/index.js": {
@@ -12405,6 +13354,14 @@
             "functionTool": "48012e5f08f72d16540b9285111698934fe380ce1b5197779f18941fb9462115",
             "handoverTool": "786c871dc5f4eddfeb1eb33f0044f386f2c0f2bc8c7d091ece54986522671757",
             "runSwarm": "17be4a1520f7ffd9c248c55c312f2ad64cfc1aa56da7ffb6d02f145bfad486c6"
+          },
+          "calls": {
+            "functionTool": 1,
+            "handoverTool": 1,
+            "runSwarm": 1
+          },
+          "constructors": {
+            "Agent": 1
           },
           "declarationHash": "04e67b5659d057d5a21cf9a02ddad43213d0872357efd8f0e79047fc10499222"
         },
@@ -12508,6 +13465,10 @@
             "createTencent": "45f53d3b6ee49750e318218c77afcee752615df217d913fe06e30ac746e1a317",
             "tencent": "ef5708cce09d185bb3c8d2d92bb52572147e2f5ebffaa6e5c2b9e34a7ee15267"
           },
+          "calls": {
+            "createTencent": 1,
+            "tencent": 1
+          },
           "declarationHash": "f9dcec0db78b7ed891a1b4f02883318d16d1b19bd1cd7a44936669c56ba30f28"
         },
         "./dist/index.js": {
@@ -12590,6 +13551,15 @@
             "UrlResponse": "ebbd72a134acb3c356631d5bdec08d8df8cd80bfc859ed96b5c5965c46c8fba9",
             "createTestServer": "1e94f4b3e90c23824f46f9de8e6de6dcddde1208fe4e61aa129af515c9c225e5"
           },
+          "calls": {
+            "createTestServer": 1
+          },
+          "constructors": {
+            "TestResponseController": 1
+          },
+          "parameterlessConstructors": [
+            "TestResponseController"
+          ],
           "declarationHash": "602896d7b3103e8c295c4a3c69467659d38fb34e1eaf6faa4887a41f8b9dfbb8"
         },
         "./dist/index.js": {
@@ -12671,6 +13641,15 @@
             "UrlResponse": "ebbd72a134acb3c356631d5bdec08d8df8cd80bfc859ed96b5c5965c46c8fba9",
             "createTestServer": "dc6588becc9e2b617ee5e4c59a2d80a08a216bc5420d618b156fc6a539a51a2a"
           },
+          "calls": {
+            "createTestServer": 1
+          },
+          "constructors": {
+            "TestResponseController": 1
+          },
+          "parameterlessConstructors": [
+            "TestResponseController"
+          ],
           "declarationHash": "dc5b7b2ea80f2e7a092c009d07648f583885674fb0055d2823c17f993e821c85"
         },
         "./dist/with-vitest.js": {
@@ -12762,6 +13741,10 @@
             "createTogetherAI": "3353e2c98d0d236ce692710f00144504aa65f5edb6c9ca11c418cd070c2b83c8",
             "togetherai": "87152f0f6c6050bc5fb7f08aa86709ee7c8c7771d96e9c8b7cbbb65fc5d06e00"
           },
+          "calls": {
+            "createTogetherAI": 1,
+            "togetherai": 1
+          },
           "declarationHash": "8b4dd635ba9982a2f5b70f11d8fb7c9a763945c7725fdd9506c321078ee3ebd4"
         },
         "./dist/index.js": {
@@ -12836,6 +13819,9 @@
           "signatures": {
             "experimental_createBashTool": "4015f8154409d5fa7ab4f9bab5fbf1305784e820418cc763b407727341c98e5d"
           },
+          "calls": {
+            "experimental_createBashTool": 1
+          },
           "declarationHash": "2c9db640200a598758fe50bebb4f6cc421be16e0929a8006d15573e80caa4fa7"
         },
         "./dist/index.js": {
@@ -12907,6 +13893,9 @@
           ],
           "signatures": {
             "experimental_createWebFetchTool": "8686166663eaaf3f0fb4acc7f9fe43fb07c783fa3bf927c1fc021b9cdd12afea"
+          },
+          "calls": {
+            "experimental_createWebFetchTool": 1
           },
           "declarationHash": "63105d81735bab292da32743c8217ccdc275131f2de97742e13cbef511f216a4"
         },
@@ -13044,6 +14033,9 @@
             "createTopaz": "697631b5af3edfc30759f38333d107183a97e0b5af111966014f57f8530c8d59",
             "topaz": "c3c23eaf67585982842979c3e741375f8b441aaef3623284cf7eec443743772a"
           },
+          "calls": {
+            "createTopaz": 1
+          },
           "declarationHash": "5b101488b6455a8795b46069d8d3f6fcc4750768099a830028c883939fd4dd0c"
         },
         "./dist/index.js": {
@@ -13125,6 +14117,9 @@
             "RunAgentTUIOptions": "46f2b2117a3965ab2cb102a896ace0a44b4d5c2b4cb26d8cc8845cc7100dd925",
             "TerminalPartDisplayMode": "cb5af86c8c7bded1f6c7fc7e166a45ae63899404f9671010e5de4f57d9c26510",
             "runAgentTUI": "06ec89515b51e70b1c59d6f362cc9be9f8d6f6799a964f8c57197dd6a46a47c6"
+          },
+          "calls": {
+            "runAgentTUI": 1
           },
           "declarationHash": "5e85e9d1488e4facabbbe141393aca891ad1cc04ccab0c0ed30a01dd84ab6ba5"
         },
@@ -13213,6 +14208,9 @@
             "VERSION": "68977ce8019809d393ded6c635ec1728b4b1797fa8926929d138a755c6f8b5f3",
             "createTypeSafeAi": "75016ac399dcbcb3f1f355252e9f1126c7e2a5df5dead48931c1501938c0dcbc",
             "typeSafeAi": "3a6d6237bd596ff662e342747a313321b3f68296546e30413e1382929c3fa270"
+          },
+          "calls": {
+            "createTypeSafeAi": 1
           },
           "declarationHash": "f1e5be02b0ff08c001d0fe1fcce6bbf6f672bec538b709d8974e6976eab1fc57"
         },
@@ -13388,6 +14386,31 @@
             "updateToolCallResult": "676e6b657c19802fc8093fb8158a0596d675492794a3aa578c1267f4d09f32e1",
             "zodSchema": "970a354611bcb3627ad622d04b165195f3987aa5d4cb9f63c0e199497db1a69e"
           },
+          "calls": {
+            "asSchema": 1,
+            "callChatApi": 1,
+            "callCompletionApi": 1,
+            "extractMaxToolInvocationStep": 1,
+            "fillMessageParts": 1,
+            "formatAssistantStreamPart": 1,
+            "formatDataStreamPart": 1,
+            "generateId": 1,
+            "getMessageParts": 1,
+            "getTextFromDataUrl": 1,
+            "isAssistantMessageWithCompletedToolCalls": 1,
+            "isDeepEqualData": 1,
+            "jsonSchema": 1,
+            "parseAssistantStreamPart": 1,
+            "parseDataStreamPart": 1,
+            "parsePartialJson": 1,
+            "prepareAttachmentsForRequest": 1,
+            "processAssistantStream": 1,
+            "processDataStream": 1,
+            "processTextStream": 1,
+            "shouldResubmitMessages": 1,
+            "updateToolCallResult": 1,
+            "zodSchema": 1
+          },
           "declarationHash": "417b279fc6ce0dccf6f48607721897e4cc567c20244b3dbc4acfb709f3c2eba7"
         },
         "./dist/index.mjs": {
@@ -13523,6 +14546,12 @@
             "mockFetchError": "0d1d6be0261349720b330217a22db2469beaa5fefa8ff720d4ffac713ebbd4a5",
             "mockFetchTextStream": "e859a5d71289646a4548b9341777363b5399fd82df03d4a6affbaa8f95adfc92"
           },
+          "calls": {
+            "mockFetchDataStream": 1,
+            "mockFetchDataStreamWithGenerator": 1,
+            "mockFetchError": 1,
+            "mockFetchTextStream": 1
+          },
           "declarationHash": "bd982bbe95e580ddbeea76105b8a64dd8a4af1cb05cfc214d4f1def142d7eeac"
         },
         "./test/dist/index.mjs": {
@@ -13607,6 +14636,9 @@
           "signatures": {
             "valibotSchema": "81cd418b7abf33d00900c95d890f3d0bf13e599ea10c27b7877b79dcfebf0af9"
           },
+          "calls": {
+            "valibotSchema": 1
+          },
           "declarationHash": "a733977106ca0b00910272795286cd10e308df87c6a5286ad05edf1f2445a05e"
         },
         "./dist/index.js": {
@@ -13688,6 +14720,10 @@
             "VercelProviderSettings": "a74a481cbf5b3aa94182f564decca72fde2df3b3fadac178b0286b78a99a0340",
             "createVercel": "e2f86be3562ed577a863b178b56a35bef8f1f27f488e1dfa5d59c629c7761627",
             "vercel": "4abbc0b55e30d60889dd12f62d68d995f367d0b51859f24dd9ad3b44634c94dd"
+          },
+          "calls": {
+            "createVercel": 1,
+            "vercel": 1
           },
           "declarationHash": "f5fa4dc1c01ba2da61b679ac27d5108b5d01d4eb940e14f1fe6fe39d7dd02851"
         },
@@ -13774,6 +14810,9 @@
             "VoyageRerankingModelOptions": "4e59f85012b96fd3291ffd3eed5c220d542b445e521a65fa4bd196a5147892f0",
             "createVoyage": "eec5e725183206128a7fd408d017384cdb5896f6cecf0745ae8db442642269e8",
             "voyage": "bcbeedff3cce123135f4ef0b4c9421d5956569f33b5ec9132d13b35a675321fa"
+          },
+          "calls": {
+            "createVoyage": 1
           },
           "declarationHash": "1beebad69760d3eb0db3eb381c3d856ad9521322281b04fd6b404221f605e162"
         },
@@ -13872,6 +14911,15 @@
             "useChat": "d06f87d2977e67b6219dc8376f837f1679e192889a0814ff6d263e6a12e112a6",
             "useCompletion": "7f03c0b471648a8ab0478f9282f9b11ce4eaf5c7d3f2d3d613d9d58f5c6230fc",
             "useObject": "81287531c32fd5316f7eb3b252ffecf54df93d44447b509a381922af4bd9b262"
+          },
+          "calls": {
+            "experimental_useObject": 1,
+            "useChat": 1,
+            "useCompletion": 1,
+            "useObject": 1
+          },
+          "constructors": {
+            "Chat": 1
           },
           "declarationHash": "4637a191bfbf7314756e21b49e371a1621f49add0befcf94d34e34c7231972e5"
         },
@@ -14037,6 +15085,15 @@
             "normalizeUIMessageStreamParts": "5a54fec4be5b81ce45c3e1d455f66c49f670cb97fcbf4e8cde61326f6d30e8a3",
             "toUIMessageChunk": "094b9fbec5fd21375792322fbe631a1f9b873a34c3959074d6b310b9bf51f77f"
           },
+          "calls": {
+            "createModelCallToUIChunkTransform": 1,
+            "normalizeUIMessageStreamParts": 1,
+            "toUIMessageChunk": 1
+          },
+          "constructors": {
+            "WorkflowAgent": 1,
+            "WorkflowChatTransport": 1
+          },
           "declarationHash": "58b253be5df4710f7e61b73274c2849069ae91c68ec18f1cd9066a216870b80a"
         },
         "./dist/index.js": {
@@ -14120,6 +15177,9 @@
             "WorkflowChatTransport": "193e6e8b9b96ed26e14aeee6ebb3b59cc22c3f7d1896210967a3d5936f890874",
             "WorkflowChatTransportOptions": "ebba53b778a81a0d96ee6412aa2bc25a73b122e14663641ff6904d3d27d7f86a"
           },
+          "constructors": {
+            "WorkflowChatTransport": 1
+          },
           "declarationHash": "b257ad8a794e5f18a5706822614631100eb89e995eb13243c6998f02585de2c8"
         },
         "./dist/client.js": {
@@ -14195,6 +15255,9 @@
             "WorkflowGenerateVideoOptions": "989035197f0874070f671ce8e378ea4c1212665f11180c5c623408cd48ebafe2",
             "WorkflowGenerateVideoResult": "d9a52e356d60ee0b726c1360912896b389af1c47d813cc4db56d8876f8d657a4",
             "experimental_generateVideo": "03a3b7e961765f3cc521bb40520d5a7feec963fd5430dbc41f0bcbeb28bd95ca"
+          },
+          "calls": {
+            "experimental_generateVideo": 1
           },
           "declarationHash": "c7215f0e8a3cf32c6cd87e3514de679165cb37cc49686771660395b1b9d23b53"
         },
@@ -14299,6 +15362,13 @@
             "runHarnessAgentSlice": "6d1b566c2ecd254a7556eacedb66c2bc89011171f7c798ace42ead9a769aac5c",
             "runHarnessAgentStep": "596cc6e08bf2dc25229d7f59a8b64d30a9275756fbe2bb6b399248b152ffdc68",
             "runHarnessAgentTimeSlice": "f517db68f17d819966d1069bc66c1ef99b320a64e67106d9414b1215e2ba2651"
+          },
+          "calls": {
+            "createHarnessWorkflowState": 1,
+            "finalizeHarnessWorkflow": 1,
+            "runHarnessAgentSlice": 1,
+            "runHarnessAgentStep": 1,
+            "runHarnessAgentTimeSlice": 1
           },
           "declarationHash": "0d8d38e31e24f1953816b6acdc3f9f6b325f866afe835f0dc79c2d8b534710b8"
         },
@@ -14430,6 +15500,20 @@
             "xai": "e28fc8dc3a04e0a2a633e5eb7fbcdc2c6214cecba5e4a0ba5f75f2235dc2714a",
             "xaiTools": "99a5b6f80e20dd0d8728ad45f6436ba153f6f6adecce1d56f7662f1507de89e6"
           },
+          "calls": {
+            "codeExecution": 1,
+            "createXai": 1,
+            "imageGeneration": 1,
+            "mcpServer": 1,
+            "viewImage": 1,
+            "viewXVideo": 1,
+            "webSearch": 1,
+            "xSearch": 1,
+            "xai": 1
+          },
+          "constructors": {
+            "Experimental_XaiRealtimeModel": 1
+          },
           "declarationHash": "1873127b13e0dd8bfd70ad0d103924cde4745ddc467a89cb35a58fc1b6f4df86"
         },
         "./dist/index.js": {
@@ -14526,6 +15610,10 @@
             "ZaiProviderSettings": "3e1ab5c2693e591ba50c2fd607d17a8ba4b2499ab658a9f3c953a554637b0d3e",
             "createZai": "5a43c160dc747eec117077aa70a873b0a86c9a8dbcccf4910ab6ea661a74a1a9",
             "zai": "bbe3fa79ed7f76293561cd4c1eab77db92241d33ebabaee0de881139e4456b57"
+          },
+          "calls": {
+            "createZai": 1,
+            "zai": 1
           },
           "declarationHash": "2213437d60c8fe6ea6c2998cc5a453f3955eb806a06e5bc54ec1597742ae1d90"
         },

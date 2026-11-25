@@ -4,7 +4,8 @@ import { dirname, join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
-  countSignatures,
+  describeConstructorAdapter,
+  describeSignatures,
   findPrivateSdkImports,
   findSdkOperations,
 } from '../scripts/sdk-declaration-graph.mjs';
@@ -43,7 +44,13 @@ function inspect(declarations, dependencies = []) {
       signatures: Object.fromEntries(
         symbols.map((symbol) => [
           symbol.name,
-          countSignatures(checker, symbol),
+          describeSignatures(checker, symbol),
+        ]),
+      ),
+      constructorAdapters: Object.fromEntries(
+        symbols.map((symbol) => [
+          symbol.name,
+          describeConstructorAdapter(checker, symbol),
         ]),
       ),
       privateImports: findPrivateSdkImports(
@@ -66,8 +73,23 @@ describe('packed declaration graph', () => {
       ${alias}
     `);
     const after = inspect(`${signature}\n${alias}`);
-    expect(before.signatures).toEqual({ read: 2 });
-    expect(after.signatures).toEqual({ read: 1 });
+    expect(before.signatures.read.calls).toBe(2);
+    expect(after.signatures.read.calls).toBe(1);
+  });
+
+  it('describes direct, factory, and Effect constructors', () => {
+    const { signatures, constructorAdapters } = inspect(`
+      export declare class Direct { constructor(); }
+      export declare const Factory: { make: (key: string) => Direct };
+      export declare const Lazy: { readonly '~effect/Effect': unknown };
+    `);
+    expect(signatures.Direct).toEqual({
+      calls: 0,
+      constructors: 1,
+      parameterlessConstructor: true,
+    });
+    expect(constructorAdapters.Factory).toEqual({ factory: 1, effect: false });
+    expect(constructorAdapters.Lazy).toEqual({ factory: 0, effect: true });
   });
 
   it('uses the output members of an adapter mapped from an SDK type', () => {
