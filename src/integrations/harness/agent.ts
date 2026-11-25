@@ -4,6 +4,7 @@ import type { GenerateTextResult, OutputInterface, ToolSet } from 'ai';
 import { Effect, Ref } from 'effect';
 import {
   bindCoreOptions,
+  type CoreEvent,
   type CoreOptions,
 } from '../../internal/core-settings.js';
 import {
@@ -48,7 +49,7 @@ export type {
 } from '@ai-sdk/harness/agent';
 
 type RuntimeContext = Record<string, unknown>;
-type NativeOptions<A, P, I> = sdk.HarnessAgentSettings<
+type NativeOptions<A = unknown, P = A, I = unknown> = sdk.HarnessAgentSettings<
   NativeHarness,
   ToolSet,
   RuntimeContext,
@@ -79,7 +80,22 @@ type SettingsKeys =
   | 'permissionMode'
   | 'debug'
   | 'toolApproval'
+  | 'runtimeContext'
+  | 'toolsContext'
+  | 'stopWhen'
+  | 'telemetry'
   | (typeof constructorCallbacks)[number];
+
+type NativePrepareCall = NonNullable<NativeOptions['prepareCall']>;
+type PrepareCall<T extends EffectTools, E, R> = (
+  options: CoreEvent<Parameters<NativePrepareCall>[0], T>,
+) => Effect.Effect<
+  Omit<Awaited<ReturnType<NativePrepareCall>>, 'tools'> & {
+    readonly tools?: T;
+  },
+  E,
+  R
+>;
 
 export type HarnessAgentSettings<
   T extends EffectTools = {},
@@ -92,6 +108,7 @@ export type HarnessAgentSettings<
   readonly harness: { readonly harnessId: string };
   readonly tools?: T;
   readonly output?: OutputSpecification<A, P, I, R>;
+  readonly prepareCall?: PrepareCall<T, E, R>;
   readonly sandbox?: ReturnType<
     typeof import('../internal/sandbox.js').wrapSandboxProvider
   >;
@@ -394,9 +411,12 @@ export class HarnessAgent<A = unknown, P = A, I = unknown> {
       }
       const owner = yield* openOperation<R | ToolServices<T>>();
       const callbacks = bindCoreOptions<
-        Pick<NativeOptions<A, P, I>, SettingsKeys>,
+        Pick<NativeOptions<A, P, I>, SettingsKeys | 'prepareCall'>,
         R
-      >(options, owner, tools);
+      >(options, owner, tools, ({ tools: preparedTools, ...next }) => ({
+        ...next,
+        ...(preparedTools && { tools: bindTools(preparedTools as T, owner) }),
+      }));
       return yield* runSync('HarnessAgent.make', () => {
         const nativeOutput = output && bindOutput(output, owner);
         const native = new sdk.HarnessAgent<
