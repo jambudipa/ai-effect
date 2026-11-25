@@ -80,7 +80,8 @@ function inspect(context, { mode, bundler, flags }) {
     target: ts.ScriptTarget.ES2022,
     strict: true,
     skipLibCheck: false,
-    types: [],
+    types: ['node'],
+    typeRoots: [join(fixture, 'node_modules/@types')],
   };
   const { files, host } = resolveDeclarations(context, options, mode);
   const program = ts.createProgram(
@@ -103,7 +104,20 @@ function inspect(context, { mode, bundler, flags }) {
     if (!values['operations-only']) {
       const names = new Set(symbols.map(({ name }) => name));
       const target = path.resolvers[context].types;
+      const runtime = path.resolvers[context].runtime;
+      const runtimeNames = new Set(path.targets[runtime]?.names ?? []);
+      const otherRuntimeNames = new Set(
+        Object.entries(path.targets)
+          .filter(
+            ([file, target]) =>
+              target.format !== 'declaration' && file !== runtime,
+          )
+          .flatMap(([, target]) => target.names),
+      );
       for (const name of path.targets[target]?.names ?? []) {
+        // Shared upstream declarations can describe operations exclusive to another branch.
+        if (runtime && otherRuntimeNames.has(name) && !runtimeNames.has(name))
+          continue;
         if (!names.has(name))
           failures.push(`${path.wrapper} is missing type export ${name}`);
       }

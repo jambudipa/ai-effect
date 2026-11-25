@@ -36,7 +36,7 @@ function typeArguments(checker, type) {
 }
 
 /** Report raw SDK calls, constructors, methods, and getters in the public types. */
-export function findSdkOperations(checker, publicSymbols) {
+export function findSdkOperations(checker, publicSymbols, publicTypes = []) {
   const operations = [];
   const visited = new Set();
 
@@ -70,7 +70,6 @@ export function findSdkOperations(checker, publicSymbols) {
       if (defaultType) visitType(defaultType, `${path} default`);
       return;
     }
-    for (const arg of typeArguments(checker, type)) visitType(arg, path);
     if (type.flags & ts.TypeFlags.Conditional) {
       const { trueType, falseType } = type.root.node;
       visitType(checker.getTypeFromTypeNode(trueType), `${path} true branch`);
@@ -81,11 +80,15 @@ export function findSdkOperations(checker, publicSymbols) {
     const origins = type.getSymbol()?.declarations ?? [];
     // Container arguments are public. The internals of Effect, the host, and
     // TypeScript libraries belong to those packages and can refer to themselves.
-    if (
+    const foreign =
       origins.length &&
-      !origins.some((decl) => hasSdkOrigin(decl) || hasWrapperOrigin(decl))
-    )
-      return;
+      !origins.some((decl) => hasSdkOrigin(decl) || hasWrapperOrigin(decl));
+    for (const arg of typeArguments(checker, type)) {
+      // A resolved mapped wrapper type can use an SDK type as input to its
+      // computation. Its members below are the public result of that mapping.
+      if (foreign || arg.isTypeParameter()) visitType(arg, path);
+    }
+    if (foreign) return;
 
     for (const kind of [ts.SignatureKind.Call, ts.SignatureKind.Construct]) {
       for (const signature of checker.getSignaturesOfType(type, kind)) {
@@ -114,6 +117,7 @@ export function findSdkOperations(checker, publicSymbols) {
       visitType(index.type, `${path}[…]`);
   }
 
+  for (const { type, path } of publicTypes) visitType(type, path);
   for (const exported of publicSymbols) {
     const symbol =
       exported.flags & ts.SymbolFlags.Alias

@@ -50,6 +50,15 @@ function inspect(declarations) {
 }
 
 describe('packed declaration graph', () => {
+  it('uses the output members of an adapter mapped from an SDK type', () => {
+    const { operations } = inspect(`
+      import type { RawOperation } from 'ai';
+      type Adapt<Native> = { [Member in keyof Native]: () => { readonly result: string } };
+      export type Consumer = Adapt<RawOperation>;
+    `);
+    expect(operations).toEqual([]);
+  });
+
   it('finds an SDK method inside the return of a nested callback', () => {
     const { operations } = inspect(`
       import type { RawOperation } from 'ai';
