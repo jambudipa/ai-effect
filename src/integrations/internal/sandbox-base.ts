@@ -99,7 +99,9 @@ const sessions = new WeakMap<SandboxSession, NativeSandbox>();
 export const registerSandbox = (
   sandbox: SandboxSession,
   native: NativeSandbox,
-) => registerSandbox(sandbox, native);
+): void => {
+  sessions.set(sandbox, native);
+};
 
 export const unwrapSandbox = (sandbox: SandboxSession) => sessions.get(sandbox);
 
