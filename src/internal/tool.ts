@@ -208,6 +208,64 @@ export type EffectTools = Readonly<
   >
 >;
 
+export type InferToolInput<Definition> =
+  Definition extends ProviderToolHandle<infer Input, unknown, unknown>
+    ? Input
+    : Definition extends ToolTypes<infer Input, unknown, unknown, unknown>
+      ? Input
+      : Definition extends {
+            readonly inputSchema: FlexibleSchema<infer Input, unknown>;
+          }
+        ? Input
+        : never;
+
+export type InferToolOutput<Definition> =
+  Definition extends ProviderToolHandle<unknown, infer Output, unknown>
+    ? Output
+    : Definition extends ToolTypes<unknown, infer Output, unknown, unknown>
+      ? Output
+      : ExecutionOutput<Callback<Definition, 'execute'>>;
+
+type DeclaredContext<Definition> =
+  Definition extends ToolTypes<unknown, unknown, infer Context, unknown>
+    ? Context
+    : unknown;
+
+export type InferToolContext<Definition> =
+  unknown extends DeclaredContext<Definition>
+    ? never
+    : keyof NonNullable<DeclaredContext<Definition>> extends never
+      ? never
+      : string extends keyof NonNullable<DeclaredContext<Definition>>
+        ? never
+        : DeclaredContext<Definition>;
+
+type RequiredToolContext<Tools extends EffectTools> = {
+  [
+    Name in keyof Tools as InferToolContext<Tools[Name]> extends never
+      ? never
+      : undefined extends InferToolContext<Tools[Name]>
+        ? never
+        : Name
+  ]: InferToolContext<Tools[Name]>;
+};
+
+type OptionalToolContext<Tools extends EffectTools> = {
+  [
+    Name in keyof Tools as InferToolContext<Tools[Name]> extends never
+      ? never
+      : undefined extends InferToolContext<Tools[Name]>
+        ? Name
+        : never
+  ]?: InferToolContext<Tools[Name]>;
+};
+
+export type InferToolSetContext<Tools extends EffectTools> = {
+  [
+    Name in keyof (RequiredToolContext<Tools> & OptionalToolContext<Tools>)
+  ]: (RequiredToolContext<Tools> & OptionalToolContext<Tools>)[Name];
+};
+
 export type ToolServices<Tools extends EffectTools> = ToolRequirements<
   Tools[keyof Tools]
 >;
@@ -218,27 +276,15 @@ type CompatibleSdkTool<Native> = Native extends ToolSet[string]
   ? Native
   : never;
 
-type NativeTool<Definition> =
-  Definition extends ProviderToolHandle<infer Input, infer Output, unknown>
-    ? CompatibleSdkTool<Tool<Input, Output, unknown>>
-    : Definition extends ToolTypes<
-          infer Input,
-          infer Output,
-          infer Context,
-          unknown
-        >
-      ? CompatibleSdkTool<Tool<Input, Output, Context>>
-      : Definition extends {
-            readonly inputSchema: FlexibleSchema<infer Input, unknown>;
-          }
-        ? CompatibleSdkTool<
-            Tool<
-              Input,
-              ExecutionOutput<Callback<Definition, 'execute'>>,
-              unknown
-            >
-          >
-        : never;
+type NativeTool<Definition> = Definition extends EffectTools[string]
+  ? CompatibleSdkTool<
+      Tool<
+        InferToolInput<Definition>,
+        InferToolOutput<Definition>,
+        DeclaredContext<Definition>
+      >
+    >
+  : never;
 
 export type BoundTools<Tools extends EffectTools> = {
   [Name in keyof Tools]: NativeTool<Tools[Name]>;

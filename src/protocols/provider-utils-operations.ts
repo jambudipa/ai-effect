@@ -13,7 +13,10 @@ import {
   adaptProviderTool,
   type ProviderToolHandle,
 } from '../internal/provider-tool.js';
-import type { EffectToolOptions } from '../internal/tool.js';
+import type {
+  EffectToolExecutionOptions,
+  EffectToolOptions,
+} from '../internal/tool.js';
 import { toSdkSchema } from '../internal/schema.js';
 import { wrapError } from '../integrations/internal/error.js';
 import { runValue } from '../integrations/internal/operation.js';
@@ -720,9 +723,12 @@ export const postToApi = <A, E = AiSdkError, R = never>(
 
 export { tool } from '../internal/tool.js';
 
-export const dynamicTool = <Input, Output, E, R>(
-  options: EffectToolOptions<Input, Output, E, R>,
-) => ({ ...options, type: 'dynamic' as const });
+export const dynamicTool = <Input, Output, E, R, Context = unknown>(
+  options: EffectToolOptions<Input, Output, E, R, Context>,
+): DynamicTool<Input, Output, Context, E, R> => ({
+  ...options,
+  type: 'dynamic',
+});
 
 type ToolWithExecute = {
   readonly execute?: (
@@ -735,18 +741,13 @@ export const isExecutableTool = <T extends ToolWithExecute>(
 ): tool is T & { readonly execute: NonNullable<T['execute']> } =>
   typeof tool?.execute === 'function';
 
-type ExecutionOptions<C> = Omit<
-  sdk.ToolExecutionOptions<C>,
-  'experimental_sandbox'
-> & {
-  readonly experimental_sandbox?: import('../integrations/internal/sandbox-base.js').SandboxSession;
-};
+type ExecutionOptions<C> = EffectToolExecutionOptions<C>;
 
 type Executable<I, A, C, E, R> = {
   readonly execute: (
     input: I,
     options: ExecutionOptions<C>,
-  ) => Effect.Effect<A | Stream.Stream<A, E, R>, E, R>;
+  ) => Effect.Effect<A | Stream.Stream<A, E, R>, E, R> | Stream.Stream<A, E, R>;
 };
 
 type ToolOutput<A> =
@@ -758,10 +759,11 @@ export const executeTool = <I, A, C, E, R>(input: {
   readonly input: I;
   readonly options: ExecutionOptions<C>;
 }): Stream.Stream<ToolOutput<A>, E | AiSdkError, R> => {
-  const execution = Effect.flatten(
+  const execution = Effect.flatMap(
     runSync('ProviderUtils.executeTool', () =>
       input.tool.execute(input.input, input.options),
     ),
+    (result) => (Effect.isEffect(result) ? result : Effect.succeed(result)),
   );
   const begin = input.options.abortSignal
     ? abortable(
@@ -778,7 +780,15 @@ export const executeTool = <I, A, C, E, R>(input: {
         return Stream.make(part);
       }
       const last = yield* Ref.make(Option.none<A>());
-      const chunks = (output as Stream.Stream<A, E, R>).pipe(
+      const stream = output as Stream.Stream<A, E, R>;
+      const signal = input.options.abortSignal;
+      const available = signal
+        ? Stream.interruptWhen(
+            stream,
+            abortable('ProviderUtils.executeTool', signal, Effect.never),
+          )
+        : stream;
+      const chunks = available.pipe(
         Stream.tap((chunk) => Ref.set(last, Option.some(chunk))),
         Stream.map((chunk): ToolOutput<A> => ({
           type: 'preliminary',
@@ -847,17 +857,23 @@ const adaptFactory = <Fn extends (...args: never[]) => object>(
     ) => ReturnType<Fn> & NativeProviderTool,
   );
 
+type ToolFactoryOptions<Input> = {
+  readonly id: `${string}.${string}`;
+  readonly inputSchema: Schema.ConstraintDecoder<Input>;
+  readonly redactArgs?: (
+    args: Record<string, unknown>,
+  ) => Record<string, unknown>;
+};
+type OutputToolFactoryOptions<Input, Output> = ToolFactoryOptions<Input> & {
+  readonly outputSchema: Schema.ConstraintDecoder<Output>;
+};
+
 export const createProviderDefinedToolFactory = <
   I,
   Args extends object,
   C extends sdk.Context = {},
 >(
-  options: Omit<
-    Parameters<typeof sdk.createProviderDefinedToolFactory<I, Args, C>>[0],
-    'inputSchema'
-  > & {
-    readonly inputSchema: Schema.ConstraintDecoder<I>;
-  },
+  options: ToolFactoryOptions<I>,
 ): Effect.Effect<
   AdaptedFactory<
     ReturnType<typeof sdk.createProviderDefinedToolFactory<I, Args, C>>
@@ -880,15 +896,7 @@ export const createProviderDefinedToolFactoryWithOutputSchema = <
   Args extends object,
   C extends sdk.Context = {},
 >(
-  options: Omit<
-    Parameters<
-      typeof sdk.createProviderDefinedToolFactoryWithOutputSchema<I, A, Args, C>
-    >[0],
-    'inputSchema' | 'outputSchema'
-  > & {
-    readonly inputSchema: Schema.ConstraintDecoder<I>;
-    readonly outputSchema: Schema.ConstraintDecoder<A>;
-  },
+  options: OutputToolFactoryOptions<I, A>,
 ): Effect.Effect<
   AdaptedFactory<
     ReturnType<
@@ -916,12 +924,8 @@ export const createProviderExecutedToolFactory = <
   Args extends object,
   C extends sdk.Context = {},
 >(
-  options: Omit<
-    Parameters<typeof sdk.createProviderExecutedToolFactory<I, A, Args, C>>[0],
-    'inputSchema' | 'outputSchema'
-  > & {
-    readonly inputSchema: Schema.ConstraintDecoder<I>;
-    readonly outputSchema: Schema.ConstraintDecoder<A>;
+  options: OutputToolFactoryOptions<I, A> & {
+    readonly supportsDeferredResults?: boolean;
   },
 ): Effect.Effect<
   AdaptedFactory<
@@ -1003,7 +1007,9 @@ export type Experimental_WritableSandboxProcess =
 
 export type ToolExecutionOptions<C = unknown> = ExecutionOptions<C>;
 
-type TypedExecution<I, A, C, E, R> = Executable<I, A, C, E, R>['execute'];
+type TypedExecution<I, A, C, E, R> = NonNullable<
+  EffectToolOptions<I, A, E, R, C>['execute']
+>;
 
 export type ToolExecuteFunction<
   I,
@@ -1024,9 +1030,8 @@ export type FunctionTool<
   C = unknown,
   E = never,
   R = never,
-> = Omit<EffectToolOptions<I, A, E, R>, 'execute'> & {
+> = Omit<EffectToolOptions<I, A, E, R, C>, 'type'> & {
   readonly type?: 'function';
-  readonly execute: ToolExecuteFunction<I, A, C, E, R>;
 };
 
 export type DynamicTool<
