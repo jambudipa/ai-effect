@@ -125,4 +125,11 @@ export default [
       'effect/no-array-mutation-use-chunk': 'off',
     },
   },
+  {
+    files: ['test/CoreOutput.test.ts'],
+    rules: {
+      // These cases verify the public input contract for external Zod schemas.
+      'effect/no-zod-use-schema': 'off',
+    },
+  },
 ];
