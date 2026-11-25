@@ -145,6 +145,7 @@ export {
   experimental_toolCaller,
 } from './protocols/provider-utils-operations.js';
 import { Effect } from 'effect';
+import type { FlexibleSchema } from './core-schema.js';
 import {
   bindCoreOptions,
   modelForSdk,
@@ -390,12 +391,17 @@ type AgentSettings<
   Hook,
 > = CoreOptions<
   ReplaceSettings<
-    ToolLoopAgentSettings<C, BoundTools<T>, R, BoundOutput<A, P, I>>
+    Omit<
+      ToolLoopAgentSettings<C, BoundTools<T>, R, BoundOutput<A, P, I>>,
+      'callOptionsSchema'
+    >
   >,
   Hook,
   T
 > &
-  Settings<T, A, P, I>;
+  Settings<T, A, P, I> & {
+    readonly callOptionsSchema?: FlexibleSchema<C, Hook>;
+  };
 
 /** A tool loop that creates a private SDK agent for each execution. */
 export class ToolLoopAgent<

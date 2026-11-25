@@ -13,7 +13,14 @@ import type {
 import type { OutputSpecification } from './internal/output.js';
 import type { ProviderToolHandle } from './internal/provider-tool.js';
 import type { TextStreamResult } from './internal/text-stream.js';
-import type { BoundTools, EffectTools } from './internal/tool.js';
+import type {
+  BoundTools,
+  EffectToolExecutionOptions,
+  EffectToolOptions,
+  EffectTools,
+  InferToolInput,
+  InferToolOutput,
+} from './internal/tool.js';
 import type {
   ProviderV2,
   ProviderV3,
@@ -282,25 +289,17 @@ export type ToolInputRefinement<T extends EffectTools, S = never> = {
   >;
 };
 
-export type ToolExecutionOptions<C> = Omit<
-  sdk.ToolExecutionOptions<C>,
-  'experimental_sandbox'
-> & { readonly experimental_sandbox?: SandboxSession };
+export type ToolExecutionOptions<C> = EffectToolExecutionOptions<C>;
 export type ToolExecuteFunction<I, A, C, E = never, S = never> = (
   input: I,
   options: ToolExecutionOptions<C>,
 ) => Effect.Effect<A, E, S> | Stream.Stream<A, E, S>;
 export type Tool<I = unknown, A = unknown, C = unknown, E = never, S = never> =
-  | ProviderToolHandle<I, A, S>
-  | {
-      readonly description?: string;
-      readonly title?: string;
-      readonly execute?: ToolExecuteFunction<I, A, C, E, S>;
-    };
-export type InferUITool<T> =
-  T extends Tool<infer I, infer A, never, unknown, unknown>
-    ? { input: I; output: A }
-    : never;
+  ProviderToolHandle<I, A, S> | EffectToolOptions<I, A, E, S, C>;
+export type InferUITool<T> = {
+  input: InferToolInput<T>;
+  output: InferToolOutput<T>;
+};
 
 export type Experimental_SandboxSession = SandboxSession;
 export type Experimental_SandboxProcess = Effect.Success<
