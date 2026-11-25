@@ -1,7 +1,8 @@
 import * as sdk from '@ai-sdk/harness/agent';
 import type { HarnessV1 as NativeHarness } from '../internal/harness-contracts/harness.js';
 import type { GenerateTextResult, OutputInterface, ToolSet } from 'ai';
-import { Effect, Ref } from 'effect';
+import { Effect, Fiber, Ref } from 'effect';
+import type { Scope } from 'effect/Scope';
 import {
   bindCoreOptions,
   type CoreEvent,
@@ -15,7 +16,10 @@ import {
   sdkError,
 } from '../../internal/operation.js';
 import { bindOutput, type OutputSpecification } from '../../internal/output.js';
-import { wrapTextStream } from '../../internal/text-stream.js';
+import {
+  type TextStreamResult,
+  wrapTextStream,
+} from '../../internal/text-stream.js';
 import {
   bindTools,
   type EffectTools,
@@ -117,6 +121,53 @@ export type HarnessAgentSettings<
 };
 
 type NativeSession = sdk.HarnessAgentSession;
+declare const sessionType: NativeSession;
+type NativePromptTurn<A, P, I> = typeof sessionType.promptTurn<
+  ToolSet,
+  RuntimeContext,
+  OutputInterface<A, P, I>
+>;
+type NativeContinueTurn<A, P, I> = typeof sessionType.continueTurn<
+  ToolSet,
+  RuntimeContext,
+  OutputInterface<A, P, I>
+>;
+type NativeTurnOptions<A, P, I> =
+  | Parameters<NativePromptTurn<A, P, I>>[0]
+  | Parameters<NativeContinueTurn<A, P, I>>[0];
+
+type TurnOptions<
+  A,
+  P,
+  I,
+  T extends EffectTools,
+  Active extends EffectTools,
+  R,
+  Native extends NativeTurnOptions<A, P, I>,
+> = Omit<
+  CoreOptions<Native, R, T>,
+  'tools' | 'activeTools' | 'output' | 'callbacks' | 'stopConditions'
+> & {
+  readonly tools: T;
+  readonly activeTools: Active;
+  readonly output: OutputSpecification<A, P, I, R> | undefined;
+  readonly callbacks: CoreOptions<Native['callbacks'], R, T>;
+  readonly stopConditions: CoreOptions<
+    { readonly stopWhen: Native['stopConditions'] },
+    R,
+    T
+  >['stopWhen'];
+};
+
+export type HarnessAgentTurn<A, P = A, I = unknown> = {
+  readonly result: TextStreamResult<
+    ToolSet,
+    RuntimeContext,
+    OutputInterface<A, P, I>
+  >;
+  readonly ready: Effect.Effect<void, AiSdkError>;
+  readonly done: Effect.Effect<void, AiSdkError>;
+};
 const sessions = new WeakMap<HarnessAgentSession, NativeSession>();
 let wrapSession: (
   native: NativeSession,
@@ -154,6 +205,119 @@ export class HarnessAgentSession {
     return runSync('HarnessAgentSession.hasUnfinishedTurn', () =>
       this.native.hasUnfinishedTurn(),
     );
+  }
+
+  promptTurn<A, P, I, T extends EffectTools, Active extends EffectTools, R>(
+    options: TurnOptions<
+      A,
+      P,
+      I,
+      T,
+      Active,
+      R,
+      Parameters<NativePromptTurn<A, P, I>>[0]
+    >,
+  ) {
+    return this.openTurn('HarnessAgentSession.promptTurn', options, (native) =>
+      this.native.promptTurn<ToolSet, RuntimeContext, OutputInterface<A, P, I>>(
+        native,
+      ),
+    );
+  }
+
+  continueTurn<A, P, I, T extends EffectTools, Active extends EffectTools, R>(
+    options: TurnOptions<
+      A,
+      P,
+      I,
+      T,
+      Active,
+      R,
+      Parameters<NativeContinueTurn<A, P, I>>[0]
+    >,
+  ) {
+    return this.openTurn(
+      'HarnessAgentSession.continueTurn',
+      options,
+      (native) =>
+        this.native.continueTurn<
+          ToolSet,
+          RuntimeContext,
+          OutputInterface<A, P, I>
+        >(native),
+    );
+  }
+
+  private openTurn<
+    A,
+    P,
+    I,
+    T extends EffectTools,
+    Active extends EffectTools,
+    R,
+    Native extends NativeTurnOptions<A, P, I>,
+  >(
+    name: string,
+    options: TurnOptions<A, P, I, T, Active, R, Native>,
+    invoke: (options: Native) => ReturnType<NativePromptTurn<A, P, I>>,
+  ): Effect.Effect<
+    HarnessAgentTurn<A, P, I>,
+    AiSdkError,
+    Scope | R | ToolServices<T> | ToolServices<Active>
+  > {
+    return Effect.gen(function* () {
+      const {
+        tools,
+        activeTools,
+        output,
+        callbacks,
+        stopConditions,
+        ...settings
+      } = options;
+      const owner = yield* openOperation<
+        R | ToolServices<T> | ToolServices<Active>
+      >(options.abortSignal);
+      const turn = yield* runSync(name, () => {
+        const bound = bindCoreOptions<Native, R>(settings, owner, tools);
+        const stop = bindCoreOptions<{ stopWhen: Native['stopConditions'] }, R>(
+          { stopWhen: stopConditions },
+          owner,
+          tools,
+        );
+        return invoke({
+          ...bound,
+          abortSignal: owner.signal,
+          tools: bindTools(tools, owner),
+          activeTools: bindTools(activeTools, owner),
+          output: output && bindOutput(output, owner),
+          callbacks: bindCoreOptions<Native['callbacks'], R>(
+            callbacks,
+            owner,
+            tools,
+          ),
+          stopConditions: stop.stopWhen,
+        });
+      });
+      const ready = yield* Effect.forkScoped(
+        runRequest(
+          `${name}.ready`,
+          { abortSignal: owner.signal },
+          () => turn.ready,
+        ),
+      );
+      const done = yield* Effect.forkScoped(
+        runRequest(
+          `${name}.done`,
+          { abortSignal: owner.signal },
+          () => turn.done,
+        ).pipe(Effect.tap(() => owner.markComplete)),
+      );
+      return {
+        result: wrapTextStream(name, turn.result),
+        ready: Fiber.join(ready),
+        done: Fiber.join(done),
+      };
+    });
   }
 
   compact(instructions?: string) {
@@ -415,7 +579,9 @@ export class HarnessAgent<A = unknown, P = A, I = unknown> {
         R
       >(options, owner, tools, ({ tools: preparedTools, ...next }) => ({
         ...next,
-        ...(preparedTools ? { tools: bindTools(preparedTools as T, owner) } : {}),
+        ...(preparedTools
+          ? { tools: bindTools(preparedTools as T, owner) }
+          : {}),
       }));
       return yield* runSync('HarnessAgent.make', () => {
         const nativeOutput = output && bindOutput(output, owner);
