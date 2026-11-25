@@ -59,6 +59,7 @@ describe('Core chat', () => {
       const token = yield* RequestToken;
       let sent = false;
       let ended = false;
+      let sendSignal: AbortSignal | null | undefined;
       const source = createUIMessageStream({
         execute: ({ writer }) =>
           Effect.forEach(chunks, writer.write, { discard: true }),
@@ -83,17 +84,20 @@ describe('Core chat', () => {
         fetch: (_input, init) => {
           expect(new Headers(init?.headers).get('x-test-token')).toBe(token);
           expect(init?.method).toBe('POST');
+          sendSignal = init?.signal;
           sent = true;
           return Effect.runPromise(Effect.succeed(response));
         },
       });
       expect(sent).toBe(false);
-      const stream = yield* transport.sendMessages({
-        ...request,
-        messages: [],
-      });
-      const messages = yield* Stream.runCollect(
-        readUIMessageStream({ stream }),
+      const messages = yield* Effect.scoped(
+        transport
+          .sendMessages({ ...request, messages: [] })
+          .pipe(
+            Effect.flatMap((stream) =>
+              Stream.runCollect(readUIMessageStream({ stream })),
+            ),
+          ),
       );
       expect(messages.at(-1)).toMatchObject({
         id: 'assistant',
@@ -102,6 +106,7 @@ describe('Core chat', () => {
       });
       expect(response.status).toBe(202);
       expect(ended).toBe(true);
+      expect(sendSignal?.aborted).toBe(false);
     }).pipe(Effect.provideService(RequestToken, 'token')),
   );
 
@@ -305,6 +310,23 @@ describe('Core chat', () => {
         }),
       );
       expect(invalid).toBeInstanceOf(AiSdkError);
+    }),
+  );
+
+  it.effect('tags errors in UI stream outcomes before calling observers', () =>
+    Effect.gen(function* () {
+      let error: AiSdkError | undefined;
+      const source = createUIMessageStream({
+        execute: ({ writer }) =>
+          writer.setOutcome({ status: 'failed', error: 'private information' }),
+        onEnd: ({ outcome }) =>
+          Effect.sync(() => {
+            if (outcome.status === 'failed') error = outcome.error;
+          }),
+      });
+      yield* Stream.runDrain(source);
+      expect(error).toBeInstanceOf(AiSdkError);
+      expect(String(error)).not.toContain('private information');
     }),
   );
 
