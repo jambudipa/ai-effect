@@ -4,8 +4,13 @@ import {
   toBaseMessages as sdkToBaseMessages,
   toUIMessageStream as sdkToUIMessageStream,
 } from '@ai-sdk/langchain';
-import type { LangSmithDeploymentTransportOptions } from '@ai-sdk/langchain';
 import type { AIMessageChunk } from '@langchain/core/messages';
+import type {
+  BaseChannel,
+  PregelNode,
+  PregelParams,
+} from '@langchain/langgraph';
+import type { Client } from '@langchain/langgraph-sdk';
 import type { ModelMessage, UIMessage } from 'ai';
 import { Effect, Stream } from 'effect';
 import { wrapChatTransport } from '../internal/chat-transport.js';
@@ -19,7 +24,18 @@ import {
 import { fromReadable } from './internal/stream.js';
 import type { StreamCallbacks as BaseCallbacks } from './llamaindex.js';
 
-export type { LangSmithDeploymentTransportOptions } from '@ai-sdk/langchain';
+/** Graph options for a LangSmith deployment. The SDK defaults the graph ID to `agent`. */
+export type LangSmithDeploymentTransportOptions = Omit<
+  PregelParams<Record<string, PregelNode>, Record<string, BaseChannel>>,
+  'channels' | 'nodes' | 'inputChannels' | 'outputChannels'
+> & {
+  graphId?: string;
+  client?: Client;
+  url?: string;
+  apiKey?: string;
+  headers?: Record<string, string>;
+  streamResumable?: boolean;
+};
 
 /** Lifecycle callbacks for the native LangChain protocol. */
 export interface StreamCallbacks<
