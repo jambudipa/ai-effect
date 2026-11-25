@@ -1,4 +1,5 @@
-import * as sdk from '@ai-sdk/code-mode';
+import * as native from '@ai-sdk/code-mode';
+import type * as SDKContract from './internal/code-mode-contract.js';
 import { Effect, Redacted, Stream } from 'effect';
 import {
   AiSdkError,
@@ -13,6 +14,8 @@ import {
 } from '../internal/tool.js';
 import { wrapError } from './internal/error.js';
 import { wrapTool } from './internal/sdk-tool.js';
+
+const sdk = native as unknown as typeof SDKContract;
 
 export type {
   ApprovalDecision,
@@ -29,7 +32,7 @@ export type {
   CodeModeToolExecutionOptions,
   CodeModeToolInput,
   CodeModeUnwrappedResult,
-} from '@ai-sdk/code-mode';
+} from './internal/code-mode-contract.js';
 
 export const DIRECT_TOOL_CALL = sdk.DIRECT_TOOL_CALL;
 
@@ -133,7 +136,7 @@ export const experimental_unwrapCodeModeResult = (
   );
 
 export const experimental_requestCodeModeInterrupt = <
-  P extends sdk.CodeModeInterruptPayload,
+  P extends SDKContract.CodeModeInterruptPayload,
 >(
   payload: P,
 ) =>
@@ -155,13 +158,13 @@ export const experimental_setMaxWorkers = (
     sdk.experimental_setMaxWorkers(...args),
   );
 
-type NativeApproval = NonNullable<sdk.CodeModeOptions['approval']>;
+type NativeApproval = NonNullable<SDKContract.CodeModeOptions['approval']>;
 type ApprovalHook<E, R> = (
-  request: sdk.CodeModeApprovalRequest,
-) => Effect.Effect<sdk.ApprovalDecision, E, R>;
+  request: SDKContract.CodeModeApprovalRequest,
+) => Effect.Effect<SDKContract.ApprovalDecision, E, R>;
 
 export type CodeModeOptions<E = never, R = never> = Omit<
-  sdk.CodeModeOptions,
+  SDKContract.CodeModeOptions,
   'approval'
 > & {
   readonly approval?: Omit<NativeApproval, 'onApprovalRequired'> & {
@@ -170,7 +173,7 @@ export type CodeModeOptions<E = never, R = never> = Omit<
 };
 
 export type CodeModeToolOptions<E = never, R = never> = CodeModeOptions<E, R> &
-  Pick<sdk.CodeModeToolOptions, 'toolDiscovery'>;
+  Pick<SDKContract.CodeModeToolOptions, 'toolDiscovery'>;
 
 export type CodeModeToolSet = EffectTools;
 
@@ -178,7 +181,7 @@ export type RunCodeModeInput<
   T extends EffectTools = EffectTools,
   E = never,
   R = never,
-> = Omit<sdk.RunCodeModeInput, 'options' | 'tools'> & {
+> = Omit<SDKContract.RunCodeModeInput, 'options' | 'tools'> & {
   readonly tools: T;
   readonly options?: CodeModeOptions<E, R>;
 };
@@ -232,7 +235,7 @@ const bindOptions = <E, R>(
       approval: {
         ...strategy,
         ...(onApprovalRequired && {
-          onApprovalRequired: (request: sdk.CodeModeApprovalRequest) =>
+          onApprovalRequired: (request: SDKContract.CodeModeApprovalRequest) =>
             owner.runCallback(onApprovalRequired(request)),
         }),
       },
@@ -250,9 +253,9 @@ const launch = <T extends EffectTools, E, R, O extends LaunchOptions<T, E, R>>(
   options: O,
   invoke: (
     input: Omit<O, 'tools' | 'options' | 'toolExecutionOptions'> & {
-      tools: sdk.CodeModeToolSet;
-      options: sdk.CodeModeOptions;
-      toolExecutionOptions: Partial<sdk.CodeModeToolExecutionOptions>;
+      tools: SDKContract.CodeModeToolSet;
+      options: SDKContract.CodeModeOptions;
+      toolExecutionOptions: Partial<SDKContract.CodeModeToolExecutionOptions>;
     },
   ) => Promise<unknown>,
 ) =>
@@ -311,18 +314,19 @@ export const experimental_continueCodeModeApproval = <
 
 type InterruptInput<
   T extends EffectTools,
-  P extends sdk.CodeModeInterruptPayload,
+  P extends SDKContract.CodeModeInterruptPayload,
   A,
   E,
   R,
 > = LaunchOptions<T, E, R> & {
-  readonly interrupt: sdk.CodeModeInterrupt<P>;
+  readonly interrupt: SDKContract.CodeModeInterrupt<P>;
   readonly resolution: A;
 };
 
 export const experimental_continueCodeModeInterrupt = <
   T extends EffectTools,
-  P extends sdk.CodeModeInterruptPayload = sdk.CodeModeInterruptPayload,
+  P extends SDKContract.CodeModeInterruptPayload =
+    SDKContract.CodeModeInterruptPayload,
   A = unknown,
   E = never,
   R = never,

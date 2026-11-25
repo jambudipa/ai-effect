@@ -15,7 +15,7 @@ export default [
     },
   },
   {
-    files: ['src/integrations/internal/mcp-contract.ts'],
+    files: ['src/integrations/internal/{code-mode,mcp}-contract.ts'],
     rules: {
       // The archive generator copies the native declaration contract only.
       'effect/no-zod-use-schema': 'off',
