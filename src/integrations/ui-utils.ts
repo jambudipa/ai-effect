@@ -14,18 +14,15 @@ import { ownReadable } from '../internal/readable.js';
 export type {
   AssistantMessage,
   AssistantStatus,
-  AssistantStreamPart,
   AssistantStreamString,
   Attachment,
   ChatRequest,
   ChatRequestOptions,
   CreateMessage,
   DataMessage,
-  DataStreamPart,
   DataStreamString,
   DeepPartial,
   FileUIPart,
-  IdGenerator,
   JSONValue,
   Message,
   ReasoningUIPart,
@@ -36,9 +33,6 @@ export type {
   ToolInvocation,
   ToolInvocationUIPart,
   UIMessage,
-  UseAssistantOptions,
-  UseChatOptions,
-  UseCompletionOptions,
 } from '@ai-sdk/ui-utils';
 
 type LegacyCallback = (...args: never[]) => unknown;
@@ -51,6 +45,75 @@ type EffectCallbacks<Options, Services> = {
 type ProcessOptions<Options, Services> = EffectCallbacks<Options, Services> & {
   readonly stream: ReadableStream<Uint8Array>;
   readonly abortSignal?: AbortSignal;
+};
+
+type DataPart = ReturnType<typeof sdk.parseDataStreamPart>;
+type AssistantPart = ReturnType<typeof sdk.parseAssistantStreamPart>;
+type DataValue<Kind extends DataPart['type']> = Extract<
+  DataPart,
+  { type: Kind }
+>['value'];
+type AssistantValue<Kind extends AssistantPart['type']> = Extract<
+  AssistantPart,
+  { type: Kind }
+>['value'];
+type StreamCallback<Value, R> = (
+  part: Value,
+) => Effect.Effect<void, unknown, R>;
+type StreamInput = {
+  readonly stream: ReadableStream<Uint8Array>;
+  readonly abortSignal?: AbortSignal;
+};
+
+type DataStreamOptions<R> = StreamInput & {
+  readonly onTextPart?: StreamCallback<DataValue<'text'>, R>;
+  readonly onReasoningPart?: StreamCallback<DataValue<'reasoning'>, R>;
+  readonly onReasoningSignaturePart?: StreamCallback<
+    DataValue<'reasoning_signature'>,
+    R
+  >;
+  readonly onRedactedReasoningPart?: StreamCallback<
+    DataValue<'redacted_reasoning'>,
+    R
+  >;
+  readonly onSourcePart?: StreamCallback<DataValue<'source'>, R>;
+  readonly onFilePart?: StreamCallback<DataValue<'file'>, R>;
+  readonly onDataPart?: StreamCallback<DataValue<'data'>, R>;
+  readonly onErrorPart?: StreamCallback<DataValue<'error'>, R>;
+  readonly onToolCallStreamingStartPart?: StreamCallback<
+    DataValue<'tool_call_streaming_start'>,
+    R
+  >;
+  readonly onToolCallDeltaPart?: StreamCallback<
+    DataValue<'tool_call_delta'>,
+    R
+  >;
+  readonly onToolCallPart?: StreamCallback<DataValue<'tool_call'>, R>;
+  readonly onToolResultPart?: StreamCallback<DataValue<'tool_result'>, R>;
+  readonly onMessageAnnotationsPart?: StreamCallback<
+    DataValue<'message_annotations'>,
+    R
+  >;
+  readonly onFinishMessagePart?: StreamCallback<DataValue<'finish_message'>, R>;
+  readonly onFinishStepPart?: StreamCallback<DataValue<'finish_step'>, R>;
+  readonly onStartStepPart?: StreamCallback<DataValue<'start_step'>, R>;
+};
+
+type AssistantStreamOptions<R> = StreamInput & {
+  readonly onTextPart?: StreamCallback<AssistantValue<'text'>, R>;
+  readonly onErrorPart?: StreamCallback<AssistantValue<'error'>, R>;
+  readonly onAssistantMessagePart?: StreamCallback<
+    AssistantValue<'assistant_message'>,
+    R
+  >;
+  readonly onAssistantControlDataPart?: StreamCallback<
+    AssistantValue<'assistant_control_data'>,
+    R
+  >;
+  readonly onDataMessagePart?: StreamCallback<
+    AssistantValue<'data_message'>,
+    R
+  >;
 };
 
 const processStream = <
@@ -92,13 +155,12 @@ const processStream = <
   );
 
 /** Process the ordered AI SDK 4 data stream with a scoped reader. */
-export const processDataStream = <R = never>(
-  options: ProcessOptions<Parameters<typeof sdk.processDataStream>[0], R>,
-) => processStream('legacy.processDataStream', sdk.processDataStream, options);
+export const processDataStream = <R = never>(options: DataStreamOptions<R>) =>
+  processStream('legacy.processDataStream', sdk.processDataStream, options);
 
 /** Process the ordered AI SDK 4 assistant stream with a scoped reader. */
 export const processAssistantStream = <R = never>(
-  options: ProcessOptions<Parameters<typeof sdk.processAssistantStream>[0], R>,
+  options: AssistantStreamOptions<R>,
 ) =>
   processStream(
     'legacy.processAssistantStream',
@@ -108,11 +170,23 @@ export const processAssistantStream = <R = never>(
 
 /** Process the legacy text stream with a scoped reader. */
 export const processTextStream = <R = never>(
-  options: ProcessOptions<Parameters<typeof sdk.processTextStream>[0], R>,
+  options: StreamInput & { readonly onTextPart: StreamCallback<string, R> },
 ) => processStream('legacy.processTextStream', sdk.processTextStream, options);
 
-type DataPart = ReturnType<typeof sdk.parseDataStreamPart>;
-type AssistantPart = ReturnType<typeof sdk.parseAssistantStreamPart>;
+export type DataStreamPart<Code extends string, Name extends string, Value> = {
+  readonly code: Code;
+  readonly name: Name;
+  readonly parse: (
+    input: sdk.JSONValue,
+  ) => Effect.Effect<{ type: Name; value: Value }, AiSdkError>;
+};
+
+export type AssistantStreamPart<
+  Code extends string,
+  Name extends string,
+  Value,
+> = DataStreamPart<Code, Name, Value>;
+export type IdGenerator = () => string;
 
 export const formatDataStreamPart = <Kind extends DataPart['type']>(
   ...args: Parameters<typeof sdk.formatDataStreamPart<Kind>>
@@ -262,17 +336,81 @@ export const asSchema = <A, R = never>(
   );
 
 type RequestOwner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
-type EffectCallback<Fn, R> = Fn extends (...args: infer Args) => infer A
-  ? (...args: Args) => Effect.Effect<Awaited<A>, unknown, R>
-  : Fn;
-
 type ChatOptions = Parameters<typeof sdk.callChatApi>[0];
-type CompletionOptions = Parameters<typeof sdk.callCompletionApi>[0];
-type ScopedRequestOptions<Options, Callback extends keyof Options, R> = {
-  [K in keyof Options]: K extends Callback
-    ? EffectCallback<Options[K], R>
-    : Options[K];
-} & { readonly abortSignal?: AbortSignal };
+type HostResult<A> = A | PromiseLike<A> | Effect.Effect<A, unknown>;
+type ChatFinish = Parameters<NonNullable<sdk.UseChatOptions['onFinish']>>;
+type ToolCall = Parameters<NonNullable<sdk.UseChatOptions['onToolCall']>>[0];
+type ChatUpdate = Parameters<ChatOptions['onUpdate']>[0];
+
+type FetchSettings = {
+  readonly credentials?: RequestCredentials;
+  readonly headers?: Record<string, string> | Headers;
+  readonly fetch?: typeof globalThis.fetch;
+  readonly onError?: (error: AiSdkError) => HostResult<void>;
+};
+type TextSettings = FetchSettings & {
+  readonly api?: string;
+  readonly id?: string;
+  readonly initialInput?: string;
+  readonly streamProtocol?: 'data' | 'text';
+  readonly onResponse?: (response: Response) => HostResult<void>;
+};
+
+export type UseChatOptions = TextSettings & {
+  readonly initialMessages?: sdk.Message[];
+  readonly onToolCall?: (call: ToolCall) => HostResult<unknown>;
+  readonly onFinish?: (...args: ChatFinish) => HostResult<void>;
+  readonly generateId?: IdGenerator;
+  readonly body?: object;
+  readonly sendExtraMessageFields?: boolean;
+};
+
+export type UseCompletionOptions = TextSettings & {
+  readonly initialCompletion?: string;
+  readonly onFinish?: (prompt: string, completion: string) => HostResult<void>;
+  readonly body?: object;
+};
+
+export type UseAssistantOptions = FetchSettings & {
+  readonly api: string;
+  readonly threadId?: string;
+  readonly body?: object;
+};
+
+type HttpRequest<R> = {
+  readonly api: string;
+  readonly body: Record<string, unknown>;
+  readonly streamProtocol: 'data' | 'text' | undefined;
+  readonly credentials: RequestCredentials | undefined;
+  readonly headers: HeadersInit | undefined;
+  readonly onResponse:
+    ((response: Response) => Effect.Effect<void, unknown, R>) | undefined;
+  readonly fetch: typeof globalThis.fetch | undefined;
+  readonly abortSignal?: AbortSignal;
+};
+
+type ChatRequestOptions<R> = HttpRequest<R> & {
+  readonly abortController: (() => AbortController | null) | undefined;
+  readonly restoreMessagesOnFailure: () => void;
+  readonly onUpdate: (update: ChatUpdate) => void;
+  readonly onFinish: ((...args: ChatFinish) => void) | undefined;
+  readonly onToolCall:
+    ((call: ToolCall) => Effect.Effect<unknown, unknown, R>) | undefined;
+  readonly generateId: IdGenerator;
+  readonly lastMessage: sdk.UIMessage | undefined;
+  readonly requestType?: 'generate' | 'resume';
+};
+
+type CompletionRequestOptions<R> = HttpRequest<R> & {
+  readonly prompt: string;
+  readonly setCompletion: (completion: string) => void;
+  readonly setLoading: (loading: boolean) => void;
+  readonly setError: (error: AiSdkError | undefined) => void;
+  readonly setAbortController: (controller: AbortController | null) => void;
+  readonly onFinish: ((prompt: string, completion: string) => void) | undefined;
+  readonly onError: ((cause: AiSdkError) => void) | undefined;
+  readonly onData: ((data: sdk.JSONValue[]) => void) | undefined;
+};
 
 const scopedRequest = <A, R>(
   operation: string,
@@ -290,9 +428,7 @@ const scopedRequest = <A, R>(
     }),
   );
 
-export const callChatApi = <R = never>(
-  options: ScopedRequestOptions<ChatOptions, 'onResponse' | 'onToolCall', R>,
-) =>
+export const callChatApi = <R = never>(options: ChatRequestOptions<R>) =>
   scopedRequest<void, R>('legacy.callChatApi', options.abortSignal, (owner) => {
     const { abortSignal, onResponse, onToolCall, ...request } = options;
     return sdk.callChatApi({
@@ -321,7 +457,7 @@ export const callChatApi = <R = never>(
   });
 
 export const callCompletionApi = <R = never>(
-  options: ScopedRequestOptions<CompletionOptions, 'onResponse', R>,
+  options: CompletionRequestOptions<R>,
 ) =>
   scopedRequest<string | null | undefined, R>(
     'legacy.callCompletionApi',

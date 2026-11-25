@@ -14,7 +14,10 @@ import { inspect } from 'node:util';
 import { expectTypeOf } from 'vitest';
 import { generateText, Output, ToolLoopAgent, tool } from '../src/core.js';
 import {
+  asSchema,
+  callCompletionApi,
   formatDataStreamPart,
+  jsonSchema,
   processDataStream,
 } from '../src/integrations/ui-utils.js';
 import { openOperation, sdkError } from '../src/internal/operation.js';
@@ -299,6 +302,60 @@ describe('provider stream scope', () => {
 });
 
 describe('legacy stream', () => {
+  it.effect(
+    'runs the completion response callback with the current Effect context',
+    () =>
+      Effect.gen(function* () {
+        const bytes = yield* formatDataStreamPart('text', 'ready');
+        const events: string[] = [];
+        const request = callCompletionApi({
+          api: 'https://fixture.invalid/completion',
+          prompt: 'fixture',
+          body: {},
+          streamProtocol: 'data',
+          credentials: undefined,
+          headers: undefined,
+          setCompletion: (completion) => {
+            events.push(completion);
+          },
+          setLoading: () => {},
+          setError: () => {},
+          setAbortController: () => {},
+          onFinish: (_prompt, completion) => {
+            events.push(`done: ${completion}`);
+          },
+          onError: undefined,
+          onData: undefined,
+          onResponse: () =>
+            Effect.gen(function* () {
+              events.push(yield* RunName);
+            }),
+          fetch: () => Promise.resolve(new Response(bytes)),
+        });
+        expectTypeOf<
+          Effect.Services<typeof request>
+        >().toEqualTypeOf<RunName>();
+        expect(
+          yield* request.pipe(Effect.provideService(RunName, 'response')),
+        ).toBe('ready');
+        expect(events).toEqual(['', 'response', 'ready', 'done: ready']);
+      }),
+  );
+
+  it.effect('keeps validation on the wrapped legacy schema', () =>
+    Effect.gen(function* () {
+      const schema = yield* jsonSchema<number>(
+        { type: 'number' },
+        { validate: () => Effect.succeed({ success: true, value: 42 }) },
+      );
+      expect(yield* asSchema(schema)).toBe(schema);
+      expect(yield* schema.validate!('test')).toEqual({
+        success: true,
+        value: 42,
+      });
+    }),
+  );
+
   it.effect(
     'dispatches legacy callbacks in wire order and unlocks at completion',
     () =>

@@ -91,6 +91,12 @@ try {
   run(fixture, process.execPath, [tsc, '-p', 'tsconfig.json']);
   run(fixture, process.execPath, ['.compiled/core.mjs']);
   run(fixture, process.execPath, ['legacy.cjs']);
+  run(fixture, process.execPath, [
+    join(scope, 'vitest/vitest.mjs'),
+    'run',
+    '--config',
+    'legacy.vitest.config.mjs',
+  ]);
   if (!existsSync(vite))
     throw new Error('Vite did not install for the Svelte fixture.');
   run(fixture, process.execPath, [vite, 'build']);
