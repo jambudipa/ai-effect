@@ -128,3 +128,14 @@ export const createACP = <
       ),
     );
   });
+
+export type ACPV1Settings<R = never, E = never> = Omit<
+  sdk.ACPV1Settings,
+  'credentialForwarding' | 'prepareSandbox' | 'resolveAuthenticationEnvironment'
+> &
+  Pick<
+    ACPHarnessSettings<{}, AskQuestions, R, E>,
+    | 'credentialForwarding'
+    | 'prepareSandbox'
+    | 'resolveAuthenticationEnvironment'
+  >;
