@@ -8,6 +8,13 @@ import {
   sdkError,
 } from '../src/internal/operation.js';
 import { bindTools, tool, type ToolServices } from '../src/internal/tool.js';
+import {
+  executeTool,
+  type InferToolInput,
+  type InferToolOutput,
+  type InferToolSetContext,
+  type ToolSet,
+} from '../src/protocols/provider-utils.js';
 
 class Offset extends Context.Service<Offset, number>()(
   '@jambudipa/ai-effect/tests/ToolOffset',
@@ -43,6 +50,16 @@ it.effect('infers context, numeric results and all callback services', () =>
         outputSchema: Schema.Boolean,
       }),
     };
+    expectTypeOf(tools).toExtend<ToolSet>();
+    expectTypeOf<InferToolInput<typeof tools.calculate>>().toEqualTypeOf<{
+      value: number;
+    }>();
+    expectTypeOf<
+      InferToolOutput<typeof tools.calculate>
+    >().toEqualTypeOf<number>();
+    expectTypeOf<
+      InferToolSetContext<typeof tools>['calculate']['factor']
+    >().toEqualTypeOf<number>();
     expectTypeOf<ToolServices<typeof tools>>().toEqualTypeOf<
       Offset | Approval
     >();
@@ -104,5 +121,26 @@ it.effect(
       yield* Fiber.join(second);
       expect(yield* Deferred.await(closed)).toBe(true);
       expect(factoryCalls).toBe(1);
+    }),
+);
+
+it.effect(
+  'emits preliminary and final results from the standalone executor',
+  () =>
+    Effect.gen(function* () {
+      const count = tool({
+        inputSchema: Schema.Number,
+        execute: (input) => Stream.make(input, input + 1),
+      });
+      const output = executeTool({
+        tool: count,
+        input: 2,
+        options: { toolCallId: 'count', context: {}, messages: [] },
+      });
+      expect(yield* Stream.runCollect(output)).toEqual([
+        { type: 'preliminary', output: 2 },
+        { type: 'preliminary', output: 3 },
+        { type: 'final', output: 3 },
+      ]);
     }),
 );
