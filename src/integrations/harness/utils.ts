@@ -8,7 +8,7 @@ import {
   sdkError,
 } from '../../internal/operation.js';
 import { toSdkSchema } from '../../internal/schema.js';
-import { Effect, Queue, type Schema, Stream } from 'effect';
+import { Effect, Queue, type Schema, type Scope, Stream } from 'effect';
 import { wrapSchema } from '../internal/schema.js';
 import { type HarnessV1CredentialForwarding } from '../internal/harness.js';
 import {
@@ -128,9 +128,37 @@ export const isSandboxCredentialPlaceholder = (
 export const isWindows = (...args: Parameters<typeof sdk.isWindows>) =>
   runSync('HarnessUtils.isWindows', () => sdk.isWindows(...args));
 
-export const logBridgeError = (
-  ...args: Parameters<typeof sdk.logBridgeError>
-) => runSync('HarnessUtils.logBridgeError', () => sdk.logBridgeError(...args));
+type LogBridgeErrorOptions<E, R> = Omit<
+  Parameters<typeof sdk.logBridgeError>[0],
+  'write'
+> & {
+  readonly write?: (line: string) => Effect.Effect<void, E, R>;
+};
+
+export const logBridgeError = <E = never, R = never>(
+  options: LogBridgeErrorOptions<E, R>,
+) =>
+  Effect.gen(function* () {
+    const { write, ...nativeOptions } = options;
+    if (!write) {
+      return yield* runSync('HarnessUtils.logBridgeError', () =>
+        sdk.logBridgeError(nativeOptions),
+      );
+    }
+    const lines = yield* runSync('HarnessUtils.logBridgeError', () => {
+      let output: string[] = [];
+      sdk.logBridgeError({
+        ...nativeOptions,
+        write: (line) => {
+          output = [...output, line];
+        },
+      });
+      return output;
+    });
+    yield* Effect.forEach(lines, (line) => Effect.suspend(() => write(line)), {
+      discard: true,
+    });
+  });
 
 export const maskSandboxCredentials = (
   ...args: Parameters<typeof sdk.maskSandboxCredentials>
@@ -254,10 +282,16 @@ export type WriteInstructionsOptions = Sandboxed<
   SDKContract.WriteInstructionsOptions,
   'sandbox'
 >;
-export type WriteSkillsOptions = Sandboxed<
-  SDKContract.WriteSkillsOptions,
-  'sandbox'
->;
+export type WriteSkillsOptions = Omit<
+  Sandboxed<SDKContract.WriteSkillsOptions, 'sandbox'>,
+  'invalidSkillNameMessage' | 'invalidSkillFilePathMessage'
+> & {
+  readonly invalidSkillNameMessage?: (input: { name: string }) => string;
+  readonly invalidSkillFilePathMessage?: (input: {
+    skillName: string;
+    filePath: string;
+  }) => string;
+};
 
 export const resolveSandboxHomeDir = (
   options: Sandboxed<
@@ -319,9 +353,7 @@ export const writeInstructions = (
     ),
   );
 
-export const writeSkills = (
-  options: Sandboxed<Parameters<typeof sdk.writeSkills>[0], 'sandbox'>,
-) =>
+export const writeSkills = (options: WriteSkillsOptions) =>
   withSandbox('HarnessUtils.writeSkills', options.sandbox, (sandbox) =>
     runRequest('HarnessUtils.writeSkills', options, (abortSignal) =>
       sdk.writeSkills({ ...options, sandbox, abortSignal }),
@@ -530,10 +562,20 @@ export type Experimental_BridgeUserMessageSubmitter = ReturnType<
   typeof wrapSubmitter
 >;
 
+type BridgeSubmitterTransport = {
+  readonly send: (
+    message: SDKContract.Experimental_BridgeUserMessageRequest,
+  ) => void;
+  readonly onResponse: (
+    listener: (
+      response: SDKContract.Experimental_BridgeUserMessageResponse,
+    ) => void,
+  ) => () => void;
+  readonly onReconnect: (listener: () => void) => () => void;
+};
+
 export const experimental_createBridgeUserMessageSubmitter = (
-  options: Parameters<
-    typeof sdk.experimental_createBridgeUserMessageSubmitter
-  >[0],
+  options: BridgeSubmitterTransport,
 ) =>
   Effect.acquireRelease(
     runSync('HarnessUtils.createBridgeUserMessageSubmitter', () =>
@@ -561,7 +603,7 @@ export type SandboxChannelOptions<
   E = never,
 > = Omit<
   SDKContract.SandboxChannelOptions<Out>,
-  'connect' | 'outboundSchema'
+  'connect' | 'outboundSchema' | 'onDebug' | 'onDiagnostic' | 'onBridgeError'
 > & {
   readonly connect: (
     options: SDKContract.SandboxChannelConnectOptions,
@@ -571,6 +613,20 @@ export type SandboxChannelOptions<
     R
   >;
   readonly outboundSchema: Schema.ConstraintDecoder<Out, R>;
+  readonly onDebug?: (
+    event: SDKContract.SandboxChannelDebugEvent,
+  ) => Effect.Effect<void, E, R>;
+  readonly onDiagnostic?: (
+    event: Extract<Out, { type: 'sandbox-log' | 'debug-event' }>,
+  ) => Effect.Effect<void, E, R>;
+  readonly onBridgeError?: (
+    event: Extract<Out, { type: 'error' }>,
+  ) => Effect.Effect<void, E, R>;
+};
+
+type ChannelSendOptions<E, R> = {
+  readonly queueIfDisconnected?: boolean;
+  readonly onSent?: () => Effect.Effect<void, E, R>;
 };
 
 /** A scoped, ordered channel to a harness bridge. */
@@ -583,7 +639,21 @@ export class SandboxChannel<Out extends Frame, In extends Frame = Frame> {
   >(options: SandboxChannelOptions<Out, R, E>) {
     return Effect.gen(function* () {
       const owner = yield* openOperation<R>();
-      const { connect, outboundSchema, ...rest } = options;
+      const {
+        connect,
+        outboundSchema,
+        onDebug,
+        onDiagnostic,
+        onBridgeError,
+        ...rest
+      } = options;
+      const notify =
+        <Event>(listener: (event: Event) => Effect.Effect<void, E, R>) =>
+        (event: Event) => {
+          void owner
+            .runCallback(Effect.suspend(() => listener(event)))
+            .catch(() => {});
+        };
       const channel = yield* Effect.acquireRelease(
         runSync(
           'SandboxChannel.make',
@@ -592,8 +662,14 @@ export class SandboxChannel<Out extends Frame, In extends Frame = Frame> {
               new sdk.SandboxChannel({
                 ...rest,
                 connect: (input) =>
-                  owner.runCallback(connect(input), input.abortSignal),
+                  owner.runCallback(
+                    Effect.suspend(() => connect(input)),
+                    input.abortSignal,
+                  ),
                 outboundSchema: toSdkSchema(outboundSchema, owner),
+                ...(onDebug && { onDebug: notify(onDebug) }),
+                ...(onDiagnostic && { onDiagnostic: notify(onDiagnostic) }),
+                ...(onBridgeError && { onBridgeError: notify(onBridgeError) }),
               }),
             ),
         ),
@@ -682,8 +758,31 @@ export class SandboxChannel<Out extends Frame, In extends Frame = Frame> {
     ).pipe(Effect.asVoid);
   }
 
-  send(...args: Parameters<Channel<Out, In>['send']>) {
-    return runSync('SandboxChannel.send', () => this.native.send(...args));
+  send(
+    message: In,
+    options?: Omit<ChannelSendOptions<never, never>, 'onSent'>,
+  ): Effect.Effect<void, AiSdkError>;
+  send<E, R>(
+    message: In,
+    options: ChannelSendOptions<E, R>,
+  ): Effect.Effect<void, AiSdkError, R | Scope.Scope>;
+  send<E, R>(message: In, options?: ChannelSendOptions<E, R>) {
+    const { onSent, ...rest } = options ?? {};
+    if (!onSent)
+      return runSync('SandboxChannel.send', () =>
+        this.native.send(message, rest),
+      );
+    return Effect.gen({ self: this }, function* () {
+      const owner = yield* openOperation<R>();
+      return yield* runSync('SandboxChannel.send', () =>
+        this.native.send(message, {
+          ...rest,
+          onSent: () => {
+            void owner.runCallback(Effect.suspend(onSent)).catch(() => {});
+          },
+        }),
+      );
+    });
   }
 
   get beginClose() {
