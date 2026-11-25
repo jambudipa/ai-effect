@@ -4,6 +4,7 @@ import { Effect, Stream } from 'effect';
 import type { Scope } from 'effect';
 import { bindSchema, type FlexibleSchema } from './core-schema.js';
 import type { LanguageModel } from './core.js';
+import { bindCoreOptions, type CoreOptions } from './internal/core-settings.js';
 import { unwrapLanguageModel } from './internal/language-model.js';
 import { unwrapLegacyModel } from './internal/legacy-model.js';
 import {
@@ -26,19 +27,11 @@ type LegacyNative = Exclude<
 >;
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
-type OwnedValue<Value, R> = Value extends (...args: infer Args) => infer Result
-  ? (...args: Args) => Effect.Effect<Awaited<Result>, unknown, R>
-  : Value;
-
 type OwnedNativeOptions<Options, R> = Options extends object
-  ? {
-      [
-        Key in keyof Options as Key extends
-          'model' | 'schema' | 'enum' | 'output' | '_internal'
-          ? never
-          : Key
-      ]: OwnedValue<Options[Key], R>;
-    }
+  ? CoreOptions<
+      Omit<Options, 'model' | 'schema' | 'enum' | 'output' | '_internal'>,
+      R
+    >
   : never;
 
 type ObjectInput<A, R> = OwnedNativeOptions<NativeOptions<A>, R> & {
@@ -91,20 +84,7 @@ function bindOptions<A, R>(
         }),
       );
     }
-    const resolved = Object.fromEntries(
-      Object.entries(options).map(([key, value]) => {
-        if (typeof value !== 'function' || key === 'model' || key === 'schema')
-          return [key, value];
-        const callback = value as (
-          ...args: unknown[]
-        ) => Effect.Effect<unknown, unknown, R>;
-        return [
-          key,
-          (...args: unknown[]) =>
-            owner.runCallback(Effect.suspend(() => callback(...args))),
-        ];
-      }),
-    );
+    const resolved = bindCoreOptions(options, owner);
     const schema =
       'schema' in options ? yield* bindSchema(options.schema, owner) : void 0;
     return {
