@@ -15,6 +15,7 @@ import {
   type SandboxSession,
   wrapSandbox,
 } from '../integrations/internal/sandbox.js';
+import { rememberTelemetryTools } from '../integrations/internal/telemetry.js';
 import { bindLazySchema } from './lazy-schema.js';
 import { type openOperation, runRequest, sdkError } from './operation.js';
 import {
@@ -449,8 +450,8 @@ const bindFunctionTool = <R>(
 export const bindTools = <Tools extends EffectTools>(
   tools: Tools,
   owner: Owner<ToolServices<Tools>>,
-): BoundTools<Tools> =>
-  Object.fromEntries(
+): BoundTools<Tools> => {
+  const native = Object.fromEntries(
     Object.entries(tools).map(([name, definition]) => {
       const bound = deferredTools.get(definition);
       if (bound) return [name, bound(owner)];
@@ -481,4 +482,7 @@ export const bindTools = <Tools extends EffectTools>(
         ),
       ];
     }),
-  ) as unknown as BoundTools<Tools>;
+  );
+  rememberTelemetryTools(native, tools);
+  return native as unknown as BoundTools<Tools>;
+};
