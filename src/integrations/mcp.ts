@@ -60,7 +60,9 @@ export type {
 } from './internal/mcp-contract.js';
 
 export const MCP_APP_MIME_TYPE = sdk.MCP_APP_MIME_TYPE;
-export const mcpAppClientCapabilities = sdk.mcpAppClientCapabilities;
+export const mcpAppClientCapabilities = structuredClone(
+  sdk.mcpAppClientCapabilities,
+);
 
 export const validateJSONRPCMessage = (message: unknown) =>
   runSync('MCP.validateJSONRPCMessage', () =>
