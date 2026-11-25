@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { format, resolveConfig } from 'prettier';
 import ts from 'typescript';
+import { generateJustBashContract } from './generate-just-bash-contract.mjs';
 
 const require = createRequire(import.meta.url);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -43,6 +44,7 @@ const rewriting = new Map([
     `./${filename.replace(/\.d\.ts$/u, '.js')}`,
   ]),
   ['@ai-sdk/mcp', '../mcp-contract.js'],
+  ['just-bash', './just-bash/sandbox/Sandbox.js'],
 ]);
 
 const printer = ts.createPrinter({ removeComments: true });
@@ -109,7 +111,7 @@ function normalize(filename, contents) {
   return printer.printFile(parsed);
 }
 
-const source = new Map();
+const source = await generateJustBashContract(require, sourceDirectory);
 for (const entry of entries) {
   const parts = entry.upstream.split('/');
   const name = parts.slice(0, 2).join('/');
@@ -149,7 +151,6 @@ for (const entry of entries) {
 }
 
 const check = process.argv.includes('--check');
-if (!check) await mkdir(sourceDirectory, { recursive: true });
 for (const [filename, content] of source) {
   const sourceFile = path.join(sourceDirectory, filename);
   if (check) {
@@ -157,6 +158,7 @@ for (const [filename, content] of source) {
       throw new Error(`Generated declaration contract is stale: ${filename}`);
     }
   } else {
+    await mkdir(path.dirname(sourceFile), { recursive: true });
     await writeFile(sourceFile, content);
   }
 }

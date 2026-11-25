@@ -1,7 +1,7 @@
 // Generated from @ai-sdk/sandbox-just-bash in @ai-sdk/sandbox-just-bash@1.0.193. Do not edit.
 // Original license: harness.LICENSE.
 // Normalize Zod v4 declarations for the Zod 3.25.76 bridge.
-import { Sandbox } from 'just-bash';
+import { Sandbox } from './just-bash/sandbox/Sandbox.js';
 import {
   HarnessV1NetworkSandboxSession,
   HarnessV1SandboxProvider,

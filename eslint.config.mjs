@@ -7,7 +7,7 @@ export default [
   { files, languageOptions: { parser } },
   effectLintConfig(files),
   {
-    files: ['src/integrations/internal/harness-contracts/*.d.ts'],
+    files: ['src/integrations/internal/harness-contracts/**/*.d.ts'],
     rules: {
       // These declarations mirror the pinned SDK signatures at the compatibility boundary.
       'effect/no-zod-use-schema': 'off',
