@@ -1,4 +1,5 @@
 import type {
+  experimental_streamTextLowMemory,
   StreamTextResult,
   TextStreamPart,
   ToolSet,
@@ -129,30 +130,47 @@ export type TextStreamResult<
   ) => Effect.Effect<Response, AiSdkError>;
 };
 
-export const wrapTextStream = <
+type NativeSingleConsumer<
+  Tools extends ToolSet,
+  Runtime extends Record<string, unknown>,
+  Output extends OutputInterface,
+> = ReturnType<typeof experimental_streamTextLowMemory<Tools, Runtime, Output>>;
+
+export type StreamTextSingleConsumerResult<
+  Tools extends ToolSet,
+  Runtime extends Record<string, unknown>,
+  Output extends OutputInterface,
+> = Pick<
+  TextStreamResult<Tools, Runtime, Output>,
+  keyof NativeSingleConsumer<Tools, Runtime, Output>
+>;
+
+const streamParts = <A>(operation: string, get: () => ReadableStream<A>) =>
+  Stream.unwrap(
+    runSync(operation, get).pipe(
+      Effect.map((readable) =>
+        Stream.fromReadableStream({
+          evaluate: () => readable,
+          onError: (cause) => sdkError(operation, cause),
+          // An unread replay branch can prevent source cancellation from resolving.
+          releaseLockOnEnd: true,
+        }),
+      ),
+    ),
+  );
+
+export const wrapSingleConsumerTextStream = <
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,
   Output extends OutputInterface,
 >(
   operation: string,
-  sdk: StreamTextResult<Tools, Runtime, Output>,
+  sdk: NativeSingleConsumer<Tools, Runtime, Output>,
   markComplete: Effect.Effect<void> = Effect.void,
-): TextStreamResult<Tools, Runtime, Output> => {
+): StreamTextSingleConsumerResult<Tools, Runtime, Output> => {
   const read = <A>(get: () => PromiseLike<A>) => runRequest(operation, {}, get);
   const parts = <A>(get: () => ReadableStream<A>) =>
-    Stream.unwrap(
-      runSync(operation, get).pipe(
-        Effect.map((readable) =>
-          Stream.fromReadableStream({
-            evaluate: () => readable,
-            onError: (cause) => sdkError(operation, cause),
-            // Cancel the SDK request through its scoped signal. An unread
-            // replay branch can otherwise prevent cancellation from resolving.
-            releaseLockOnEnd: true,
-          }),
-        ),
-      ),
-    );
+    streamParts(operation, get);
   const events = (get: () => ReadableStream<TextStreamPart<Tools>>) =>
     parts(get).pipe(
       Stream.mapEffect(
@@ -212,39 +230,15 @@ export const wrapTextStream = <
   }
 
   return {
-    content: read(() => sdk.content),
-    text: read(() => sdk.text),
-    reasoning: read(() => sdk.reasoning),
-    reasoningText: read(() => sdk.reasoningText),
-    files: read(() => sdk.files),
-    sources: read(() => sdk.sources),
-    toolCalls: read(() => sdk.toolCalls),
-    staticToolCalls: read(() => sdk.staticToolCalls),
-    dynamicToolCalls: read(() => sdk.dynamicToolCalls),
-    staticToolResults: read(() => sdk.staticToolResults),
-    dynamicToolResults: read(() => sdk.dynamicToolResults),
-    toolResults: read(() => sdk.toolResults),
     finishReason: read(() => sdk.finishReason),
     rawFinishReason: read(() => sdk.rawFinishReason),
-    stoppedBy: read(() => Promise.resolve(sdk.stoppedBy)),
     usage: read(() => sdk.usage),
     totalUsage: read(() => sdk.totalUsage),
-    warnings: read(() => sdk.warnings),
-    steps: read(() => sdk.steps),
-    finalStep: read(() => sdk.finalStep),
-    request: read(() => sdk.request),
-    response: read(() => sdk.response),
-    responseMessages: read(() => sdk.responseMessages),
-    providerMetadata: read(() => sdk.providerMetadata),
     textStream,
     stream: events(() => sdk.stream),
     fullStream: events(() => sdk.fullStream),
-    experimental_partialOutputStream: parts(
-      () => sdk.experimental_partialOutputStream,
-    ),
     partialOutputStream: parts(() => sdk.partialOutputStream),
     elementStream: parts(() => sdk.elementStream),
-    output: read(() => sdk.output),
     consumeStream: ({ onError } = {}) =>
       Effect.gen(function* () {
         let failure = Option.none<AiSdkError>();
@@ -275,5 +269,49 @@ export const wrapTextStream = <
     toUIMessageStreamResponse: uiResponse,
     toTextStreamResponse: (init) =>
       createTextStreamResponse({ ...init, stream: textStream }),
+  };
+};
+
+export const wrapTextStream = <
+  Tools extends ToolSet,
+  Runtime extends Record<string, unknown>,
+  Output extends OutputInterface,
+>(
+  operation: string,
+  sdk: StreamTextResult<Tools, Runtime, Output>,
+  markComplete: Effect.Effect<void> = Effect.void,
+): TextStreamResult<Tools, Runtime, Output> => {
+  const read = <A>(get: () => PromiseLike<A>) => runRequest(operation, {}, get);
+  return {
+    ...wrapSingleConsumerTextStream<Tools, Runtime, Output>(
+      operation,
+      sdk,
+      markComplete,
+    ),
+    content: read(() => sdk.content),
+    text: read(() => sdk.text),
+    reasoning: read(() => sdk.reasoning),
+    reasoningText: read(() => sdk.reasoningText),
+    files: read(() => sdk.files),
+    sources: read(() => sdk.sources),
+    toolCalls: read(() => sdk.toolCalls),
+    staticToolCalls: read(() => sdk.staticToolCalls),
+    dynamicToolCalls: read(() => sdk.dynamicToolCalls),
+    staticToolResults: read(() => sdk.staticToolResults),
+    dynamicToolResults: read(() => sdk.dynamicToolResults),
+    toolResults: read(() => sdk.toolResults),
+    stoppedBy: read(() => Promise.resolve(sdk.stoppedBy)),
+    warnings: read(() => sdk.warnings),
+    steps: read(() => sdk.steps),
+    finalStep: read(() => sdk.finalStep),
+    request: read(() => sdk.request),
+    response: read(() => sdk.response),
+    responseMessages: read(() => sdk.responseMessages),
+    providerMetadata: read(() => sdk.providerMetadata),
+    experimental_partialOutputStream: streamParts(
+      operation,
+      () => sdk.experimental_partialOutputStream,
+    ),
+    output: read(() => sdk.output),
   };
 };
