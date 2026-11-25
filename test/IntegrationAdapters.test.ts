@@ -1,6 +1,14 @@
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, Ref, Stream } from 'effect';
+import { Effect, Ref, Schema, Stream } from 'effect';
 import * as v from 'valibot';
+import {
+  type CodeModeToolExecutionOptions,
+  experimental_continueCodeModeInterrupt,
+  experimental_getCodeModeInterrupt,
+  experimental_requestCodeModeInterrupt,
+  experimental_runCodeMode,
+} from '../src/integrations/code-mode.js';
+import { tool } from '../src/internal/tool.js';
 import { toUIMessageStream } from '../src/integrations/llamaindex.js';
 import { createMCPClient } from '../src/integrations/mcp.js';
 import { createTestServer } from '../src/integrations/test-server.js';
@@ -90,6 +98,38 @@ describe('Just Bash integration', () => {
       const result = yield* sandbox.run({ command: 'printf adapter' });
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toBe('adapter');
+    }),
+  );
+});
+
+describe('Code mode integration', () => {
+  it.effect('continues an interruption requested by an Effect tool', () =>
+    Effect.gen(function* () {
+      const tools = {
+        pause: tool({
+          inputSchema: Schema.Struct({}),
+          execute: (_input, options: CodeModeToolExecutionOptions) =>
+            options.codeModeInterrupt
+              ? Schema.decodeUnknownEffect(Schema.String)(
+                  options.codeModeInterrupt.resolution,
+                )
+              : experimental_requestCodeModeInterrupt({ kind: 'fixture' }),
+        }),
+      };
+      const first = yield* experimental_runCodeMode({
+        js: 'return await tools.pause({})',
+        tools,
+      });
+      const interrupt = experimental_getCodeModeInterrupt(first);
+      expect(interrupt?.payload.kind).toBe('fixture');
+      if (interrupt) {
+        const result = yield* experimental_continueCodeModeInterrupt({
+          interrupt,
+          resolution: 'confirmed',
+          tools,
+        });
+        expect(result).toBe('confirmed');
+      }
     }),
   );
 });

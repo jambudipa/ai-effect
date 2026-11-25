@@ -1,7 +1,7 @@
 import * as sdk from '@ai-sdk/code-mode';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import {
-  type AiSdkError,
+  AiSdkError,
   openOperation,
   runRequest,
   runSync,
@@ -185,6 +185,35 @@ export type RunCodeModeInput<
 
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
+const bindCodeTools = <T extends EffectTools>(
+  tools: T,
+  owner: Owner<ToolServices<T>>,
+) =>
+  bindTools(
+    Object.fromEntries(
+      Object.entries(tools).map(([name, definition]) => {
+        if (!('execute' in definition)) return [name, definition];
+        const execute = definition.execute;
+        return [
+          name,
+          {
+            ...definition,
+            execute: (...args: never[]) =>
+              execute(...args).pipe(
+                Effect.mapError((error) =>
+                  error instanceof AiSdkError &&
+                  error.operation === 'CodeMode.requestInterrupt'
+                    ? Redacted.value(error.cause)
+                    : error,
+                ),
+              ),
+          },
+        ];
+      }),
+    ) as unknown as T,
+    owner,
+  );
+
 const bindOptions = <E, R>(
   options: CodeModeOptions<E, R> | undefined,
   owner: Owner<R>,
@@ -233,7 +262,7 @@ const launch = <T extends EffectTools, E, R, O extends LaunchOptions<T, E, R>>(
         (abortSignal) =>
           invoke({
             ...rest,
-            tools: bindTools(tools, owner),
+            tools: bindCodeTools(tools, owner),
             options: bindOptions(config, owner),
             toolExecutionOptions: { ...toolExecutionOptions, abortSignal },
           }),
@@ -314,7 +343,7 @@ export const experimental_createCodeModeTool = <
       wrapTool(
         'CodeMode.tool',
         sdk.experimental_createCodeModeTool(
-          bindTools(tools, owner),
+          bindCodeTools(tools, owner),
           bindOptions(options, owner),
         ),
       ),
@@ -351,7 +380,7 @@ export const experimental_codeModeTool = <E = never, R = never>(
               return yield* runSync('CodeMode.toolCaller.bind', () =>
                 wrapTool(
                   'CodeMode.toolCaller',
-                  caller.bind(bindTools(tools, toolOwner)),
+                  caller.bind(bindCodeTools(tools, toolOwner)),
                 ),
               );
             }),
@@ -360,7 +389,8 @@ export const experimental_codeModeTool = <E = never, R = never>(
               const toolOwner = yield* openOperation<ToolServices<T>>();
               return yield* runSync(
                 'CodeMode.toolCaller.prepareModelMessage',
-                () => caller.prepareModelMessage?.(bindTools(tools, toolOwner)),
+                () =>
+                  caller.prepareModelMessage?.(bindCodeTools(tools, toolOwner)),
               );
             }),
         },
