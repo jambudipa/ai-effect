@@ -9,9 +9,9 @@ import {
 } from 'ai';
 
 export { makeChatTransport } from './internal/chat-transport.js';
-export * from './core-models.js';
-export * from './core-errors.js';
 export * from './core-data.js';
+export * from './core-errors.js';
+export * from './core-models.js';
 export * from './internal/sdk-data/core.js';
 export type {
   ChatReconnectOptions,
@@ -150,6 +150,7 @@ export const streamText = <
         } as unknown as Parameters<
           typeof sdkStreamText<BoundTools<T>, R, BoundOutput<A, P, I>>
         >[0]),
+        owner.markComplete,
       ),
     );
   });
@@ -244,7 +245,7 @@ export class ToolLoopAgent<
             Object.assign({}, options, { abortSignal }),
           ),
       );
-      return wrapTextStream(operation, result);
+      return wrapTextStream(operation, result, owner.markComplete);
     });
   }
 }

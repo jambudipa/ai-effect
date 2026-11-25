@@ -1,4 +1,4 @@
-import { Effect, FiberSet, Redacted, Schema } from 'effect';
+import { Effect, FiberSet, Redacted, Ref, Schema } from 'effect';
 
 /** A foreign SDK failure with only safe diagnostic fields visible. */
 export class AiSdkError extends Schema.TaggedError<AiSdkError>()('AiSdkError', {
@@ -82,13 +82,20 @@ export const openOperation = <R = never>(callerSignal?: AbortSignal) =>
   Effect.gen(function* () {
     const callbacks = yield* FiberSet.make();
     const runCallback = yield* FiberSet.runtimePromise(callbacks)<R>();
+    const completed = yield* Ref.make(false);
     const controller = yield* Effect.acquireRelease(
       Effect.sync(() => new AbortController()),
-      (controller) => Effect.sync(() => controller.abort()),
+      (controller) =>
+        Ref.get(completed).pipe(
+          Effect.flatMap((done) =>
+            done ? Effect.void : Effect.sync(() => controller.abort()),
+          ),
+        ),
     );
     const signal = combineSignals(controller.signal, callerSignal);
     return {
       signal,
+      markComplete: Ref.set(completed, true),
       runCallback: <A, E>(
         effect: Effect.Effect<A, E, R>,
         callbackSignal?: AbortSignal,

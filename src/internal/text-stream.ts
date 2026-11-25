@@ -8,7 +8,7 @@ import type {
   InferUIMessageChunk,
 } from 'ai';
 import { Effect, Stream } from 'effect';
-import { AiSdkStreamAborted } from '../AiSdk.js';
+import { AiSdkStreamAborted } from './stream-aborted.js';
 import { runRequest, runSync, sdkError, type AiSdkError } from './operation.js';
 
 type NativeResult<
@@ -92,6 +92,7 @@ export const wrapTextStream = <
 >(
   operation: string,
   sdk: StreamTextResult<Tools, Runtime, Output>,
+  markComplete: Effect.Effect<void> = Effect.void,
 ): TextStreamResult<Tools, Runtime, Output> => {
   const read = <A>(get: () => PromiseLike<A>) => runRequest(operation, {}, get);
   const parts = <A>(get: () => ReadableStream<A>) =>
@@ -118,6 +119,7 @@ export const wrapTextStream = <
           return part;
         }),
       ),
+      Stream.onEnd(markComplete),
     );
   return {
     content: read(() => sdk.content),

@@ -1,9 +1,12 @@
 import { describe, expect, it } from '@effect/vitest';
-import { jsonSchema, Output, simulateReadableStream } from 'ai';
+import { simulateReadableStream } from 'ai';
 import { MockEmbeddingModelV4, MockLanguageModelV4 } from 'ai/test';
-import { Deferred, Effect, Fiber, Redacted, Stream } from 'effect';
+import { Deferred, Effect, Fiber, Redacted, Schema, Stream } from 'effect';
 import { expectTypeOf } from 'vitest';
 import { AiSdk, AiSdkError, AiSdkStreamAborted } from '../src/index.js';
+import { wrapLanguageModel } from '../src/internal/language-model.js';
+import { wrapEmbeddingModel } from '../src/internal/provider-model.js';
+import { Output } from '../src/core.js';
 
 const usage = {
   inputTokens: {
@@ -30,14 +33,10 @@ describe('AiSdk', () => {
         },
       });
       const request = ai.generateText({
-        model,
+        model: wrapLanguageModel(model),
         prompt: 'Give an answer.',
-        output: Output.object({
-          schema: jsonSchema<{ answer: number }>({
-            type: 'object',
-            properties: { answer: { type: 'number' } },
-            required: ['answer'],
-          }),
+        output: yield* Output.object({
+          schema: Schema.Struct({ answer: Schema.Number }),
         }),
       });
 
@@ -58,7 +57,11 @@ describe('AiSdk', () => {
       });
 
       const error = yield* Effect.flip(
-        ai.generateText({ model, prompt: 'Hello.', maxRetries: 0 }),
+        ai.generateText({
+          model: wrapLanguageModel(model),
+          prompt: 'Hello.',
+          maxRetries: 0,
+        }),
       );
 
       expect(error).toBeInstanceOf(AiSdkError);
@@ -84,7 +87,11 @@ describe('AiSdk', () => {
       });
 
       const fiber = yield* Effect.forkChild(
-        ai.generateText({ model, prompt: 'Hello.', maxRetries: 0 }),
+        ai.generateText({
+          model: wrapLanguageModel(model),
+          prompt: 'Hello.',
+          maxRetries: 0,
+        }),
       );
       const signal = yield* Deferred.await(started);
       expect(signal.aborted).toBe(false);
@@ -110,7 +117,10 @@ describe('AiSdk', () => {
             }),
           }),
       });
-      const events = ai.streamText({ model, prompt: 'Hello.' });
+      const events = ai.streamText({
+        model: wrapLanguageModel(model),
+        prompt: 'Hello.',
+      });
       expect(model.doStreamCalls).toHaveLength(0);
 
       const first = yield* Stream.runCollect(events);
@@ -138,7 +148,11 @@ describe('AiSdk', () => {
 
       const error = yield* Effect.flip(
         Stream.runDrain(
-          ai.streamText({ model, prompt: 'Hello.', maxRetries: 0 }),
+          ai.streamText({
+            model: wrapLanguageModel(model),
+            prompt: 'Hello.',
+            maxRetries: 0,
+          }),
         ),
       );
 
@@ -170,12 +184,14 @@ describe('AiSdk', () => {
           },
         });
 
-        const text = yield* ai.streamText({ model, prompt: 'Hello.' }).pipe(
-          Stream.filter((part) => part.type === 'text-delta'),
-          Stream.map((part) => part.text),
-          Stream.take(1),
-          Stream.runCollect,
-        );
+        const text = yield* ai
+          .streamText({ model: wrapLanguageModel(model), prompt: 'Hello.' })
+          .pipe(
+            Stream.filter((part) => part.type === 'text-delta'),
+            Stream.map((part) => part.text),
+            Stream.take(1),
+            Stream.runCollect,
+          );
 
         expect(text).toEqual(['Hi']);
         expect(model.doStreamCalls[0]?.abortSignal?.aborted).toBe(true);
@@ -196,7 +212,7 @@ describe('AiSdk', () => {
       const fiber = yield* Effect.forkChild(
         ai
           .streamText({
-            model,
+            model: wrapLanguageModel(model),
             prompt: 'Hello.',
             abortSignal: caller.signal,
           })
@@ -225,7 +241,7 @@ describe('AiSdk', () => {
       });
 
       const result = yield* ai.embedMany({
-        model,
+        model: wrapEmbeddingModel(model),
         values: ['first', 'second'],
       });
       expect(result.embeddings).toEqual([
