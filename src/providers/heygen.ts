@@ -1,25 +1,28 @@
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
-import type { HeyGenProviderSettings as SdkSettings } from '@ai-sdk/heygen';
 import {
   createHeyGen as sdkCreateHeyGen,
   heygen as sdkHeygen,
+  VERSION as sdkVersion,
 } from '@ai-sdk/heygen';
-import type { HeyGenProvider as SdkProvider } from '@ai-sdk/heygen';
+import type {
+  HeyGenProvider as SdkProvider,
+  HeyGenProviderSettings as SdkSettings,
+} from '../internal/provider-contracts/heygen.js';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import {
   wrapDecisionModel,
   wrapVideoModel,
 } from '../internal/provider-model.js';
 
-export { VERSION } from '@ai-sdk/heygen';
+export const VERSION: string = sdkVersion;
 export type {
   HeyGenDecisionModelId,
   HeyGenDecisionModelOptions,
   HeyGenVideoAsset,
   HeyGenVideoModelId,
   HeyGenVideoModelOptions,
-} from '@ai-sdk/heygen';
+} from '../internal/provider-contracts/heygen.js';
 
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('heygen', sdk),

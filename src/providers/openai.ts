@@ -1,9 +1,6 @@
-import type { Experimental_OpenAIRealtimeModelLiveConfig as SdkExperimental_OpenAIRealtimeModelLiveConfig } from '@ai-sdk/openai';
-import type { Experimental_OpenAIRealtimeModelConfig as SdkExperimental_OpenAIRealtimeModelConfig } from '@ai-sdk/openai';
 import type { ProviderHostConfiguration } from '../internal/provider-host-configuration.js';
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
-import type { OpenAIProviderSettings as SdkSettings } from '@ai-sdk/openai';
 import type { AdaptedTools } from '../internal/provider-tool.js';
 import type { AdaptedConstructor } from '../internal/provider-adapter.js';
 import {
@@ -14,18 +11,26 @@ import type {
   RealtimeModelV4,
   TypedRealtimeModel,
 } from '../internal/provider-realtime.js';
-import { Experimental_OpenAISpeechTranslationModel as SdkExperimental_OpenAISpeechTranslationModel } from '@ai-sdk/openai';
-import { Experimental_OpenAIRealtimeModelLive as SdkExperimental_OpenAIRealtimeModelLive } from '@ai-sdk/openai';
-import { Experimental_OpenAIRealtimeModel as SdkExperimental_OpenAIRealtimeModel } from '@ai-sdk/openai';
 import { wrapProviderTools } from '../internal/provider-tool.js';
 import {
   createOpenAI as sdkCreateOpenAI,
+  Experimental_OpenAIRealtimeModel as NativeRealtimeModel,
+  Experimental_OpenAIRealtimeModelLive as NativeRealtimeModelLive,
+  Experimental_OpenAISpeechTranslationModel as NativeSpeechTranslationModel,
   openai as sdkOpenai,
+  VERSION as sdkVersion,
 } from '@ai-sdk/openai';
 import type {
-  OpenAIProvider as SdkProvider,
+  Experimental_OpenAIRealtimeModel as SdkExperimental_OpenAIRealtimeModel,
+  Experimental_OpenAIRealtimeModelConfig as SdkExperimental_OpenAIRealtimeModelConfig,
+  Experimental_OpenAIRealtimeModelLive as SdkExperimental_OpenAIRealtimeModelLive,
+  Experimental_OpenAIRealtimeModelLiveConfig as SdkExperimental_OpenAIRealtimeModelLiveConfig,
+  Experimental_OpenAIRealtimeModelLiveId,
   Experimental_OpenAIRealtimeOptions,
-} from '@ai-sdk/openai';
+  Experimental_OpenAISpeechTranslationModel as SdkExperimental_OpenAISpeechTranslationModel,
+  OpenAIProvider as SdkProvider,
+  OpenAIProviderSettings as SdkSettings,
+} from '../internal/provider-contracts/openai.js';
 import {
   adaptMethod,
   adaptModelConstructor,
@@ -49,10 +54,9 @@ import {
 } from '../internal/provider-resource.js';
 import type { Effect } from 'effect';
 import type { AiSdkError } from '../internal/operation.js';
-import type { Experimental_OpenAIRealtimeModelLiveId } from '@ai-sdk/openai';
 import { runRequest, runSync } from '../internal/operation.js';
 
-export { VERSION } from '@ai-sdk/openai';
+export const VERSION: string = sdkVersion;
 export type {
   Experimental_OpenAIRealtimeModelLiveId,
   Experimental_OpenAIRealtimeModelLiveOptions,
@@ -87,7 +91,7 @@ export type {
   OpenaiResponsesSourceDocumentProviderMetadata,
   OpenaiResponsesTextProviderMetadata,
   OpenaiResponsesToolCallProviderMetadata,
-} from '@ai-sdk/openai';
+} from '../internal/provider-contracts/openai.js';
 
 type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
 
@@ -235,10 +239,13 @@ export type OpenAIProvider = ReturnType<typeof wrapProviderMethods> & {
   tools: AdaptedTools<SdkProvider['tools']>;
 };
 
-const wrapProvider = (sdk: SdkProvider): OpenAIProvider =>
-  Object.assign(wrapProviderMethods(sdk), {
+const wrapProvider = (native: typeof sdkOpenai): OpenAIProvider => {
+  // The normalized declarations mirror the native classes under the same pin.
+  const sdk = native as unknown as SdkProvider;
+  return Object.assign(wrapProviderMethods(sdk), {
     tools: wrapTools(sdk.tools),
   });
+};
 type ResolverKey = 'apiKey';
 export type OpenAIProviderSettings<
   E = never,
@@ -257,7 +264,7 @@ export const Experimental_OpenAIRealtimeModel: AdaptedConstructor<
   Experimental_OpenAIRealtimeModel
 > = adaptModelConstructor(
   'Experimental_OpenAIRealtimeModel',
-  SdkExperimental_OpenAIRealtimeModel,
+  NativeRealtimeModel as unknown as typeof SdkExperimental_OpenAIRealtimeModel,
   wrapTypedRealtimeModel<SdkExperimental_OpenAIRealtimeModel>,
 );
 export type Experimental_OpenAIRealtimeModel =
@@ -267,7 +274,7 @@ export const Experimental_OpenAIRealtimeModelLive: AdaptedConstructor<
   Experimental_OpenAIRealtimeModelLive
 > = adaptModelConstructor(
   'Experimental_OpenAIRealtimeModelLive',
-  SdkExperimental_OpenAIRealtimeModelLive,
+  NativeRealtimeModelLive as unknown as typeof SdkExperimental_OpenAIRealtimeModelLive,
   wrapTypedRealtimeModel<SdkExperimental_OpenAIRealtimeModelLive>,
 );
 export type Experimental_OpenAIRealtimeModelLive =
@@ -277,7 +284,7 @@ export const Experimental_OpenAISpeechTranslationModel: AdaptedConstructor<
   Experimental_OpenAISpeechTranslationModel
 > = adaptModelConstructor(
   'Experimental_OpenAISpeechTranslationModel',
-  SdkExperimental_OpenAISpeechTranslationModel,
+  NativeSpeechTranslationModel as unknown as typeof SdkExperimental_OpenAISpeechTranslationModel,
   wrapSpeechTranslationModel,
 );
 export type Experimental_OpenAISpeechTranslationModel = ReturnType<
