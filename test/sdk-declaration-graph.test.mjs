@@ -8,7 +8,7 @@ import {
   findSdkOperations,
 } from '../scripts/sdk-declaration-graph.mjs';
 
-function inspect(declarations) {
+function inspect(declarations, dependencies = []) {
   const root = mkdtempSync(join(tmpdir(), 'ai-effect-declaration-graph-'));
   try {
     const sdk = join(root, 'node_modules/ai/index.d.ts');
@@ -22,6 +22,7 @@ function inspect(declarations) {
       `,
       ],
       [wrapper, declarations],
+      ...dependencies.map(([file, contents]) => [join(root, file), contents]),
     ]) {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, contents);
@@ -79,6 +80,32 @@ describe('packed declaration graph', () => {
     expect(operations.map(({ path }) => path)).toContain(
       'Consumer.config.callbacks.factory return.run',
     );
+  });
+
+  it('checks the nearest package owner of a declaration', () => {
+    const { operations, privateImports } = inspect(
+      `
+        export type { HostSchema } from '../../ai/node_modules/zod/index.js';
+        export type { NestedSdk } from '../../ai/node_modules/@ai-sdk/provider/index.js';
+        export type { WrappedDependency } from './node_modules/host/index.js';
+      `,
+      [
+        [
+          'node_modules/ai/node_modules/zod/index.d.ts',
+          'export interface HostSchema { parse(input: unknown): string }',
+        ],
+        [
+          'node_modules/ai/node_modules/@ai-sdk/provider/index.d.ts',
+          'export interface NestedSdk { run(): Promise<string> }',
+        ],
+        [
+          'node_modules/@jambudipa/ai-effect/node_modules/host/index.d.ts',
+          "export type WrappedDependency = import('ai/internal').Hidden;",
+        ],
+      ],
+    );
+    expect(operations.map(({ path }) => path)).toEqual(['NestedSdk.run']);
+    expect(privateImports).toEqual([]);
   });
 
   it('finds a private SDK path and permits a public data type', () => {
