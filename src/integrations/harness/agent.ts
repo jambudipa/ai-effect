@@ -415,7 +415,7 @@ export class HarnessAgent<A = unknown, P = A, I = unknown> {
         R
       >(options, owner, tools, ({ tools: preparedTools, ...next }) => ({
         ...next,
-        ...(preparedTools && { tools: bindTools(preparedTools as T, owner) }),
+        ...(preparedTools ? { tools: bindTools(preparedTools as T, owner) } : {}),
       }));
       return yield* runSync('HarnessAgent.make', () => {
         const nativeOutput = output && bindOutput(output, owner);
