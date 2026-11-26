@@ -19,6 +19,9 @@ export type {
   DeepInfraImageModelOptions,
 } from '@ai-sdk/deepinfra';
 
+/**
+ * Adapt language, embedding, and image model selection from the DeepInfra SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('deepInfra', sdk, wrapLanguageModel), {
     ...wrapProviderBase('deepInfra', sdk),
@@ -54,12 +57,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapEmbeddingModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for DeepInfra. */
 export type DeepInfraProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native DeepInfra options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type DeepInfraProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the DeepInfra provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createDeepInfra = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -67,5 +80,10 @@ export const createDeepInfra = adaptProviderFactory<
 >('createDeepInfra', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateDeepInfra(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the DeepInfra SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const deepInfra: DeepInfraProvider = wrapProvider(sdkDeepInfra);
+/** Expose the same DeepInfra provider as `deepInfra` under the SDK alias. */
 export const deepinfra: DeepInfraProvider = deepInfra;

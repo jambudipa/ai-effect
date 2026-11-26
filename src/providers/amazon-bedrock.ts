@@ -29,6 +29,10 @@ export type {
   BedrockRerankingOptions,
 } from '@ai-sdk/amazon-bedrock';
 
+/**
+ * Adapt language, embedding, image, and reranking model selection from the Amazon Bedrock
+ * SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('amazonBedrock', sdk, wrapLanguageModel), {
     ...wrapProviderBase('amazonBedrock', sdk),
@@ -79,12 +83,27 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('amazonBedrock.tools', sdk.tools),
   });
+/**
+ * Provider returned by the adapter, with Effect-based model selection for Amazon Bedrock.
+ */
 export type AmazonBedrockProvider = ReturnType<typeof wrapProvider>;
+/**
+ * Reserve `apiKey` and `credentialProvider` for settings the SDK may read through lazy
+ * Effect resolvers.
+ */
 type ResolverKey = 'apiKey' | 'credentialProvider';
+/**
+ * Keep the native Amazon Bedrock options and allow the SDK to obtain `apiKey` and
+ * `credentialProvider` through Effect resolvers.
+ */
 export type AmazonBedrockProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Amazon Bedrock provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey` and `credentialProvider`.
+ */
 export const createAmazonBedrock = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -92,6 +111,11 @@ export const createAmazonBedrock = adaptProviderFactory<
 >('createAmazonBedrock', ['apiKey', 'credentialProvider'], (settings) =>
   wrapProvider(sdkCreateAmazonBedrock(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Amazon Bedrock SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const amazonBedrock: AmazonBedrockProvider =
   wrapProvider(sdkAmazonBedrock);
+/** Expose the same Amazon Bedrock provider as `amazonBedrock` under the SDK alias. */
 export const bedrock: AmazonBedrockProvider = amazonBedrock;

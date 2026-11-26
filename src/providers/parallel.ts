@@ -15,6 +15,7 @@ export type {
   ParallelProviderSettings,
 } from '@ai-sdk/parallel';
 
+/** Adapt decision model selection from the Parallel SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('parallel', sdk),
   decisionModel: adaptMethod(
@@ -23,7 +24,16 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapDecisionModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Parallel. */
 export type ParallelProvider = ReturnType<typeof wrapProvider>;
+/**
+ * Construct the Parallel provider lazily with the native SDK arguments and map SDK
+ * construction failures.
+ */
 export const createParallel = (...args: Parameters<typeof sdkCreateParallel>) =>
   runSync('createParallel', () => wrapProvider(sdkCreateParallel(...args)));
+/**
+ * Adapt the preconfigured provider from the Parallel SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const parallel: ParallelProvider = wrapProvider(sdkParallel);

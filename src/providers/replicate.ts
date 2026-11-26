@@ -22,6 +22,7 @@ export type {
   ReplicateVideoProviderOptions,
 } from '@ai-sdk/replicate';
 
+/** Adapt image and video model selection from the Replicate SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('replicate', sdk),
   image: adaptMethod('replicate.image', sdk.image.bind(sdk), wrapImageModel),
@@ -41,12 +42,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapVideoModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Replicate. */
 export type ReplicateProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiToken` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiToken';
+/**
+ * Keep the native Replicate options and allow `apiToken` to resolve through Effect when
+ * the SDK requests the value.
+ */
 export type ReplicateProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Replicate provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiToken`.
+ */
 export const createReplicate = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -54,4 +65,8 @@ export const createReplicate = adaptProviderFactory<
 >('createReplicate', ['apiToken'], (settings) =>
   wrapProvider(sdkCreateReplicate(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Replicate SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const replicate: ReplicateProvider = wrapProvider(sdkReplicate);

@@ -24,6 +24,7 @@ export type {
   AssemblyAITranscriptionModelOptions,
 } from '@ai-sdk/assemblyai';
 
+/** Adapt speech and transcription model selection from the AssemblyAI SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('assemblyai', sdk, wrapLegacyTranscription), {
     ...wrapProviderBase('assemblyai', sdk),
@@ -42,12 +43,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for AssemblyAI. */
 export type AssemblyAIProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native AssemblyAI options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type AssemblyAIProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the AssemblyAI provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createAssemblyAI = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -55,4 +66,8 @@ export const createAssemblyAI = adaptProviderFactory<
 >('createAssemblyAI', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateAssemblyAI(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the AssemblyAI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const assemblyai: AssemblyAIProvider = wrapProvider(sdkAssemblyai);

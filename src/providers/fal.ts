@@ -26,6 +26,10 @@ export type {
   FalVideoProviderOptions,
 } from '@ai-sdk/fal';
 
+/**
+ * Adapt image, video, speech, and transcription model selection from the fal SDK to
+ * Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('fal', sdk),
   image: adaptMethod('fal.image', sdk.image.bind(sdk), wrapImageModel),
@@ -51,17 +55,31 @@ const wrapProvider = (sdk: SdkProvider) => ({
     sdk.textEmbeddingModel.bind(sdk),
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for fal. */
 export type FalProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native fal options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type FalProviderSettings<E = never, R = never> = EffectProviderSettings<
   SdkSettings,
   ResolverKey,
   E,
   R
 >;
+/**
+ * Construct the fal provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createFal = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
   FalProvider
 >('createFal', ['apiKey'], (settings) => wrapProvider(sdkCreateFal(settings)));
+/**
+ * Adapt the preconfigured provider from the fal SDK. Use the factory to supply explicit
+ * settings.
+ */
 export const fal: FalProvider = wrapProvider(sdkFal);

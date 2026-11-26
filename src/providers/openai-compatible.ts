@@ -56,11 +56,19 @@ export type {
   OpenAICompatibleProviderOptions,
 } from '@ai-sdk/openai-compatible';
 
+/**
+ * Preserve the SDK endpoint and option shape and allow Effect-based credentials and
+ * supported hooks.
+ */
 export type OpenAICompatibleProviderSettings<
   E = never,
   R = never,
 > = CompatibleSettings<SdkSettings, E, R>;
 
+/**
+ * Carry the model ID types for each operation and overload setup according to the settings
+ * scope.
+ */
 interface CreateOpenAICompatible {
   <
     Chat extends string,
@@ -89,6 +97,10 @@ interface CreateOpenAICompatible {
   >;
 }
 
+/**
+ * Bind compatible settings to the current scope and retain the four independent model ID
+ * types.
+ */
 function createOpenAICompatibleScoped<
   Chat extends string,
   Completion extends string,
@@ -117,9 +129,17 @@ function createOpenAICompatibleScoped<
   );
 }
 
+/**
+ * Build a provider for an OpenAI-compatible endpoint. Give effectful settings a scope that
+ * covers its requests.
+ */
 export const createOpenAICompatible =
   createOpenAICompatibleScoped as CreateOpenAICompatible;
 
+/**
+ * Keep structured-output capability and offer request preparation and response conversion
+ * as Effects.
+ */
 const wrapChatModel = (model: SdkChatModel) =>
   Object.assign(wrapLanguageModel(model), {
     supportsStructuredOutputs: model.supportsStructuredOutputs,
@@ -133,6 +153,10 @@ const wrapChatModel = (model: SdkChatModel) =>
       ),
   });
 
+/**
+ * Construct the SDK OpenAI-compatible chat model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const OpenAICompatibleChatLanguageModel: CompatibleModelConstructor<
   typeof SdkChatModel,
   OpenAICompatibleChatLanguageModel
@@ -151,10 +175,18 @@ export const OpenAICompatibleChatLanguageModel: CompatibleModelConstructor<
       unwrapLanguageModel,
     ),
   );
+/**
+ * Effect model returned by `OpenAICompatibleChatLanguageModel`. Use its chat generation
+ * operations in an Effect program.
+ */
 export type OpenAICompatibleChatLanguageModel = ReturnType<
   typeof wrapChatModel
 >;
 
+/**
+ * Construct the SDK OpenAI-compatible completion model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const OpenAICompatibleCompletionLanguageModel: CompatibleModelConstructor<
   typeof SdkCompletionModel,
   OpenAICompatibleCompletionLanguageModel
@@ -175,10 +207,18 @@ export const OpenAICompatibleCompletionLanguageModel: CompatibleModelConstructor
     unwrapLanguageModel,
   ),
 );
+/**
+ * Effect model returned by `OpenAICompatibleCompletionLanguageModel`. Use its completion
+ * operations in an Effect program.
+ */
 export type OpenAICompatibleCompletionLanguageModel = ReturnType<
   typeof wrapLanguageModel
 >;
 
+/**
+ * Construct the SDK OpenAI-compatible embedding model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const OpenAICompatibleEmbeddingModel: CompatibleModelConstructor<
   typeof SdkEmbeddingModel,
   OpenAICompatibleEmbeddingModel
@@ -199,10 +239,18 @@ export const OpenAICompatibleEmbeddingModel: CompatibleModelConstructor<
     unwrapEmbeddingModel,
   ),
 );
+/**
+ * Effect model returned by `OpenAICompatibleEmbeddingModel`. Use its embedding operations
+ * in an Effect program.
+ */
 export type OpenAICompatibleEmbeddingModel = ReturnType<
   typeof wrapEmbeddingModel
 >;
 
+/**
+ * Construct the SDK OpenAI-compatible image model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const OpenAICompatibleImageModel: CompatibleModelConstructor<
   typeof SdkImageModel,
   OpenAICompatibleImageModel
@@ -221,4 +269,8 @@ export const OpenAICompatibleImageModel: CompatibleModelConstructor<
       unwrapImageModel,
     ),
   );
+/**
+ * Effect model returned by `OpenAICompatibleImageModel`. Use its image generation
+ * operations in an Effect program.
+ */
 export type OpenAICompatibleImageModel = ReturnType<typeof wrapImageModel>;

@@ -28,6 +28,9 @@ export type {
   AlibabaVideoProviderOptions,
 } from '@ai-sdk/alibaba';
 
+/**
+ * Adapt language, embedding, and video model selection from the Alibaba SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('alibaba', sdk, wrapLanguageModel), {
     ...wrapProviderBase('alibaba', sdk),
@@ -58,12 +61,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapVideoModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Alibaba. */
 export type AlibabaProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Alibaba options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type AlibabaProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Alibaba provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createAlibaba = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -71,4 +84,8 @@ export const createAlibaba = adaptProviderFactory<
 >('createAlibaba', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateAlibaba(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Alibaba SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const alibaba: AlibabaProvider = wrapProvider(sdkAlibaba);

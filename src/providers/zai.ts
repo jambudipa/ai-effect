@@ -17,6 +17,7 @@ export type {
   ZaiLanguageModelChatOptions,
 } from '@ai-sdk/zai';
 
+/** Adapt language model selection from the Z.ai SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('zai', sdk, wrapLanguageModel), {
     ...wrapProviderBase('zai', sdk),
@@ -31,17 +32,31 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Z.ai. */
 export type ZaiProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Z.ai options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type ZaiProviderSettings<E = never, R = never> = EffectProviderSettings<
   SdkSettings,
   ResolverKey,
   E,
   R
 >;
+/**
+ * Construct the Z.ai provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createZai = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
   ZaiProvider
 >('createZai', ['apiKey'], (settings) => wrapProvider(sdkCreateZai(settings)));
+/**
+ * Adapt the preconfigured provider from the Z.ai SDK. Use the factory to supply explicit
+ * settings.
+ */
 export const zai: ZaiProvider = wrapProvider(sdkZai);

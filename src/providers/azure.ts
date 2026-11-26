@@ -17,6 +17,7 @@ import {
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
 
+/** Expose the version of the Azure OpenAI SDK used by this adapter. */
 export const VERSION: string = sdkVersion;
 export type {
   AzureDeepSeekChatOptions,
@@ -37,6 +38,10 @@ export type {
   OpenAIResponsesSystemMessageOptions,
 } from '../internal/provider-contracts/azure.js';
 
+/**
+ * Adapt language, embedding, image, speech, and transcription model selection from the
+ * Azure OpenAI SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('azure', sdk, wrapLanguageModel), {
     ...wrapProviderBase('azure', sdk),
@@ -105,12 +110,27 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('azure.tools', sdk.tools),
   });
+/**
+ * Provider returned by the adapter, with Effect-based model selection for Azure OpenAI.
+ */
 export type AzureOpenAIProvider = ReturnType<typeof wrapProvider>;
+/**
+ * Reserve `apiKey` and `tokenProvider` for settings the SDK may read through lazy Effect
+ * resolvers.
+ */
 type ResolverKey = 'apiKey' | 'tokenProvider';
+/**
+ * Keep the native Azure OpenAI options and allow the SDK to obtain `apiKey` and
+ * `tokenProvider` through Effect resolvers.
+ */
 export type AzureOpenAIProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Azure OpenAI provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey` and `tokenProvider`.
+ */
 export const createAzure = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -118,4 +138,8 @@ export const createAzure = adaptProviderFactory<
 >('createAzure', ['apiKey', 'tokenProvider'], (settings) =>
   wrapProvider(sdkCreateAzure(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Azure OpenAI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const azure: AzureOpenAIProvider = wrapProvider(sdkAzure);

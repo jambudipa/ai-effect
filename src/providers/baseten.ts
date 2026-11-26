@@ -29,6 +29,9 @@ export type {
   BasetenErrorData,
 } from '@ai-sdk/baseten';
 
+/**
+ * Adapt language, embedding, and decision model selection from the Baseten SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('baseten', sdk, wrapLanguageModel), {
     ...wrapProviderBase('baseten', sdk),
@@ -58,39 +61,76 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapDecisionModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Baseten. */
 export type BasetenProvider = ReturnType<typeof wrapProvider>;
+/**
+ * Read the constructor contract from the SDK injection point so upstream argument changes
+ * reach the adapter.
+ */
 type NativePerformanceClientConstructor = NonNullable<
   SdkSettings['performanceClient']
 >;
+/**
+ * Use the installed performance client as the source of the native embedding argument and
+ * result types.
+ */
 type NativePerformanceClient = InstanceType<NativePerformanceClientConstructor>;
 
+/**
+ * Implement this client to supply Baseten performance embeddings through Effects owned by
+ * the provider scope.
+ */
 export interface BasetenPerformanceClient<E = never, R = never> {
+  /**
+   * Run when the SDK asks for performance embeddings. Keep the native request and response
+   * shapes.
+   */
   embed(
     ...args: Parameters<NativePerformanceClient['embed']>
   ): Effect.Effect<Awaited<ReturnType<NativePerformanceClient['embed']>>, E, R>;
 }
 
+/**
+ * Keep SDK constructor arguments identical when supplying an Effect-based performance
+ * client.
+ */
 export type BasetenPerformanceClientConstructor<E = never, R = never> = new (
   ...args: ConstructorParameters<NativePerformanceClientConstructor>
 ) => BasetenPerformanceClient<E, R>;
 
+/**
+ * Substitute the client implementation while retaining the SDK settings and their optional
+ * fields.
+ */
 type Settings<Base, Client> = {
   [Key in keyof Base]: Key extends 'performanceClient' ? Client : Base[Key];
 };
 
+/** Use for plain SDK options with a static key and no custom performance client. */
 type PlainBasetenSettings = Settings<
   StaticProviderSettings<SdkSettings, 'apiKey'>,
   never
 >;
 
+/**
+ * Allow the key and a custom performance client to use Effect. Keep their provider scope
+ * open for use.
+ */
 export type BasetenProviderSettings<E = never, R = never> = Settings<
   EffectProviderSettings<SdkSettings, 'apiKey', E, R>,
   BasetenPerformanceClientConstructor<E, R>
 >;
 
+/**
+ * Construct the native Baseten client after the caller has bound the SDK-facing settings.
+ */
 const buildBaseten = (settings?: SdkSettings) =>
   wrapProvider(sdkCreateBaseten(settings));
 
+/**
+ * Expose a scope-free overload for static settings and a scoped overload for Effect-backed
+ * options.
+ */
 interface CreateBaseten {
   (options?: PlainBasetenSettings): Effect.Effect<BasetenProvider, AiSdkError>;
   <E, R>(
@@ -98,6 +138,10 @@ interface CreateBaseten {
   ): Effect.Effect<BasetenProvider, AiSdkError, R | Scope.Scope>;
 }
 
+/**
+ * Bind the custom embedding client to the provider scope before injecting its native
+ * Promise bridge.
+ */
 function createBasetenScoped<E, R>(
   options?: BasetenProviderSettings<E, R>,
 ): Effect.Effect<BasetenProvider, AiSdkError, R | Scope.Scope> {
@@ -135,6 +179,14 @@ function createBasetenScoped<E, R>(
   });
 }
 
+/**
+ * Build an Effect-based provider with optional custom performance embeddings. Provide a
+ * scope for Effect-backed settings.
+ */
 export const createBaseten = createBasetenScoped as CreateBaseten;
 
+/**
+ * Adapt the preconfigured provider from the Baseten SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const baseten: BasetenProvider = wrapProvider(sdkBaseten);

@@ -23,6 +23,7 @@ export type {
   TencentVideoModelOptions,
 } from '@ai-sdk/tencent';
 
+/** Adapt language and video model selection from the Tencent SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('tencent', sdk, wrapLanguageModel), {
     ...wrapProviderBase('tencent', sdk),
@@ -43,12 +44,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Tencent. */
 export type TencentProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Tencent options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type TencentProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Tencent provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createTencent = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -56,4 +67,8 @@ export const createTencent = adaptProviderFactory<
 >('createTencent', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateTencent(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Tencent SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const tencent: TencentProvider = wrapProvider(sdkTencent);

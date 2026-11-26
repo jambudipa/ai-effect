@@ -28,6 +28,7 @@ export type {
   MiniMaxVideoPartOptions,
 } from '@ai-sdk/minimax';
 
+/** Adapt language, image, and video model selection from the MiniMax SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('minimax', sdk, wrapLanguageModel), {
     ...wrapProviderBase('minimax', sdk),
@@ -54,12 +55,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for MiniMax. */
 export type MiniMaxProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native MiniMax options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type MiniMaxProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the MiniMax provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createMiniMax = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -67,4 +78,8 @@ export const createMiniMax = adaptProviderFactory<
 >('createMiniMax', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateMiniMax(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the MiniMax SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const minimax: MiniMaxProvider = wrapProvider(sdkMinimax);

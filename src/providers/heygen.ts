@@ -15,6 +15,7 @@ import {
   wrapVideoModel,
 } from '../internal/provider-model.js';
 
+/** Expose the version of the HeyGen SDK used by this adapter. */
 export const VERSION: string = sdkVersion;
 export type {
   HeyGenDecisionModelId,
@@ -24,6 +25,7 @@ export type {
   HeyGenVideoModelOptions,
 } from '../internal/provider-contracts/heygen.js';
 
+/** Adapt video and decision model selection from the HeyGen SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('heygen', sdk),
   video: adaptMethod('heygen.video', sdk.video.bind(sdk), wrapVideoModel),
@@ -38,12 +40,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapDecisionModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for HeyGen. */
 export type HeyGenProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native HeyGen options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type HeyGenProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the HeyGen provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createHeyGen = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -51,4 +63,8 @@ export const createHeyGen = adaptProviderFactory<
 >('createHeyGen', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateHeyGen(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the HeyGen SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const heygen: HeyGenProvider = wrapProvider(sdkHeygen);

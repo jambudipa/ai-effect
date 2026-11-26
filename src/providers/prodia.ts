@@ -25,6 +25,7 @@ export type {
   ProdiaVideoModelOptions,
 } from '@ai-sdk/prodia';
 
+/** Adapt language, image, and video model selection from the Prodia SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('prodia', sdk),
   languageModel: adaptMethod(
@@ -49,12 +50,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     sdk.textEmbeddingModel.bind(sdk),
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Prodia. */
 export type ProdiaProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Prodia options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type ProdiaProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Prodia provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createProdia = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -62,4 +73,8 @@ export const createProdia = adaptProviderFactory<
 >('createProdia', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateProdia(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Prodia SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const prodia: ProdiaProvider = wrapProvider(sdkProdia);

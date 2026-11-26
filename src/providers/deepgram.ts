@@ -31,6 +31,7 @@ export type {
   DeepgramTranscriptionModelOptions,
 } from '@ai-sdk/deepgram';
 
+/** Adapt speech and transcription model selection from the Deepgram SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('deepgram', sdk, wrapLegacyTranscription), {
     ...wrapProviderBase('deepgram', sdk),
@@ -49,12 +50,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Deepgram. */
 export type DeepgramProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Deepgram options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type DeepgramProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Deepgram provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createDeepgram = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -62,7 +73,15 @@ export const createDeepgram = adaptProviderFactory<
 >('createDeepgram', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateDeepgram(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Deepgram SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const deepgram: DeepgramProvider = wrapProvider(sdkDeepgram);
+/**
+ * Construct the SDK Deepgram speech model lazily with its native options. It exposes the
+ * workflow serialization hooks.
+ */
 export const DeepgramSpeechModel: AdaptedWorkflowConstructor<
   typeof SdkDeepgramSpeechModel,
   DeepgramSpeechModel
@@ -72,4 +91,8 @@ export const DeepgramSpeechModel: AdaptedWorkflowConstructor<
   wrapSpeechModel,
   unwrapSpeechModel,
 );
+/**
+ * Effect model returned by `DeepgramSpeechModel`. Use its speech synthesis operations in
+ * an Effect program.
+ */
 export type DeepgramSpeechModel = ReturnType<typeof wrapSpeechModel>;

@@ -16,6 +16,7 @@ export type {
   KlingAIVideoProviderOptions,
 } from '@ai-sdk/klingai';
 
+/** Adapt video model selection from the Kling AI SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('klingai', sdk),
   video: adaptMethod('klingai.video', sdk.video.bind(sdk), wrapVideoModel),
@@ -25,12 +26,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapVideoModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Kling AI. */
 export type KlingAIProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Kling AI options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type KlingAIProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Kling AI provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createKlingAI = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -38,4 +49,8 @@ export const createKlingAI = adaptProviderFactory<
 >('createKlingAI', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateKlingAI(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Kling AI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const klingai: KlingAIProvider = wrapProvider(sdkKlingai);

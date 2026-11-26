@@ -25,6 +25,7 @@ export type {
   ElevenLabsTranscriptionModelOptions,
 } from '@ai-sdk/elevenlabs';
 
+/** Adapt speech and transcription model selection from the ElevenLabs SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('elevenLabs', sdk, wrapLegacyTranscription), {
     ...wrapProviderBase('elevenLabs', sdk),
@@ -43,12 +44,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for ElevenLabs. */
 export type ElevenLabsProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native ElevenLabs options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type ElevenLabsProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the ElevenLabs provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createElevenLabs = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -56,5 +67,10 @@ export const createElevenLabs = adaptProviderFactory<
 >('createElevenLabs', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateElevenLabs(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the ElevenLabs SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const elevenLabs: ElevenLabsProvider = wrapProvider(sdkElevenLabs);
+/** Expose the same ElevenLabs provider as `elevenLabs` under the SDK alias. */
 export const elevenlabs: ElevenLabsProvider = elevenLabs;

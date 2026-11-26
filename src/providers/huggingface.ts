@@ -20,6 +20,7 @@ export type {
   HuggingFaceResponsesSettings,
 } from '@ai-sdk/huggingface';
 
+/** Adapt language model selection from the Hugging Face SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('huggingFace', sdk, wrapLanguageModel), {
     ...wrapProviderBase('huggingFace', sdk),
@@ -38,12 +39,24 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/**
+ * Provider returned by the adapter, with Effect-based model selection for Hugging Face.
+ */
 export type HuggingFaceProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Hugging Face options and allow `apiKey` to resolve through Effect when
+ * the SDK requests the value.
+ */
 export type HuggingFaceProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Hugging Face provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createHuggingFace = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -51,5 +64,10 @@ export const createHuggingFace = adaptProviderFactory<
 >('createHuggingFace', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateHuggingFace(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Hugging Face SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const huggingFace: HuggingFaceProvider = wrapProvider(sdkHuggingFace);
+/** Expose the same Hugging Face provider as `huggingFace` under the SDK alias. */
 export const huggingface: HuggingFaceProvider = huggingFace;

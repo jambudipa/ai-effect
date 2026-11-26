@@ -90,8 +90,16 @@ export type {
   GatewayVideoModelId,
 } from '@ai-sdk/gateway';
 
+/**
+ * Derive model selection, API discriminants, and token request types from the Gateway SDK
+ * factory.
+ */
 type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
 
+/**
+ * Describe the websocket capabilities for each Gateway API. Live sessions use explicit
+ * start and close events.
+ */
 type GatewayModel<Live extends boolean> = Omit<
   SdkRealtimeModel,
   | 'capabilities'
@@ -127,6 +135,9 @@ type GatewayModel<Live extends boolean> = Omit<
   ): Live extends true ? Experimental_RealtimeModelV4SessionConfig : unknown;
 };
 
+/**
+ * Preserve live and turn-based selection overloads and expose token requests as an Effect.
+ */
 const wrapGatewayRealtime = (factory: SdkRealtimeFactory) => {
   function select(
     modelId: string,
@@ -165,8 +176,13 @@ const wrapGatewayRealtime = (factory: SdkRealtimeFactory) => {
   });
 };
 
+/**
+ * Select a websocket model using an explicit API or a known live ID, or request a token
+ * with `getToken`.
+ */
 export type GatewayRealtimeFactory = ReturnType<typeof wrapGatewayRealtime>;
 
+/** Adapt Gateway transcription model selection and keep token acquisition lazy. */
 const wrapGatewayTranscription = (
   factory: SdkProvider['experimental_transcription'],
 ) =>
@@ -184,6 +200,7 @@ const wrapGatewayTranscription = (
     },
   );
 
+/** Adapt the Gateway streaming speech factory and make token acquisition an Effect. */
 const wrapGatewaySpeech = (factory: SdkProvider['experimental_speech']) =>
   Object.assign(
     adaptMethod(
@@ -199,11 +216,16 @@ const wrapGatewaySpeech = (factory: SdkProvider['experimental_speech']) =>
     },
   );
 
+/**
+ * Bind the Gateway tool factories and lift their construction failures into the Effect
+ * error channel.
+ */
 const wrapTools = (
   tools: SdkProvider['tools'],
 ): AdaptedTools<SdkProvider['tools']> =>
   wrapProviderTools('gateway.tools', tools);
 
+/** Fetch the Gateway model catalog when the caller runs the returned Effect. */
 const availableModels =
   (
     sdk: SdkProvider,
@@ -216,6 +238,10 @@ const availableModels =
       sdk.getAvailableModels(),
     );
 
+/**
+ * Compose the native Gateway model selectors with adapted credit, routing, and model
+ * catalog operations.
+ */
 const wrapProviderMethods = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('gateway', sdk, wrapLanguageModel), {
     ...wrapProviderBase('gateway', sdk),
@@ -333,6 +359,7 @@ const wrapProviderMethods = (sdk: SdkProvider) =>
     ),
     experimental_speech: wrapGatewaySpeech(sdk.experimental_speech),
   });
+/** Provider returned by the adapter, with Effect-based model selection for AI Gateway. */
 export type GatewayProvider = ReturnType<typeof wrapProviderMethods> & {
   getAvailableModels: AdaptedMethod<
     SdkProvider['getAvailableModels'],
@@ -341,16 +368,29 @@ export type GatewayProvider = ReturnType<typeof wrapProviderMethods> & {
   tools: AdaptedTools<SdkProvider['tools']>;
 };
 
+/**
+ * Keep the callable provider and named model selectors from the AI Gateway SDK available
+ * as Effects.
+ */
 const wrapProvider = (sdk: SdkProvider): GatewayProvider =>
   Object.assign(wrapProviderMethods(sdk), {
     getAvailableModels: availableModels(sdk),
     tools: wrapTools(sdk.tools),
   });
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native AI Gateway options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type GatewayProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the AI Gateway provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createGateway = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -358,20 +398,39 @@ export const createGateway = adaptProviderFactory<
 >('createGateway', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateGateway(settings)),
 );
+/** Expose the same AI Gateway factory as `createGateway` under the SDK alias. */
 export const createGatewayProvider = createGateway;
+/**
+ * Adapt the preconfigured provider from the AI Gateway SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const gateway: GatewayProvider = wrapProvider(sdkGateway);
+/**
+ * Delegate extraction of the realtime websocket auth token to the SDK protocol helper.
+ */
 export const getGatewayRealtimeAuthToken = (
   ...args: Parameters<typeof sdkRealtimeAuthToken>
 ) => sdkRealtimeAuthToken(...args);
+/**
+ * Build the Gateway realtime websocket subprotocols with the native SDK protocol encoding.
+ */
 export const getGatewayRealtimeProtocols = (
   ...args: Parameters<typeof sdkRealtimeProtocols>
 ) => sdkRealtimeProtocols(...args);
+/** Read the team ID or slug carried in the Gateway realtime websocket subprotocols. */
 export const getGatewayRealtimeTeamIdOrSlug = (
   ...args: Parameters<typeof sdkRealtimeTeamIdOrSlug>
 ) => sdkRealtimeTeamIdOrSlug(...args);
+/**
+ * Build websocket subprotocols for Gateway streaming speech using the SDK speech encoding.
+ */
 export const getGatewaySpeechProtocols = (
   ...args: Parameters<typeof sdkSpeechProtocols>
 ) => sdkSpeechProtocols(...args);
+/**
+ * Build websocket subprotocols for Gateway transcription using the SDK transcription
+ * encoding.
+ */
 export const getGatewayTranscriptionProtocols = (
   ...args: Parameters<typeof sdkTranscriptionProtocols>
 ) => sdkTranscriptionProtocols(...args);

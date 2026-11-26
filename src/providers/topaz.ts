@@ -19,6 +19,7 @@ export type {
   TopazVideoSource,
 } from '@ai-sdk/topaz';
 
+/** Adapt image and video model selection from the Topaz SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('topaz', sdk),
   image: adaptMethod('topaz.image', sdk.image.bind(sdk), wrapImageModel),
@@ -34,12 +35,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapVideoModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Topaz. */
 export type TopazProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Topaz options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type TopazProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Topaz provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createTopaz = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -47,4 +58,8 @@ export const createTopaz = adaptProviderFactory<
 >('createTopaz', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateTopaz(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Topaz SDK. Use the factory to supply explicit
+ * settings.
+ */
 export const topaz: TopazProvider = wrapProvider(sdkTopaz);

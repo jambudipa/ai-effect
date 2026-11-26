@@ -31,6 +31,7 @@ export type {
 /** The callable Cerebras provider and its model selectors. */
 export type CerebrasProvider = ReturnType<typeof wrapCerebras>;
 
+/** Adapt language model selection from the Cerebras SDK to Effect. */
 const wrapCerebras = (sdk: SdkCerebrasProvider) =>
   Object.assign(adaptMethod('cerebras', sdk, wrapLanguageModel), {
     ...wrapProviderBase('cerebras', sdk),
@@ -51,12 +52,25 @@ export const cerebras = wrapCerebras(sdkCerebras);
 
 /** Cerebras connection settings. A credential Effect runs when the SDK requests it. */
 export interface CerebrasProviderSettings<E = never, R = never> {
+  /**
+   * Supply the credential directly or as an Effect that runs when the SDK asks for the
+   * key.
+   */
   readonly apiKey?: ProviderSetting<string, E, R>;
+  /** Override the Cerebras SDK endpoint for deployments with a custom base URL. */
   readonly baseURL?: string;
+  /** Add headers to requests made by the native provider. */
   readonly headers?: Record<string, string>;
+  /**
+   * Supply the SDK fetch implementation for transport interception or a custom runtime.
+   */
   readonly fetch?: typeof globalThis.fetch;
 }
 
+/**
+ * Allow static SDK settings without a scope and replace the Effect-capable key with its
+ * static form.
+ */
 type PlainCerebrasSettings = Omit<CerebrasProviderSettings, 'apiKey'> & {
   readonly apiKey?: string;
 };
@@ -71,6 +85,10 @@ interface CreateCerebras {
   ): Effect.Effect<CerebrasProvider, AiSdkError, R | Scope.Scope>;
 }
 
+/**
+ * Build the Cerebras adapter with the SDK key resolver bound to the current operation
+ * scope.
+ */
 function createCerebrasScoped<E, R>(
   options?: CerebrasProviderSettings<E, R>,
 ): Effect.Effect<CerebrasProvider, AiSdkError, R | Scope.Scope> {
@@ -82,4 +100,8 @@ function createCerebrasScoped<E, R>(
   );
 }
 
+/**
+ * Build the Cerebras provider inside an Effect. The Effect key resolver overload requires
+ * a scope.
+ */
 export const createCerebras = createCerebrasScoped as CreateCerebras;

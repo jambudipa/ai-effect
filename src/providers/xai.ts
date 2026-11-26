@@ -55,6 +55,10 @@ export type {
   XaiVideoProviderOptions,
 } from '@ai-sdk/xai';
 
+/**
+ * Adapt language, image, video, speech, and transcription model selection from the xAI SDK
+ * to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('xai', sdk, wrapLanguageModel), {
     ...wrapProviderBase('xai', sdk),
@@ -112,20 +116,35 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('xai.tools', sdk.tools),
   });
+/** Provider returned by the adapter, with Effect-based model selection for xAI. */
 export type XaiProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native xAI options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type XaiProviderSettings<E = never, R = never> = EffectProviderSettings<
   SdkSettings,
   ResolverKey,
   E,
   R
 >;
+/**
+ * Construct the xAI provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createXai = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
   XaiProvider
 >('createXai', ['apiKey'], (settings) => wrapProvider(sdkCreateXai(settings)));
+/**
+ * Adapt the preconfigured provider from the xAI SDK. Use the factory to supply explicit
+ * settings.
+ */
 export const xai: XaiProvider = wrapProvider(sdkXai);
+/** Construct the SDK xAI realtime model lazily with its native options. */
 export const Experimental_XaiRealtimeModel: AdaptedConstructor<
   typeof SdkExperimental_XaiRealtimeModel,
   Experimental_XaiRealtimeModel
@@ -134,23 +153,41 @@ export const Experimental_XaiRealtimeModel: AdaptedConstructor<
   SdkExperimental_XaiRealtimeModel,
   wrapRealtimeModel,
 );
+/**
+ * Effect model returned by `Experimental_XaiRealtimeModel`. Use its realtime connection
+ * operations in an Effect program.
+ */
 export type Experimental_XaiRealtimeModel = ReturnType<
   typeof wrapRealtimeModel
 >;
+/**
+ * Construct the xAI-hosted code execution descriptor for models that advertise tool
+ * support.
+ */
 export const codeExecution = adaptProviderTool(
   'xai.codeExecution',
   sdkCodeExecution,
 );
+/** Construct the xAI-hosted image generation tool descriptor inside an Effect. */
 export const imageGeneration = adaptProviderTool(
   'xai.imageGeneration',
   sdkImageGeneration,
 );
+/** Construct the xAI MCP server tool descriptor with native connection settings. */
 export const mcpServer = adaptProviderTool('xai.mcpServer', sdkMcpServer);
+/** Construct the native xAI image viewing descriptor for tool-enabled requests. */
 export const viewImage = adaptProviderTool('xai.viewImage', sdkViewImage);
+/** Construct the xAI descriptor that lets a tool-enabled model view video from X. */
 export const viewXVideo = adaptProviderTool('xai.viewXVideo', sdkViewXVideo);
+/** Construct the xAI web search tool descriptor for provider-executed lookups. */
 export const webSearch = adaptProviderTool('xai.webSearch', sdkWebSearch);
+/** Construct the xAI search descriptor for provider-executed lookups on X. */
 export const xSearch = adaptProviderTool('xai.xSearch', sdkXSearch);
+/**
+ * Expose the xAI SDK tool collection with lazy Effect construction and typed failures.
+ */
 export const xaiTools = wrapProviderTools('xaiTools', sdkXaiTools);
 
+/** Retain the xAI realtime model configuration fields accepted at the host boundary. */
 export type Experimental_XaiRealtimeModelConfig =
   ProviderHostConfiguration<SdkExperimental_XaiRealtimeModelConfig>;

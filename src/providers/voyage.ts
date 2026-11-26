@@ -18,6 +18,7 @@ export type {
   VoyageRerankingModelOptions,
 } from '@ai-sdk/voyage';
 
+/** Adapt embedding and reranking model selection from the Voyage AI SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('voyage', sdk),
   embedding: adaptMethod(
@@ -51,12 +52,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapRerankingModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Voyage AI. */
 export type VoyageProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Voyage AI options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type VoyageProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Voyage AI provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createVoyage = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -64,4 +75,8 @@ export const createVoyage = adaptProviderFactory<
 >('createVoyage', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateVoyage(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Voyage AI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const voyage: VoyageProvider = wrapProvider(sdkVoyage);

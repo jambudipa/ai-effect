@@ -24,6 +24,7 @@ export type {
   GroqTranscriptionModelOptions,
 } from '@ai-sdk/groq';
 
+/** Adapt language and transcription model selection from the Groq SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('groq', sdk, wrapLanguageModel), {
     ...wrapProviderBase('groq', sdk),
@@ -43,14 +44,24 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('groq.tools', sdk.tools),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Groq. */
 export type GroqProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Groq options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type GroqProviderSettings<E = never, R = never> = EffectProviderSettings<
   SdkSettings,
   ResolverKey,
   E,
   R
 >;
+/**
+ * Construct the Groq provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createGroq = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -58,7 +69,15 @@ export const createGroq = adaptProviderFactory<
 >('createGroq', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateGroq(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Groq SDK. Use the factory to supply explicit
+ * settings.
+ */
 export const groq: GroqProvider = wrapProvider(sdkGroq);
+/**
+ * Build the Groq browser search tool descriptor lazily for use with a model that supports
+ * it.
+ */
 export const browserSearch = adaptProviderTool(
   'groq.browserSearch',
   sdkBrowserSearch,

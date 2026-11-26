@@ -37,6 +37,10 @@ export type {
   AnthropicUsageIteration,
 } from '@ai-sdk/anthropic';
 
+/**
+ * Adapt language, decision, evaluation, and extraction model selection from the Anthropic
+ * SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('anthropic', sdk, wrapLanguageModel), {
     ...wrapProviderBase('anthropic', sdk),
@@ -79,12 +83,22 @@ const wrapProvider = (sdk: SdkProvider) =>
     skills: adaptMethod('anthropic.skills', sdk.skills.bind(sdk), wrapSkills),
     tools: wrapProviderTools('anthropic.tools', sdk.tools),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Anthropic. */
 export type AnthropicProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `authToken` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'authToken';
+/**
+ * Keep the native Anthropic options and allow `authToken` to resolve through Effect when
+ * the SDK requests the value.
+ */
 export type AnthropicProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Anthropic provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `authToken`.
+ */
 export const createAnthropic = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -92,7 +106,15 @@ export const createAnthropic = adaptProviderFactory<
 >('createAnthropic', ['authToken'], (settings) =>
   wrapProvider(sdkCreateAnthropic(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Anthropic SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const anthropic: AnthropicProvider = wrapProvider(sdkAnthropic);
+/**
+ * Forward the Anthropic container ID from the prior step so the next request can reuse the
+ * container.
+ */
 export const forwardAnthropicContainerIdFromLastStep = (
   ...args: Parameters<typeof sdkForwardContainer>
 ) => sdkForwardContainer(...args);

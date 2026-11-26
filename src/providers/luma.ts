@@ -17,6 +17,7 @@ export type {
   LumaImageProviderOptions,
 } from '@ai-sdk/luma';
 
+/** Adapt image model selection from the Luma SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('luma', sdk),
   image: adaptMethod('luma.image', sdk.image.bind(sdk), wrapImageModel),
@@ -30,14 +31,24 @@ const wrapProvider = (sdk: SdkProvider) => ({
     sdk.textEmbeddingModel.bind(sdk),
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for Luma. */
 export type LumaProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Luma options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type LumaProviderSettings<E = never, R = never> = EffectProviderSettings<
   SdkSettings,
   ResolverKey,
   E,
   R
 >;
+/**
+ * Construct the Luma provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createLuma = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -45,4 +56,8 @@ export const createLuma = adaptProviderFactory<
 >('createLuma', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateLuma(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Luma SDK. Use the factory to supply explicit
+ * settings.
+ */
 export const luma: LumaProvider = wrapProvider(sdkLuma);

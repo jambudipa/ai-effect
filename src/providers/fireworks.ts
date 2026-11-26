@@ -35,6 +35,9 @@ export type {
   FireworksProviderOptions,
 } from '@ai-sdk/fireworks';
 
+/**
+ * Adapt language, embedding, and image model selection from the Fireworks SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('fireworks', sdk, wrapLanguageModel), {
     ...wrapProviderBase('fireworks', sdk),
@@ -70,12 +73,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapImageModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Fireworks. */
 export type FireworksProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Fireworks options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type FireworksProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Fireworks provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createFireworks = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -83,16 +96,33 @@ export const createFireworks = adaptProviderFactory<
 >('createFireworks', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateFireworks(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Fireworks SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const fireworks: FireworksProvider = wrapProvider(sdkFireworks);
 
 // Workflow calls these host hooks synchronously. Both Effects have no services.
+/**
+ * Run the synchronous serialization hooks with an empty Effect context for the workflow
+ * host.
+ */
 const runWorkflowHook = Effect.runSyncWith(Context.empty());
 
+/**
+ * Expose synchronous workflow hooks on Fireworks image models instances reconstructed by
+ * the Effect adapter.
+ */
 class FireworksWorkflowCarrier {
+  /** Serialize the adapted model through its synchronous SDK workflow hook. */
   static [WORKFLOW_SERIALIZE](model: FireworksImageModel) {
     return runWorkflowHook(FireworksImageModel[WORKFLOW_SERIALIZE](model));
   }
 
+  /**
+   * Restore the Effect model from the native workflow payload before handing it to the
+   * host.
+   */
   static [WORKFLOW_DESERIALIZE](
     input: Parameters<
       (typeof SdkFireworksImageModel)[typeof WORKFLOW_DESERIALIZE]
@@ -102,6 +132,10 @@ class FireworksWorkflowCarrier {
   }
 }
 
+/**
+ * Attach the workflow carrier to the adapted Fireworks image models so the workflow host
+ * can round-trip the instance.
+ */
 const wrapWorkflowImageModel = (model: SdkFireworksImageModel) => {
   const wrapped = wrapFixedImageModel(model);
   Object.defineProperty(wrapped, 'constructor', {
@@ -110,6 +144,10 @@ const wrapWorkflowImageModel = (model: SdkFireworksImageModel) => {
   return wrapped;
 };
 
+/**
+ * Construct the SDK Fireworks image model lazily with its native options. It exposes the
+ * workflow serialization hooks.
+ */
 export const FireworksImageModel: AdaptedWorkflowConstructor<
   typeof SdkFireworksImageModel,
   FireworksImageModel
@@ -119,6 +157,10 @@ export const FireworksImageModel: AdaptedWorkflowConstructor<
   wrapWorkflowImageModel,
   unwrapImageModel,
 );
+/**
+ * Effect model returned by `FireworksImageModel`. Use its image generation operations in
+ * an Effect program.
+ */
 export type FireworksImageModel = ReturnType<
   typeof wrapFixedImageModel<SdkFireworksImageModel['maxImagesPerCall']>
 >;

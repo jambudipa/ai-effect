@@ -20,6 +20,7 @@ export type {
   GladiaTranscriptionModelOptions,
 } from '@ai-sdk/gladia';
 
+/** Adapt transcription model selection from the Gladia SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('gladia', sdk, wrapLegacyTranscription), {
     ...wrapProviderBase('gladia', sdk),
@@ -33,12 +34,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       sdk.textEmbeddingModel.bind(sdk),
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Gladia. */
 export type GladiaProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Gladia options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type GladiaProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Gladia provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createGladia = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -46,4 +57,8 @@ export const createGladia = adaptProviderFactory<
 >('createGladia', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateGladia(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Gladia SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const gladia: GladiaProvider = wrapProvider(sdkGladia);

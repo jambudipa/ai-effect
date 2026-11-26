@@ -31,8 +31,16 @@ export type {
   MistralTranscriptionModelOptions,
 } from '@ai-sdk/mistral';
 
+/**
+ * Use the native Mistral realtime factory to retain its model selectors and session
+ * arguments.
+ */
 type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
 
+/**
+ * Adapt the realtime selector and retain the SDK methods to create and close sessions as
+ * Effects.
+ */
 const wrapMistralRealtime = (factory: SdkRealtimeFactory) =>
   Object.assign(
     adaptMethod('mistral.experimental_realtime', factory, wrapRealtimeModel),
@@ -48,10 +56,18 @@ const wrapMistralRealtime = (factory: SdkRealtimeFactory) =>
     },
   );
 
+/**
+ * Select a Mistral realtime model and manage its sessions with `createSession` and
+ * `closeSession` Effects.
+ */
 export type Experimental_MistralRealtimeFactory = ReturnType<
   typeof wrapMistralRealtime
 >;
 
+/**
+ * Adapt language, embedding, speech, and transcription model selection from the Mistral
+ * SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('mistral', sdk, wrapLanguageModel), {
     ...wrapProviderBase('mistral', sdk),
@@ -109,12 +125,22 @@ const wrapProvider = (sdk: SdkProvider) =>
     tools: wrapProviderTools('mistral.tools', sdk.tools),
     experimental_realtime: wrapMistralRealtime(sdk.experimental_realtime),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Mistral. */
 export type MistralProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Mistral options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type MistralProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Mistral provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createMistral = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -122,4 +148,8 @@ export const createMistral = adaptProviderFactory<
 >('createMistral', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateMistral(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Mistral SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const mistral: MistralProvider = wrapProvider(sdkMistral);

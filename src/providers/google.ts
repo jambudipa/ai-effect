@@ -90,11 +90,19 @@ export type {
   GoogleVideoModelOptions,
 } from '@ai-sdk/google';
 
+/**
+ * Bind the native Google image selector and adapt its image model without widening
+ * accepted model IDs.
+ */
 const wrapImage = (
   sdk: SdkProvider,
 ): AdaptedMethod<SdkProvider['image'], ReturnType<typeof wrapImageModel>> =>
   adaptMethod('google.image', sdk.image.bind(sdk), wrapImageModel);
 
+/**
+ * Keep the native Google language, embedding, streaming, and experimental model selectors
+ * available as Effects.
+ */
 const wrapProviderMethods = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('google', sdk, wrapLanguageModel), {
     ...wrapProviderBase('google', sdk),
@@ -193,24 +201,48 @@ const wrapProviderMethods = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('google.tools', sdk.tools),
   });
+/**
+ * Provider returned by the adapter, with Effect-based model selection for Google
+ * Generative AI.
+ */
 export type GoogleProvider = ReturnType<typeof wrapProviderMethods> & {
   image: AdaptedMethod<SdkProvider['image'], ReturnType<typeof wrapImageModel>>;
 };
 
+/**
+ * Keep the callable provider and named model selectors from the Google Generative AI SDK
+ * available as Effects.
+ */
 const wrapProvider = (sdk: SdkProvider): GoogleProvider =>
   Object.assign(wrapProviderMethods(sdk), {
     image: wrapImage(sdk),
   });
+/**
+ * Expose the same Google Generative AI contract as `GoogleProvider` under the SDK alias.
+ */
 export type GoogleGenerativeAIProvider = GoogleProvider;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Google Generative AI options and allow `apiKey` to resolve through
+ * Effect when the SDK requests the value.
+ */
 export type GoogleGenerativeAIProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Keep the native Google Generative AI options and allow `apiKey` to resolve through
+ * Effect when the SDK requests the value.
+ */
 export type GoogleProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Google Generative AI provider inside an Effect. Keep the scope open when
+ * using an Effect resolver for `apiKey`.
+ */
 export const createGoogle = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -218,8 +250,14 @@ export const createGoogle = adaptProviderFactory<
 >('createGoogle', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateGoogle(settings)),
 );
+/** Expose the same Google Generative AI factory as `createGoogle` under the SDK alias. */
 export const createGoogleGenerativeAI = createGoogle;
+/**
+ * Adapt the preconfigured provider from the Google Generative AI SDK. Use the factory to
+ * supply explicit settings.
+ */
 export const google: GoogleProvider = wrapProvider(sdkGoogle);
+/** Construct the SDK Google realtime model lazily with its native options. */
 export const Experimental_GoogleRealtimeModel: AdaptedConstructor<
   typeof SdkExperimental_GoogleRealtimeModel,
   Experimental_GoogleRealtimeModel
@@ -228,13 +266,26 @@ export const Experimental_GoogleRealtimeModel: AdaptedConstructor<
   SdkExperimental_GoogleRealtimeModel,
   wrapRealtimeModel,
 );
+/**
+ * Effect model returned by `Experimental_GoogleRealtimeModel`. Use its realtime connection
+ * operations in an Effect program.
+ */
 export type Experimental_GoogleRealtimeModel = ReturnType<
   typeof wrapRealtimeModel
 >;
 // Workflow calls these host hooks synchronously. The Effects have no services.
+/**
+ * Run the synchronous serialization hooks with an empty Effect context for the workflow
+ * host.
+ */
 const runWorkflowHook = Effect.runSyncWith(Context.empty());
 
+/**
+ * Expose synchronous workflow hooks on Google speech translation models instances
+ * reconstructed by the Effect adapter.
+ */
 class GoogleSpeechTranslationWorkflowCarrier {
+  /** Serialize the adapted model through its synchronous SDK workflow hook. */
   static [WORKFLOW_SERIALIZE](
     model: Experimental_GoogleSpeechTranslationModel,
   ) {
@@ -243,6 +294,10 @@ class GoogleSpeechTranslationWorkflowCarrier {
     );
   }
 
+  /**
+   * Restore the Effect model from the native workflow payload before handing it to the
+   * host.
+   */
   static [WORKFLOW_DESERIALIZE](
     input: Parameters<
       (typeof SdkExperimental_GoogleSpeechTranslationModel)[typeof WORKFLOW_DESERIALIZE]
@@ -254,6 +309,10 @@ class GoogleSpeechTranslationWorkflowCarrier {
   }
 }
 
+/**
+ * Attach the workflow carrier to the adapted Google speech translation models so the
+ * workflow host can round-trip the instance.
+ */
 const wrapWorkflowSpeechTranslationModel = (
   model: SdkExperimental_GoogleSpeechTranslationModel,
 ) => {
@@ -264,11 +323,20 @@ const wrapWorkflowSpeechTranslationModel = (
   return wrapped;
 };
 
+/**
+ * Expose synchronous workflow hooks on Google transcription models instances reconstructed
+ * by the Effect adapter.
+ */
 class GoogleTranscriptionWorkflowCarrier {
+  /** Serialize the adapted model through its synchronous SDK workflow hook. */
   static [WORKFLOW_SERIALIZE](model: GoogleTranscriptionModel) {
     return runWorkflowHook(GoogleTranscriptionModel[WORKFLOW_SERIALIZE](model));
   }
 
+  /**
+   * Restore the Effect model from the native workflow payload before handing it to the
+   * host.
+   */
   static [WORKFLOW_DESERIALIZE](
     input: Parameters<
       (typeof SdkGoogleTranscriptionModel)[typeof WORKFLOW_DESERIALIZE]
@@ -280,6 +348,10 @@ class GoogleTranscriptionWorkflowCarrier {
   }
 }
 
+/**
+ * Attach the workflow carrier to the adapted Google transcription models so the workflow
+ * host can round-trip the instance.
+ */
 const wrapWorkflowTranscriptionModel = (model: SdkGoogleTranscriptionModel) => {
   const wrapped = wrapTranscriptionModel(model);
   Object.defineProperty(wrapped, 'constructor', {
@@ -288,6 +360,10 @@ const wrapWorkflowTranscriptionModel = (model: SdkGoogleTranscriptionModel) => {
   return wrapped;
 };
 
+/**
+ * Construct the SDK Google speech translation model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const Experimental_GoogleSpeechTranslationModel: AdaptedWorkflowConstructor<
   typeof SdkExperimental_GoogleSpeechTranslationModel,
   Experimental_GoogleSpeechTranslationModel
@@ -297,13 +373,29 @@ export const Experimental_GoogleSpeechTranslationModel: AdaptedWorkflowConstruct
   wrapWorkflowSpeechTranslationModel,
   unwrapSpeechTranslationModel,
 );
+/**
+ * Effect model returned by `Experimental_GoogleSpeechTranslationModel`. Use its speech
+ * translation operations in an Effect program.
+ */
 export type Experimental_GoogleSpeechTranslationModel = ReturnType<
   typeof wrapSpeechTranslationModel
 >;
+/**
+ * Expose the same Google Generative AI constructor as
+ * `Experimental_GoogleSpeechTranslationModel` under the SDK alias.
+ */
 export const Experimental_GoogleTranslationModel =
   Experimental_GoogleSpeechTranslationModel;
+/**
+ * Expose the same Google Generative AI contract as
+ * `Experimental_GoogleSpeechTranslationModel` under the SDK alias.
+ */
 export type Experimental_GoogleTranslationModel =
   Experimental_GoogleSpeechTranslationModel;
+/**
+ * Construct the SDK Google transcription model lazily with its native options. It exposes
+ * the workflow serialization hooks.
+ */
 export const GoogleTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkGoogleTranscriptionModel,
   GoogleTranscriptionModel
@@ -313,15 +405,22 @@ export const GoogleTranscriptionModel: AdaptedWorkflowConstructor<
   wrapWorkflowTranscriptionModel,
   unwrapTranscriptionModel,
 );
+/**
+ * Effect model returned by `GoogleTranscriptionModel`. Use its transcription operations in
+ * an Effect program.
+ */
 export type GoogleTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel
 >;
 
+/** Carry the native Google realtime configuration through the adapter host boundary. */
 export type Experimental_GoogleRealtimeModelConfig =
   ProviderHostConfiguration<SdkExperimental_GoogleRealtimeModelConfig>;
 
+/** Carry the native Google speech translation configuration through the host boundary. */
 export type Experimental_GoogleSpeechTranslationModelConfig =
   ProviderHostConfiguration<SdkExperimental_GoogleSpeechTranslationModelConfig>;
 
+/** Alias the speech translation configuration under the SDK translation model name. */
 export type Experimental_GoogleTranslationModelConfig =
   ProviderHostConfiguration<SdkExperimental_GoogleTranslationModelConfig>;

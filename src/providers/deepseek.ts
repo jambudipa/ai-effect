@@ -28,6 +28,7 @@ export type {
   DeepSeekMessageProviderOptions,
 } from '@ai-sdk/deepseek';
 
+/** Adapt language model selection from the DeepSeek SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('deepSeek', sdk, wrapLanguageModel), {
     ...wrapProviderBase('deepSeek', sdk),
@@ -49,12 +50,22 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('deepSeek.tools', sdk.tools),
   });
+/** Provider returned by the adapter, with Effect-based model selection for DeepSeek. */
 export type DeepSeekProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native DeepSeek options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type DeepSeekProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the DeepSeek provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createDeepSeek = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -62,5 +73,10 @@ export const createDeepSeek = adaptProviderFactory<
 >('createDeepSeek', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateDeepSeek(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the DeepSeek SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const deepSeek: DeepSeekProvider = wrapProvider(sdkDeepSeek);
+/** Expose the same DeepSeek provider as `deepSeek` under the SDK alias. */
 export const deepseek: DeepSeekProvider = deepSeek;

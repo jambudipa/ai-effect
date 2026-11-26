@@ -61,6 +61,7 @@ import type { Effect } from 'effect';
 import type { AiSdkError } from '../internal/operation.js';
 import { runRequest, runSync } from '../internal/operation.js';
 
+/** Expose the version of the OpenAI SDK used by this adapter. */
 export const VERSION: string = sdkVersion;
 export type {
   Experimental_OpenAIRealtimeModelLiveId,
@@ -98,16 +99,29 @@ export type {
   OpenaiResponsesToolCallProviderMetadata,
 } from '../internal/provider-contracts/openai.js';
 
+/**
+ * Use the SDK realtime factory as the source for model selection and token request
+ * signatures.
+ */
 type SdkRealtimeFactory = SdkProvider['experimental_realtime'];
 
+/**
+ * Remove the open string member of an SDK model ID union so inference can distinguish
+ * known live IDs.
+ */
 type LiteralModelIds<Id extends string> = Id extends string
   ? string extends Id
     ? never
     : Id
   : never;
 
+/**
+ * Identify the literal live model IDs that select the live return type without an explicit
+ * API option.
+ */
 type KnownLiveModelId = LiteralModelIds<Experimental_OpenAIRealtimeModelLiveId>;
 
+/** Keep the live and realtime overloads and adapt the token request to a lazy Effect. */
 const wrapOpenAIRealtime = (factory: SdkRealtimeFactory) => {
   function select(
     modelId: string,
@@ -146,15 +160,26 @@ const wrapOpenAIRealtime = (factory: SdkRealtimeFactory) => {
   });
 };
 
+/**
+ * Select a live or realtime model with the native API hint, or use `getToken` to acquire a
+ * token.
+ */
 export type Experimental_OpenAIRealtimeFactory = ReturnType<
   typeof wrapOpenAIRealtime
 >;
 
+/**
+ * Adapt native OpenAI tool factories and classify failures during descriptor construction.
+ */
 const wrapTools = (
   tools: SdkProvider['tools'],
 ): AdaptedTools<SdkProvider['tools']> =>
   wrapProviderTools('openai.tools', tools);
 
+/**
+ * Assemble the OpenAI Effect model selectors and include the typed experimental realtime
+ * factory.
+ */
 const wrapProviderMethods = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('openai', sdk, wrapLanguageModel), {
     ...wrapProviderBase('openai', sdk),
@@ -240,10 +265,15 @@ const wrapProviderMethods = (sdk: SdkProvider) =>
     ),
     experimental_realtime: wrapOpenAIRealtime(sdk.experimental_realtime),
   });
+/** Provider returned by the adapter, with Effect-based model selection for OpenAI. */
 export type OpenAIProvider = ReturnType<typeof wrapProviderMethods> & {
   tools: AdaptedTools<SdkProvider['tools']>;
 };
 
+/**
+ * Keep the callable provider and named model selectors from the OpenAI SDK available as
+ * Effects.
+ */
 const wrapProvider = (native: typeof sdkOpenai): OpenAIProvider => {
   // The normalized declarations mirror the native classes under the same pin.
   const sdk = native as unknown as SdkProvider;
@@ -251,11 +281,20 @@ const wrapProvider = (native: typeof sdkOpenai): OpenAIProvider => {
     tools: wrapTools(sdk.tools),
   });
 };
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native OpenAI options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type OpenAIProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the OpenAI provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createOpenAI = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -263,7 +302,12 @@ export const createOpenAI = adaptProviderFactory<
 >('createOpenAI', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateOpenAI(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the OpenAI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const openai: OpenAIProvider = wrapProvider(sdkOpenai);
+/** Construct the SDK OpenAI realtime model lazily with its native options. */
 export const Experimental_OpenAIRealtimeModel: AdaptedConstructor<
   typeof SdkExperimental_OpenAIRealtimeModel,
   Experimental_OpenAIRealtimeModel
@@ -272,8 +316,13 @@ export const Experimental_OpenAIRealtimeModel: AdaptedConstructor<
   NativeRealtimeModel as unknown as typeof SdkExperimental_OpenAIRealtimeModel,
   wrapTypedRealtimeModel<SdkExperimental_OpenAIRealtimeModel>,
 );
+/**
+ * Effect model returned by `Experimental_OpenAIRealtimeModel`. Use its realtime connection
+ * operations in an Effect program.
+ */
 export type Experimental_OpenAIRealtimeModel =
   TypedRealtimeModel<SdkExperimental_OpenAIRealtimeModel>;
+/** Construct the SDK OpenAI live model lazily with its native options. */
 export const Experimental_OpenAIRealtimeModelLive: AdaptedConstructor<
   typeof SdkExperimental_OpenAIRealtimeModelLive,
   Experimental_OpenAIRealtimeModelLive
@@ -282,8 +331,16 @@ export const Experimental_OpenAIRealtimeModelLive: AdaptedConstructor<
   NativeRealtimeModelLive as unknown as typeof SdkExperimental_OpenAIRealtimeModelLive,
   wrapTypedRealtimeModel<SdkExperimental_OpenAIRealtimeModelLive>,
 );
+/**
+ * Effect model returned by `Experimental_OpenAIRealtimeModelLive`. Use its session
+ * connection operations in an Effect program.
+ */
 export type Experimental_OpenAIRealtimeModelLive =
   TypedRealtimeModel<SdkExperimental_OpenAIRealtimeModelLive>;
+/**
+ * Construct the SDK OpenAI speech translation model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const Experimental_OpenAISpeechTranslationModel: AdaptedWorkflowConstructor<
   typeof SdkExperimental_OpenAISpeechTranslationModel,
   Experimental_OpenAISpeechTranslationModel
@@ -293,16 +350,30 @@ export const Experimental_OpenAISpeechTranslationModel: AdaptedWorkflowConstruct
   wrapSpeechTranslationModel,
   unwrapSpeechTranslationModel,
 );
+/**
+ * Effect model returned by `Experimental_OpenAISpeechTranslationModel`. Use its speech
+ * translation operations in an Effect program.
+ */
 export type Experimental_OpenAISpeechTranslationModel = ReturnType<
   typeof wrapSpeechTranslationModel
 >;
+/**
+ * Expose the same OpenAI provider as `Experimental_OpenAISpeechTranslationModel` under the
+ * SDK alias.
+ */
 export const Experimental_OpenAITranslationModel =
   Experimental_OpenAISpeechTranslationModel;
+/**
+ * Expose the same OpenAI contract as `Experimental_OpenAISpeechTranslationModel` under the
+ * SDK alias.
+ */
 export type Experimental_OpenAITranslationModel =
   Experimental_OpenAISpeechTranslationModel;
 
+/** Expose the SDK realtime model configuration accepted at the adapter host boundary. */
 export type Experimental_OpenAIRealtimeModelConfig =
   ProviderHostConfiguration<SdkExperimental_OpenAIRealtimeModelConfig>;
 
+/** Expose the SDK live model configuration accepted at the adapter host boundary. */
 export type Experimental_OpenAIRealtimeModelLiveConfig =
   ProviderHostConfiguration<SdkExperimental_OpenAIRealtimeModelLiveConfig>;

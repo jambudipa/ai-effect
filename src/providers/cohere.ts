@@ -23,6 +23,9 @@ export type {
   CohereRerankingOptions,
 } from '@ai-sdk/cohere';
 
+/**
+ * Adapt language, embedding, and reranking model selection from the Cohere SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('cohere', sdk, wrapLanguageModel), {
     ...wrapProviderBase('cohere', sdk),
@@ -62,12 +65,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapRerankingModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Cohere. */
 export type CohereProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Cohere options and allow `apiKey` to resolve through Effect when the SDK
+ * requests the value.
+ */
 export type CohereProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Cohere provider inside an Effect. Keep the scope open when using an Effect
+ * resolver for `apiKey`.
+ */
 export const createCohere = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -75,4 +88,8 @@ export const createCohere = adaptProviderFactory<
 >('createCohere', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateCohere(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Cohere SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const cohere: CohereProvider = wrapProvider(sdkCohere);

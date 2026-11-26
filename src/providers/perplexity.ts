@@ -24,6 +24,10 @@ export type {
   PerplexityLanguageModelOptions,
 } from '@ai-sdk/perplexity';
 
+/**
+ * Adapt language, embedding, and decision model selection from the Perplexity SDK to
+ * Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('perplexity', sdk, wrapLanguageModel), {
     ...wrapProviderBase('perplexity', sdk),
@@ -53,12 +57,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapEmbeddingModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Perplexity. */
 export type PerplexityProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Perplexity options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type PerplexityProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Perplexity provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createPerplexity = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -66,4 +80,8 @@ export const createPerplexity = adaptProviderFactory<
 >('createPerplexity', ['apiKey'], (settings) =>
   wrapProvider(sdkCreatePerplexity(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Perplexity SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const perplexity: PerplexityProvider = wrapProvider(sdkPerplexity);

@@ -23,6 +23,10 @@ export type {
   TogetherAIRerankingOptions,
 } from '@ai-sdk/togetherai';
 
+/**
+ * Adapt language, embedding, image, and reranking model selection from the Together AI SDK
+ * to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('togetherai', sdk, wrapLanguageModel), {
     ...wrapProviderBase('togetherai', sdk),
@@ -68,12 +72,24 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapRerankingModel,
     ),
   });
+/**
+ * Provider returned by the adapter, with Effect-based model selection for Together AI.
+ */
 export type TogetherAIProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Together AI options and allow `apiKey` to resolve through Effect when
+ * the SDK requests the value.
+ */
 export type TogetherAIProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Together AI provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createTogetherAI = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -81,4 +97,8 @@ export const createTogetherAI = adaptProviderFactory<
 >('createTogetherAI', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateTogetherAI(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Together AI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const togetherai: TogetherAIProvider = wrapProvider(sdkTogetherai);

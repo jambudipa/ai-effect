@@ -33,6 +33,7 @@ export type {
   FishAudioTranscriptionModelOptions,
 } from '@ai-sdk/fish-audio';
 
+/** Adapt speech and transcription model selection from the Fish Audio SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('fishAudio', sdk, wrapLegacySpeech), {
     ...wrapProviderBase('fishAudio', sdk),
@@ -57,12 +58,22 @@ const wrapProvider = (sdk: SdkProvider) =>
       wrapTranscriptionModel,
     ),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Fish Audio. */
 export type FishAudioProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native Fish Audio options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type FishAudioProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Fish Audio provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createFishAudio = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -70,7 +81,15 @@ export const createFishAudio = adaptProviderFactory<
 >('createFishAudio', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateFishAudio(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the Fish Audio SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const fishAudio: FishAudioProvider = wrapProvider(sdkFishAudio);
+/**
+ * Construct the SDK Fish Audio speech model lazily with its native options. It exposes the
+ * workflow serialization hooks.
+ */
 export const FishAudioSpeechModel: AdaptedWorkflowConstructor<
   typeof SdkFishAudioSpeechModel,
   FishAudioSpeechModel
@@ -80,7 +99,15 @@ export const FishAudioSpeechModel: AdaptedWorkflowConstructor<
   wrapSpeechModel,
   unwrapSpeechModel,
 );
+/**
+ * Effect model returned by `FishAudioSpeechModel`. Use its speech synthesis operations in
+ * an Effect program.
+ */
 export type FishAudioSpeechModel = ReturnType<typeof wrapSpeechModel>;
+/**
+ * Construct the SDK Fish Audio transcription model lazily with its native options. It
+ * exposes the workflow serialization hooks.
+ */
 export const FishAudioTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkFishAudioTranscriptionModel,
   FishAudioTranscriptionModel
@@ -90,6 +117,10 @@ export const FishAudioTranscriptionModel: AdaptedWorkflowConstructor<
   wrapTranscriptionModel,
   unwrapTranscriptionModel,
 );
+/**
+ * Effect model returned by `FishAudioTranscriptionModel`. Use its transcription operations
+ * in an Effect program.
+ */
 export type FishAudioTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel
 >;

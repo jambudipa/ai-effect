@@ -28,6 +28,7 @@ export type {
   ByteDanceVideoProviderOptions,
 } from '@ai-sdk/bytedance';
 
+/** Adapt image and video model selection from the ByteDance SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) => ({
   ...wrapProviderBase('byteDance', sdk),
   video: adaptMethod('byteDance.video', sdk.video.bind(sdk), wrapVideoModel),
@@ -43,12 +44,22 @@ const wrapProvider = (sdk: SdkProvider) => ({
     wrapImageModel,
   ),
 });
+/** Provider returned by the adapter, with Effect-based model selection for ByteDance. */
 export type ByteDanceProvider = ReturnType<typeof wrapProvider>;
+/** Reserve `apiKey` for settings the SDK may read through lazy Effect resolvers. */
 type ResolverKey = 'apiKey';
+/**
+ * Keep the native ByteDance options and allow `apiKey` to resolve through Effect when the
+ * SDK requests the value.
+ */
 export type ByteDanceProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the ByteDance provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey`.
+ */
 export const createByteDance = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -56,7 +67,12 @@ export const createByteDance = adaptProviderFactory<
 >('createByteDance', ['apiKey'], (settings) =>
   wrapProvider(sdkCreateByteDance(settings)),
 );
+/**
+ * Adapt the preconfigured provider from the ByteDance SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const byteDance: ByteDanceProvider = wrapProvider(sdkByteDance);
+/** Construct the SDK ByteDance image model lazily with its native options. */
 export const ByteDanceImageModel: AdaptedConstructor<
   typeof SdkByteDanceImageModel,
   ByteDanceImageModel
@@ -65,6 +81,10 @@ export const ByteDanceImageModel: AdaptedConstructor<
   SdkByteDanceImageModel,
   wrapFixedImageModel,
 );
+/**
+ * Effect model returned by `ByteDanceImageModel`. Use its image generation operations in
+ * an Effect program.
+ */
 export type ByteDanceImageModel = ReturnType<
   typeof wrapFixedImageModel<SdkByteDanceImageModel['maxImagesPerCall']>
 >;
