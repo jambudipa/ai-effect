@@ -69,6 +69,11 @@ The [SDK inventory](docs/sdk-surface.json) lists wrapper paths and their import
 conditions. Use `@jambudipa/ai-effect/provider` for protocol types and
 `@jambudipa/ai-effect/provider-utils` for protocol utilities.
 
+Import `WORKFLOW_SERIALIZE` and `WORKFLOW_DESERIALIZE` from `provider-utils`.
+Constructors that expose these symbols return Effects from both methods.
+Provider serialization follows the pinned SDK. Some serializers omit required
+URL callbacks. Supply these callbacks when you call the deserializer directly.
+
 Create model mocks inside an Effect scope. The mock is a model handle, and its
 call history is available on the same object.
 
