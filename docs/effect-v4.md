@@ -109,13 +109,13 @@ const safe = loadConfig.pipe(Effect.catch(() => Effect.succeed(defaultConfig)))
 ```
 
 ### EFX-10: Read `Ref`, `Deferred`, and `Fiber` through their modules [IMPORTANT]
-**Do:** Call `Ref.get`, `Deferred.await`, and `Fiber.join`; call `.asEffect()` to pass a Yieldable (`Option`, `Result`, `Config`, a service) to a combinator.
-**Why:** v4 removed Effect subtyping; these values are no longer Effects, and only `yield*` accepts a Yieldable directly.
+**Do:** Call `Ref.get`, `Deferred.await`, and `Fiber.join`. Pass `Config` values directly to Effect combinators.
+**Why:** v4 removed Effect subtyping for several data types. Convert a `Result` with `Effect.fromResult` before using it as an Effect.
 **Example:**
 ```ts
 const count = yield* Ref.get(counter)
 const result = yield* Fiber.join(worker)
-const port = yield* Effect.orElseSucceed(Config.Port("PORT").asEffect(), () => 8080)
+const port = yield* Effect.orElseSucceed(Config.Port("PORT"), () => 8080)
 ```
 
 ## Services and Layers
@@ -195,7 +195,7 @@ export class UpstreamFailed extends Schema.TaggedError<UpstreamFailed>()("Upstre
 **Why:** Callers can only handle what the type shows; a widened channel hides the failures that matter.
 **Example:**
 ```ts
-const load = Effect.fn("Profiles.load")(function* (id: ProfileId): Effect.fn.Return<Profile, ProfileNotFound | UpstreamFailed> {
+const load = Effect.fn("Profiles.load")(function* (id: ProfileId): Effect.fn.Return<Profile, ProfileNotFound | UpstreamFailed, Profiles> {
   const profiles = yield* Profiles
   return yield* profiles.find(id)
 })
@@ -244,11 +244,11 @@ const row = yield* Schema.decodeUnknownEffect(ProfileRow)(raw)
 
 ### EFX-22: Use `Result` and `Option` for values that carry outcome or absence [RECOMMENDED]
 **Do:** Use `Result` (the v4 name for `Either`) for a value that can hold a failure, and `Option` for absence.
-**Why:** Both are Yieldable, so a generator can unwrap them with `yield*` and keep the failure typed.
+**Why:** These types represent outcomes and optional values explicitly. Convert a `Result` to an Effect to unwrap it inside an Effect generator.
 **Example:**
 ```ts
 const parsed: Result.Result<Port, InvalidPort> = parsePort(input)
-const port = yield* parsed
+const port = yield* Effect.fromResult(parsed)
 ```
 
 ### EFX-23: Use the `Predicate` module for runtime guards [RECOMMENDED]
@@ -355,7 +355,7 @@ yield* Effect.logInfo("Profile synced").pipe(Effect.annotateLogs({ profileId: id
 ## Testing
 
 ### EFX-33: Test through the public service API with explicit layers [IMPORTANT]
-**Do:** Use real resources in scoped fixtures. Drive time with `TestClock` and control fiber order with a latch or `Deferred`. Where `@effect/vitest` is available, use `it.scoped` for owned resources. A suite layer shares state between tests.
+**Do:** Use real resources in scoped fixtures. Drive time with `TestClock` and control fiber order with a latch or `Deferred`. Where `@effect/vitest` is available, use `it.effect` for scoped tests with Effect 4.1.5. A suite layer shares state between tests.
 **Why:** Deterministic timing lets a test exercise interruption and cleanup at a specific point.
 **Example:**
 ```ts
