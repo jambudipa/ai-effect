@@ -6,6 +6,7 @@ import type {
   Tool,
 } from '@ai-sdk/provider-utils';
 import { Effect, type Stream } from 'effect';
+import { fromNativeSchema, type Schema } from '../core-schema.js';
 import {
   unwrapSandbox,
   wrapSandbox,
@@ -27,12 +28,21 @@ type CallbackName =
 
 declare const providerToolType: unique symbol;
 
-export interface ProviderToolHandle<Input, Output, Services> {
+export interface ProviderToolHandle<
+  Input,
+  Output,
+  Services,
+  SchemaOutput = unknown,
+> {
   readonly type: 'provider';
   readonly id: `${string}.${string}`;
   readonly args: Readonly<Record<string, unknown>>;
   readonly isProviderExecuted: boolean;
   readonly supportsDeferredResults?: boolean;
+  readonly title?: string;
+  readonly deferLoading?: boolean;
+  readonly inputSchema: Schema<Input>;
+  readonly outputSchema?: Schema<SchemaOutput>;
   readonly [providerToolType]?: {
     readonly input: Input;
     readonly output: Output;
@@ -256,7 +266,8 @@ type AdaptedDescriptor<
 > = ProviderToolHandle<
   InferToolInput<Tool>,
   ToolOutput<Tool, Provided>,
-  ToolRequirements<Provided>
+  ToolRequirements<Provided>,
+  InferToolOutput<Tool>
 > &
   DescriptorCallbacks<Args, Provided>;
 
@@ -306,12 +317,22 @@ export const adaptProviderTool =
         args: toolArgs,
         isProviderExecuted,
         supportsDeferredResults,
+        title,
+        deferLoading,
+        inputSchema,
+        outputSchema,
       } = preview;
       const handle = {
         type,
         id,
         args: toolArgs,
         isProviderExecuted,
+        inputSchema: fromNativeSchema(inputSchema),
+        ...(outputSchema
+          ? { outputSchema: fromNativeSchema(outputSchema) }
+          : {}),
+        ...(typeof title === 'string' ? { title } : {}),
+        ...(typeof deferLoading === 'boolean' ? { deferLoading } : {}),
         ...(typeof supportsDeferredResults === 'boolean'
           ? { supportsDeferredResults }
           : {}),
