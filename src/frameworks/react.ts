@@ -398,7 +398,8 @@ export type Experimental_UseRealtimeReturn = {
 export function experimental_useRealtime(
   options: Experimental_UseRealtimeOptions,
 ): Experimental_UseRealtimeReturn {
-  const { view, stop } = useLifetime();
+  // The native hook owns transport disposal during React unmount.
+  const { view } = useLifetime();
   const model = unwrapRealtimeModel(options.model);
   if (!model) throw sdkError('useRealtime', 'Invalid realtime model handle');
   const { onToolCall, onError, onEvent, ...settings } = options;
@@ -428,7 +429,6 @@ export function experimental_useRealtime(
         }
       : {}),
   });
-  stop.current = native.disconnect;
   return {
     status: native.status,
     messages: native.messages,
