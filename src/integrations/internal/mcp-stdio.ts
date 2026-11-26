@@ -1,11 +1,23 @@
-import { Cause, Effect, Queue } from 'effect';
-import { type AiSdkError, sdkError } from '../../internal/operation.js';
+import { Cause, Effect, Exit, Queue, type Scope } from 'effect';
+import {
+  type AiSdkError,
+  runRequest,
+  sdkError,
+} from '../../internal/operation.js';
 import type {
   JSONRPCMessage,
   MCPTransport as NativeTransport,
 } from './mcp-contract.js';
 
-export const transports = new WeakMap<object, NativeTransport>();
+interface TransportLease {
+  readonly transport: NativeTransport;
+  readonly detach: Effect.Effect<void>;
+}
+
+export const transports = new WeakMap<
+  object,
+  Effect.Effect<TransportLease, AiSdkError, Scope.Scope>
+>();
 
 export interface MCPTransportListeners<
   MessageR = never,
@@ -27,44 +39,98 @@ export const registerTransport = (
   native: NativeTransport,
   operation: string,
 ) => {
-  let started = false;
-  const start = () =>
-    native.start().then(() => {
-      started = true;
-    });
+  const attachment: { current?: NativeTransport } = {};
+  let state: 'idle' | 'starting' | 'started' = 'idle';
+  const start = Effect.suspend(() => {
+    state = 'starting';
+    return runRequest(`${operation}.start`, {}, () => native.start()).pipe(
+      Effect.onExit((exit) =>
+        Effect.sync(() => {
+          state = Exit.isSuccess(exit) ? 'started' : 'idle';
+        }),
+      ),
+    );
+  });
   let listeners: ReadonlyArray<{
     readonly onMessage: (message: JSONRPCMessage) => void;
     readonly onClose: () => void;
     readonly onError: (error: AiSdkError) => void;
   }> = [];
   // The SDK client assigns its own handlers. Keep them separate from listeners.
-  const transport: NativeTransport = {
-    start,
-    send: (message, options) => native.send(message, options),
-    close: (options) => native.close(options),
-    ...(native.supportsProtocolVersionDiscovery !== undefined && {
-      supportsProtocolVersionDiscovery: native.supportsProtocolVersionDiscovery,
-    }),
-  };
   native.onmessage = (message) => {
-    transport.onmessage?.(message);
+    attachment.current?.onmessage?.(message);
     for (const entry of listeners) entry.onMessage(message);
   };
   native.onclose = () => {
-    if (!started) return;
-    started = false;
-    transport.onclose?.();
+    if (state !== 'started') return;
+    state = 'idle';
+    attachment.current?.onclose?.();
     for (const entry of listeners) entry.onClose();
   };
   native.onerror = (cause) => {
-    transport.onerror?.(cause);
+    attachment.current?.onerror?.(cause);
     const error = sdkError(`${operation}.error`, cause);
     for (const entry of listeners) entry.onError(error);
   };
-  transports.set(key, transport);
+  const inUse = () => attachment.current || state !== 'idle';
+  const occupied = (name: 'attach' | 'start') =>
+    sdkError(`${operation}.${name}`, 'MCP transport is already in use');
+  const detached = (name: 'start' | 'send') =>
+    Effect.runPromise(
+      sdkError(
+        `${operation}.${name}`,
+        'MCP client no longer owns this transport',
+      ),
+    );
+  const lease = Effect.acquireRelease(
+    Effect.gen(function* () {
+      let startCalled = false;
+      const close = yield* Effect.cached(
+        Effect.suspend(() =>
+          startCalled
+            ? runRequest(`${operation}.close`, {}, () => native.close())
+            : Effect.void,
+        ).pipe(Effect.uninterruptible),
+      );
+      const transport: NativeTransport = {
+        start: () => {
+          if (attachment.current !== transport) return detached('start');
+          startCalled = true;
+          return Effect.runPromise(start);
+        },
+        send: (message, options) =>
+          attachment.current === transport
+            ? native.send(message, options)
+            : detached('send'),
+        close: () => Effect.runPromise(close),
+        ...(native.supportsProtocolVersionDiscovery !== undefined && {
+          supportsProtocolVersionDiscovery:
+            native.supportsProtocolVersionDiscovery,
+        }),
+      };
+      const detach = yield* Effect.cached(
+        close.pipe(
+          Effect.catchTag('AiSdkError', (error) =>
+            Effect.logWarning('MCP transport release failed', error),
+          ),
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (attachment.current === transport) delete attachment.current;
+            }),
+          ),
+          Effect.uninterruptible,
+        ),
+      );
+      if (inUse()) return yield* occupied('attach');
+      attachment.current = transport;
+      return { transport, detach };
+    }),
+    ({ detach }) => detach,
+  );
+  transports.set(key, lease);
 
   return {
-    start,
+    start: Effect.suspend(() => (inUse() ? occupied('start') : start)),
     events: {
       subscribe: <
         MessageR = never,

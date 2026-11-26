@@ -38,15 +38,13 @@ export class StdioMCPTransport {
   }
 
   get start() {
-    return Effect.acquireRelease(
-      runRequest('StdioMCPTransport.start', {}, this.registered.start),
-      () =>
-        this.close.pipe(
-          Effect.tapError((error) =>
-            Effect.logWarning('MCP standard I/O close failed', error),
-          ),
-          Effect.orDie,
+    return Effect.acquireRelease(this.registered.start, () =>
+      this.close.pipe(
+        Effect.tapError((error) =>
+          Effect.logWarning('MCP standard I/O close failed', error),
         ),
+        Effect.orDie,
+      ),
     );
   }
 

@@ -1,7 +1,7 @@
 import * as runtime from '@ai-sdk/mcp';
 import type * as MCPContract from './internal/mcp-contract.js';
 import type { Experimental_ManagedMCPClient as NativeManagedClient } from './internal/mcp-contract.js';
-import { Cause, Deferred, Effect, type Schema, type Scope } from 'effect';
+import { Cause, Deferred, Effect, Exit, type Schema, type Scope } from 'effect';
 import {
   type AiSdkError,
   openOperation,
@@ -392,10 +392,13 @@ export function createMCPClient<R = never, E = never>(
       ...opts
     } = config;
     const owner = yield* openOperation<R>(initializationOptions?.signal);
+    const registration = transports.get(transport);
+    const lease = registration && (yield* registration);
+    const detach = lease?.detach ?? Effect.void;
     let nativeTransport =
       'type' in transport
         ? bindHttpTransport(transport, owner)
-        : transports.get(transport);
+        : lease?.transport;
     if (
       !nativeTransport &&
       !('type' in transport) &&
@@ -406,6 +409,10 @@ export function createMCPClient<R = never, E = never>(
     if (!nativeTransport) {
       return yield* Effect.fail(sdkError(operation, 'Invalid MCP transport'));
     }
+    const close = (native: MCPContract.MCPClient | NativeManagedClient) =>
+      runRequest('MCP.close', {}, () => native.close()).pipe(
+        Effect.ensuring(detach),
+      );
     const opened = yield* Effect.acquireRelease(
       runRequest(operation, { abortSignal: owner.signal }, (signal) =>
         sdk.createMCPClient({
@@ -427,9 +434,11 @@ export function createMCPClient<R = never, E = never>(
             },
           }),
         }),
+      ).pipe(
+        Effect.onExit((exit) => (Exit.isFailure(exit) ? detach : Effect.void)),
       ),
       (native) =>
-        runRequest('MCP.close', {}, () => native.close()).pipe(
+        close(native).pipe(
           Effect.catchTag('AiSdkError', (error) =>
             Effect.logWarning('MCP close failed', error),
           ),
@@ -439,7 +448,7 @@ export function createMCPClient<R = never, E = never>(
     const { experimental_events: events, ...client } = wrapClient(
       opened,
       owner,
-      runRequest('MCP.close', {}, () => opened.close()),
+      close(opened),
     );
     if (events.kind === 'managed') {
       return {
@@ -682,14 +691,12 @@ export class Experimental_WebMCPTransport {
   }
 
   get start() {
-    return Effect.acquireRelease(
-      runRequest('WebMCPTransport.start', {}, this.registered.start),
-      () =>
-        this.close.pipe(
-          Effect.catchTag('AiSdkError', (error) =>
-            Effect.logWarning('WebMCP transport release failed', error),
-          ),
+    return Effect.acquireRelease(this.registered.start, () =>
+      this.close.pipe(
+        Effect.catchTag('AiSdkError', (error) =>
+          Effect.logWarning('WebMCP transport release failed', error),
         ),
+      ),
     );
   }
 

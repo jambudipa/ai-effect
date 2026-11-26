@@ -1,5 +1,5 @@
 import { expect, it } from '@effect/vitest';
-import { Context, Deferred, Effect, Ref } from 'effect';
+import { Context, Deferred, Effect, Ref, Scope } from 'effect';
 import { StdioMCPTransport as NativeStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
 import { vi } from 'vitest';
 import {
@@ -125,6 +125,50 @@ it.effect(
       yield* Deferred.await(drained);
       expect(yield* Ref.get(events)).toEqual(['first', 'second', 'close']);
     }),
+);
+
+it.effect('keeps a built-in transport exclusive until its client closes', () =>
+  Effect.gen(function* () {
+    const parent = yield* Effect.scope;
+    const transport = yield* Experimental_WebMCPTransport.make({
+      modelContext: {
+        getTools: () =>
+          Effect.succeed([
+            {
+              name: 'local',
+              description: 'Local fixture',
+              origin: 'https://example.test',
+              window: {},
+            },
+          ]),
+        executeTool: () => Effect.succeed('ok'),
+      },
+    });
+    const aborted = new AbortController();
+    aborted.abort();
+    yield* Effect.flip(
+      createMCPClient({
+        transport,
+        initializationOptions: { signal: aborted.signal },
+      }),
+    );
+
+    const replacement = yield* Effect.scoped(
+      Effect.gen(function* () {
+        const client = yield* createMCPClient({ transport });
+        const rejected = yield* Effect.flip(createMCPClient({ transport }));
+        expect(rejected.operation).toBe('WebMCPTransport.attach');
+        expect(
+          (yield* client.listTools()).tools.map((item) => item.name),
+        ).toEqual(['local']);
+        yield* client.close;
+        return yield* Scope.provide(createMCPClient({ transport }), parent);
+      }),
+    );
+    expect(
+      (yield* replacement.listTools()).tools.map((item) => item.name),
+    ).toEqual(['local']);
+  }),
 );
 
 it.effect(
