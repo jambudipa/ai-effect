@@ -30,6 +30,13 @@ export type UseChatOptions = LegacyChatOptions & {
   ) => unknown;
 };
 
+// The pinned Solid hooks return functions. The SDK type also includes JSX
+// bindings that apply when callers supply event handlers to Solid.
+type InputChangeHandler = Extract<
+  ReturnType<typeof sdk.useChat>['handleInputChange'],
+  (...args: never[]) => void
+>;
+
 const cleanup = (release: () => void) => {
   if (getOwner()) onCleanup(release);
 };
@@ -82,7 +89,7 @@ export function useChat(options?: UseChatOptions | Accessor<UseChatOptions>) {
       native.setMessages(messages),
     setData: (...args: Parameters<typeof native.setData>) =>
       native.setData(...args),
-    handleInputChange: native.handleInputChange,
+    handleInputChange: native.handleInputChange as InputChangeHandler,
     fetch: view.fetch(native.fetch),
     append: (...args: Parameters<typeof native.append>) =>
       view.command('useChat.append', () => native.append(...args), native.stop),
@@ -137,7 +144,7 @@ export function useCompletion(
     setInput: native.setInput,
     setCompletion: (...args: Parameters<typeof native.setCompletion>) =>
       native.setCompletion(...args),
-    handleInputChange: native.handleInputChange,
+    handleInputChange: native.handleInputChange as InputChangeHandler,
     fetch: view.fetch(native.fetch),
     complete,
     handleSubmit: (event?: { preventDefault?: () => void }) =>
@@ -253,7 +260,7 @@ export function useAssistant(
     setMessages: native.setMessages,
     setThreadId: (...args: Parameters<typeof native.setThreadId>) =>
       native.setThreadId(...args),
-    handleInputChange: native.handleInputChange,
+    handleInputChange: native.handleInputChange as InputChangeHandler,
     append: (...args: Parameters<typeof native.append>) =>
       view.command(
         'useAssistant.append',
