@@ -18,7 +18,7 @@ type Native<A> = ReturnType<typeof sdk.jsonSchema<A>>;
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 /** Resolve a native schema using an operation owner's callback runtime. */
 type Binding<A, R> = (owner: Owner<R>) => Native<A>;
-/** Accept external SDK-compatible schema types the wrapper does not need to construct. */
+/** Accept externally constructed SDK-compatible schemas. */
 type ExternalSchema<A> = Exclude<
   sdk.FlexibleSchema<A>,
   Native<A> | ReturnType<typeof sdk.lazySchema<A>>

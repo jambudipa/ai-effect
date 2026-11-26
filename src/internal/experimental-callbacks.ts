@@ -27,7 +27,7 @@ type AdaptCallback<F, R> = F extends (...args: infer Args) => infer A
   ? (...args: Args) => Effect.Effect<Awaited<A>, unknown, R>
   : F;
 
-/** Keep a callback synchronous when the native SDK cannot await its result. */
+/** Preserve the native SDK callback's synchronous return contract. */
 type SyncCallback<F> = F extends (...args: infer Args) => infer A
   ? (...args: Args) => A
   : F;

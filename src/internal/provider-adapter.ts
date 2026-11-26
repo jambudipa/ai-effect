@@ -31,7 +31,7 @@ const adaptOptionalMethod = <Args extends unknown[], SDKResult, Result>(
   wrap: (result: SDKResult) => Result,
 ) => (!method ? method : adaptMethod(operation, method, wrap));
 
-/** Forward a native result unchanged when it does not need a wrapper. */
+/** Use the native result directly as the Effect success value. */
 const identity = <A>(value: A): A => value;
 
 /** Preserve a native unsupported-method failure on the lazy Effect error channel. */

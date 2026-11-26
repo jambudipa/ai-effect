@@ -26,7 +26,7 @@ type Metadata = (typeof metadata)[number];
 type LimitName = 'maxImagesPerCall' | 'maxVideosPerCall';
 /** Pass the model ID to native implementations that compute the per-call limit. */
 type LimitOptions = { modelId: string };
-/** Use `undefined` for a native model that does not report a maximum per call. */
+/** Represent an unspecified per-call maximum as `undefined`. */
 type LimitValue = number | undefined;
 /** Read an optional native limit lazily with the SDK error channel available. */
 type ModelLimit = (

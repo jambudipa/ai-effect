@@ -422,7 +422,7 @@ type RequiredToolContext<Tools extends EffectTools> = {
   ]: InferToolContext<Tools[Name]>;
 };
 
-/** Keep context optional for tool entries that do not require a nonempty record. */
+/** Keep context optional for tool entries with unspecified or empty context. */
 type OptionalToolContext<Tools extends EffectTools> = {
   [
     Name in keyof Tools as InferToolContext<Tools[Name]> extends never
@@ -447,7 +447,7 @@ export type ToolServices<Tools extends EffectTools> = ToolRequirements<
 
 // ToolSet accepts several SDK tool variants. Keep the compatible variants
 // without intersecting their typed arguments with the untyped index signature.
-/** Reject inferred values that do not satisfy the native SDK tool definition contract. */
+/** Retain inferred values compatible with the native SDK tool definition. */
 type CompatibleSdkTool<Native> = Native extends ToolSet[string]
   ? Native
   : never;

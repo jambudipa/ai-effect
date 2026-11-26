@@ -82,7 +82,7 @@ type ModelType =
   | ConstructorParameters<typeof sdk.NoSuchModelError>[0]['modelType']
   | 'speechTranslationModel';
 
-/** Pass registry IDs through and fail with a typed error when a handle cannot resolve. */
+/** Pass registry IDs through and report unresolved handles as typed failures. */
 const selectModel = <Handle extends ModelHandle, Native>(
   operation: string,
   modelType: ModelType,

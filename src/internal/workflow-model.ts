@@ -40,7 +40,7 @@ export type AdaptedWorkflowConstructor<
 > = AdaptedConstructor<Constructor, Model> &
   AdaptedWorkflowHooks<Constructor, Model>;
 
-/** Adapt workflow serialization and reject handles that do not wrap the expected native class. */
+/** Adapt workflow serialization and validate the expected native class before extracting its payload. */
 export const workflowModelHooks = <
   Args extends unknown[],
   Native,

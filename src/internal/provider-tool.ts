@@ -45,7 +45,7 @@ export interface ProviderToolHandle<
   readonly id: `${string}.${string}`;
   /** Keep the provider-specific configuration that the SDK sends with the descriptor. */
   readonly args: Readonly<Record<string, unknown>>;
-  /** Indicate that the provider executes the tool rather than requesting a local result. */
+  /** Set this flag for tool execution handled by the provider. */
   readonly isProviderExecuted: boolean;
   /** Indicate whether the provider accepts a result after the initial generation step. */
   readonly supportsDeferredResults?: boolean;

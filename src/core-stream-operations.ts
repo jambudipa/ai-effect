@@ -273,7 +273,7 @@ export const smoothStream = <R = never>({
 type ModelCallOptions<T extends EffectTools, A, P, I> = Parameters<
   typeof nativeModelCall<BoundTools<T>, OutputInterface<A, P, I>>
 >[0];
-/** Retain prompt and model settings that do not require lifecycle callback adaptation. */
+/** Carry prompt and model fields separately from the lifecycle callbacks. */
 type ModelCallData<T extends EffectTools> = Prompt &
   LanguageModelCallOptions & {
     readonly toolOrder?: NonNullable<

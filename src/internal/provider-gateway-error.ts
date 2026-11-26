@@ -156,7 +156,7 @@ export const GatewayModelNotFoundError = adaptError(
   SdkModelNotFoundError,
   ({ modelId }) => ({ modelId }),
 );
-/** Construct a gateway failure when the requested resource does not exist. */
+/** Construct the gateway failure for a missing resource. */
 export const GatewayNotFoundError = adaptError(
   'GatewayNotFoundError',
   'not_found',

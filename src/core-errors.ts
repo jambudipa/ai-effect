@@ -89,12 +89,12 @@ export const InvalidToolInputError = wrapErrorConstructor(
 /** Shared Effect error type used for a tool call with input that fails validation. */
 export type InvalidToolInputError = AiSdkError;
 
-/** Construct or identify the wrapped SDK failure for a UI history entry that cannot convert to a model message. */
+/** Construct or identify the wrapped SDK failure for a failed conversion from UI history to a model message. */
 export const MessageConversionError = wrapErrorConstructor(
   'MessageConversionError',
   sdk.MessageConversionError,
 );
-/** Shared Effect error type used for a UI history entry that cannot convert to a model message. */
+/** Shared Effect error type used for a failed conversion from UI history to a model message. */
 export type MessageConversionError = AiSdkError;
 
 /** Construct or identify the wrapped SDK failure for a previous tool call whose required result is absent. */
@@ -229,10 +229,10 @@ export const UIMessageStreamError = wrapErrorConstructor(
 /** Shared Effect error type used for a failure while processing a UI message stream. */
 export type UIMessageStreamError = AiSdkError;
 
-/** Construct or identify the wrapped SDK failure for a model protocol version the SDK cannot use. */
+/** Construct or identify the wrapped SDK failure for a model protocol version rejected by the SDK. */
 export const UnsupportedModelVersionError = wrapErrorConstructor(
   'UnsupportedModelVersionError',
   sdk.UnsupportedModelVersionError,
 );
-/** Shared Effect error type used for a model protocol version the SDK cannot use. */
+/** Shared Effect error type used for a model protocol version rejected by the SDK. */
 export type UnsupportedModelVersionError = AiSdkError;
