@@ -80,18 +80,25 @@ import type {
 import type { Owner } from './internal/experimental-callbacks.js';
 import type { ProviderV2, ProviderV3 } from './protocols/provider.js';
 
+/** Recognize a version 4 Effect provider by its model lookup contract and protocol discriminator. */
 type RegisteredProvider = {
   readonly specificationVersion: 'v4';
   readonly languageModel: (
     ...args: never[]
   ) => Effect.Effect<unknown, AiSdkError, unknown>;
 };
+/** Accept registered Effect providers and native version 3 providers at the registry boundary. */
 type RegistryProvider = RegisteredProvider | ProviderV3<unknown>;
+/** Map lookup prefixes to providers without changing upstream model IDs. */
 type ProviderMap = Readonly<Record<string, RegistryProvider>>;
+/** Describe the model and resource capabilities shared by the provider adapters. */
 type ProviderHandle = ReturnType<typeof wrapProviderBase>;
+/** Identify the baseline operations for which a legacy provider can require services. */
 type LegacyMethods = keyof ProviderV2<unknown> | keyof ProviderV3<unknown>;
+/** Include additional model operations when inferring service dependencies for a registry. */
 type RegistryMethods =
   'videoModel' | 'decisionModel' | 'evaluationModel' | 'extractionModel';
+/** Infer services required by legacy provider Effects without adding context to registered v4 providers. */
 type ProviderServices<Provider, AdditionalMethods = never> = Provider extends {
   readonly specificationVersion: 'v4';
 }
@@ -105,24 +112,30 @@ type ProviderServices<Provider, AdditionalMethods = never> = Provider extends {
         ? Services
         : never;
     }[Extract<keyof Provider, LegacyMethods | AdditionalMethods>];
+/** Collect service requirements from every registered provider's legacy operations. */
 type RegistryServices<Providers extends ProviderMap> = ProviderServices<
   Providers[keyof Providers],
   RegistryMethods
 >;
+/** Require a scope only when the registry must bind a native legacy provider in the static overload. */
 type LegacyRegistryScope<Providers extends ProviderMap> = [
   Extract<Providers[keyof Providers], ProviderV3<unknown>>,
 ] extends [never]
   ? never
   : Scope.Scope | RegistryServices<Providers>;
 
+/** Carry the original provider, model ID, and protocol version through lookup and adaptation. */
 type ResourceIdentity = {
   readonly specificationVersion: 'v2' | 'v3' | 'v4';
   readonly provider: string;
   readonly modelId: string;
 };
+/** Keep legacy video handles distinct so callers route them through their supported adapter. */
 type LegacyVideo = ResourceIdentity & { readonly specificationVersion: 'v3' };
+/** Accept a registry ID or a supported video handle in custom provider registration. */
 type VideoModel = string | VideoModelV4 | LegacyVideo;
 
+/** Resolve a registered native provider and fail before calling the SDK if the handle is unknown. */
 const requireProvider = (provider: RegisteredProvider, operation: string) =>
   Effect.suspend(() => {
     const native = unwrapProvider(provider);
@@ -133,7 +146,9 @@ const requireProvider = (provider: RegisteredProvider, operation: string) =>
         );
   });
 
+/** Allow a custom provider to delegate capability lookup to a registered or legacy provider. */
 type FallbackProvider = RegisteredProvider | LegacyProvider<unknown>;
+/** Supply local aliases by capability plus an optional fallback and registered file or skill handles. */
 type CustomProviderOptions = {
   readonly languageModels?: Readonly<Record<string, LanguageModel>>;
   readonly embeddingModels?: Readonly<Record<string, EmbeddingModel>>;
@@ -156,24 +171,32 @@ type CustomProviderOptions = {
   readonly skills?: SkillsV4Handle;
 };
 
+/** Infer known IDs from the local model map while leaving omitted capabilities open to string IDs. */
 type ModelIdentifiers<Options, Key> = Key extends keyof Options
   ? Extract<keyof NonNullable<Options[Key]>, string>
   : string;
+/** Keep the decision lookup compatible with the older evaluation alias map. */
 type DecisionIdentifiers<Options> = 'decisionModels' extends keyof Options
   ? ModelIdentifiers<Options, 'decisionModels'>
   : ModelIdentifiers<Options, 'evaluationModels'>;
+/** Defer a lookup and expose SDK lookup failures on the Effect error channel. */
 type ModelCall<Id, Model> = (modelId: Id) => Effect.Effect<Model, AiSdkError>;
+/** Keep literal ID suggestions while also accepting arbitrary fallback IDs. */
 type CustomModelCall<Id, Model> = ModelCall<string, Model> &
   ModelCall<Id, Model>;
+/** Extract the legacy fallback so its services and lifecycle can be inferred. */
 type Fallback<Options> = Options extends {
   readonly fallbackProvider?: infer Provider;
 }
   ? Extract<Provider, LegacyProvider<unknown>>
   : never;
+/** Attach a scope and native service requirements only when a legacy fallback needs them. */
 type CustomProviderScope<Options> = [Fallback<Options>] extends [never]
   ? never
   : Scope.Scope | ProviderServices<Fallback<Options>, RegistryMethods>;
+/** Request a resource handle lazily through the provider's Effect API. */
 type ResourceCall<Value> = () => Effect.Effect<Value, AiSdkError>;
+/** Require an accessor only when a direct resource or definite fallback resource is present. */
 type CustomApi<
   Options,
   Key extends 'files' | 'skills',
@@ -184,6 +207,7 @@ type CustomApi<
   ? Readonly<Record<Key, ResourceCall<Value>>>
   : Readonly<Partial<Record<Key, ResourceCall<Value>>>>;
 
+/** Expose typed model lookups and preserve the optional resource capabilities of the configured providers. */
 type CustomProvider<Options> = {
   readonly specificationVersion: 'v4';
   readonly languageModel: CustomModelCall<
@@ -229,6 +253,7 @@ type CustomProvider<Options> = {
 } & CustomApi<Options, 'files', FilesV4Handle> &
   CustomApi<Options, 'skills', SkillsV4Handle>;
 
+/** Recover the SDK model according to its protocol version before custom provider registration. */
 const sdkModel = <
   Native extends ResourceIdentity,
   Handle extends ResourceIdentity,
@@ -244,6 +269,7 @@ const sdkModel = <
         model as Handle & { specificationVersion: 'v2' | 'v3' },
       );
 
+/** Resolve each provided alias to a native model and omit unconfigured capability maps. */
 const modelMap = <Handle extends ResourceIdentity, Native>(
   models: Readonly<Record<string, string | Handle>> | undefined,
   unwrap: (model: Handle) => Native | undefined,
@@ -260,6 +286,7 @@ const modelMap = <Handle extends ResourceIdentity, Native>(
         );
   }).pipe(Effect.map((entries) => Object.fromEntries(entries)));
 
+/** Unwrap an optional resource and reject a supplied handle that has no registered native value. */
 const optionalResource = <Handle extends object, Native>(
   handle: Handle | undefined,
   unwrap: (value: Handle) => Native | undefined,
@@ -276,6 +303,7 @@ const optionalResource = <Handle extends object, Native>(
         );
   });
 
+/** Adapt the SDK custom provider to return Effect handles on matching capability lookups. */
 const wrapCustomProvider = <Options extends CustomProviderOptions>(
   native: ReturnType<typeof sdk.customProvider>,
 ): CustomProvider<Options> => {
@@ -310,6 +338,7 @@ const wrapCustomProvider = <Options extends CustomProviderOptions>(
   } as unknown as CustomProvider<Options>;
 };
 
+/** Identify the maps whose local entries take priority over fallback model selection. */
 type UserModels = Pick<
   CustomProviderOptions,
   | 'languageModels'
@@ -323,6 +352,7 @@ type UserModels = Pick<
   | 'extractionModels'
 >;
 
+/** Prefer explicitly configured models and delegate absent capability lookups to the fallback. */
 const withFallback = (
   provider: CustomProvider<CustomProviderOptions>,
   fallback: ProviderFacade,
@@ -400,6 +430,7 @@ const withFallback = (
   });
 };
 
+/** Resolve native models and resources before constructing the local provider and optional fallback facade. */
 const makeCustomProvider = <const Options extends CustomProviderOptions>(
   options: Options,
 ): Effect.Effect<
@@ -525,6 +556,7 @@ const makeCustomProvider = <const Options extends CustomProviderOptions>(
     });
   });
 
+/** Infer configured model IDs and legacy fallback requirements when constructing a provider. */
 interface CustomProviderFactory {
   <const Options extends CustomProviderOptions>(
     options: Options,
@@ -534,20 +566,25 @@ interface CustomProviderFactory {
     CustomProviderScope<Options>
   >;
 }
+/** Register local model aliases and use an optional provider for unresolved IDs. */
 export const customProvider = makeCustomProvider as CustomProviderFactory;
 
+/** Limit registry prefixes and resource provider names to configured string keys. */
 type Names<Providers> = Extract<keyof Providers, string>;
+/** Keep declared model ID literals for suggestion without treating `string` as a literal. */
 type LiteralModelId<Id> = Id extends string
   ? string extends Id
     ? never
     : Id
   : never;
+/** Read a provider method's model ID from its first argument. */
 type ModelArgument<Provider, Method> = Method extends keyof Provider
   ? NonNullable<Provider[Method]> extends (...args: infer Args) => unknown
     ? LiteralModelId<Args[0]>
     : never
   : never;
 
+/** Suggest configured fully qualified IDs and retain SDK lookup for arbitrary string input. */
 interface RegistrySelector<Providers, Separator extends string, Method, Model> {
   <Name extends Names<Providers>>(
     id: `${Name}${Separator}${ModelArgument<Providers[Name], Method>}`,
@@ -557,60 +594,71 @@ interface RegistrySelector<Providers, Separator extends string, Method, Model> {
   ): Effect.Effect<Model, AiSdkError>;
 }
 
+/** Route model IDs by provider prefix and expose file or skill lookups by provider name. */
 export interface ProviderRegistryProvider<
   Providers extends ProviderMap = ProviderMap,
   Separator extends string = ':',
 > {
+  /** Resolve a provider-qualified language model ID under the registry's separator rules. */
   readonly languageModel: RegistrySelector<
     Providers,
     Separator,
     'languageModel',
     ReturnType<typeof wrapLanguageModel>
   >;
+  /** Resolve a provider-qualified embedding model ID before sending values to the model. */
   readonly embeddingModel: RegistrySelector<
     Providers,
     Separator,
     'embeddingModel',
     ReturnType<typeof wrapEmbeddingModel>
   >;
+  /** Resolve a provider-qualified image model ID before image generation. */
   readonly imageModel: RegistrySelector<
     Providers,
     Separator,
     'imageModel',
     ReturnType<typeof wrapImageModel>
   >;
+  /** Resolve a provider-qualified transcription model ID for an audio-to-text request. */
   readonly transcriptionModel: RegistrySelector<
     Providers,
     Separator,
     'transcriptionModel',
     ReturnType<typeof wrapTranscriptionModel>
   >;
+  /** Resolve a provider-qualified speech model ID for synthesized audio. */
   readonly speechModel: RegistrySelector<
     Providers,
     Separator,
     'speechModel',
     ReturnType<typeof wrapSpeechModel>
   >;
+  /** Resolve a provider-qualified reranking model ID for document scoring. */
   readonly rerankingModel: RegistrySelector<
     Providers,
     Separator,
     'rerankingModel',
     ReturnType<typeof wrapRerankingModel>
   >;
+  /** Resolve a provider-qualified video model ID before starting generation. */
   readonly videoModel: RegistrySelector<
     Providers,
     Separator,
     'videoModel',
     ReturnType<typeof wrapVideoModel>
   >;
+  /** Resolve the named provider's registered file API without a model ID. */
   readonly files: (
     provider: Names<Providers>,
   ) => Effect.Effect<FilesV4Handle, AiSdkError>;
+  /** Resolve the named provider's registered skill API without a model ID. */
   readonly skills: (
     provider: Names<Providers>,
   ) => Effect.Effect<SkillsV4Handle, AiSdkError>;
 }
 
+/** Add decision model selection to the ordinary model and resource selectors. */
 export type Experimental_DecisionProviderRegistry<
   Providers extends ProviderMap = ProviderMap,
   Separator extends string = ':',
@@ -629,11 +677,13 @@ export type Experimental_DecisionProviderRegistry<
   >;
 };
 
+/** Expose the decision selector under the SDK's evaluation compatibility name. */
 export type Experimental_EvaluationProviderRegistry<
   Providers extends ProviderMap = ProviderMap,
   Separator extends string = ':',
 > = Experimental_DecisionProviderRegistry<Providers, Separator>;
 
+/** Expose extraction selection alongside the decision and evaluation interfaces. */
 export type Experimental_ExtractionProviderRegistry<
   Providers extends ProviderMap = ProviderMap,
   Separator extends string = ':',
@@ -646,6 +696,7 @@ export type Experimental_ExtractionProviderRegistry<
   >;
 };
 
+/** Route a prefixed ID through its Effect facade and preserve native lookup errors for unmatched IDs. */
 const registryRoutes =
   (facades: HashMap.HashMap<string, ProviderFacade>, separator: string) =>
   <Id extends string, A>(
@@ -665,6 +716,7 @@ const registryRoutes =
       return method ? method(id.slice(split + separator.length)) : native(id);
     });
 
+/** Wrap registry model lookups and route legacy capabilities through their own bound facade. */
 const wrapRegistry = <Providers extends ProviderMap, Separator extends string>(
   native: ReturnType<
     typeof sdk.createProviderRegistry<Record<string, ProviderV4>, Separator>
@@ -786,26 +838,31 @@ const wrapRegistry = <Providers extends ProviderMap, Separator extends string>(
   };
 };
 
+/** Accept one or more middleware layers for language and image requests. */
 type MiddlewareOptions<R> = {
   readonly languageModelMiddleware?:
     LanguageModelMiddleware<R> | LanguageModelMiddleware<R>[];
   readonly imageModelMiddleware?:
     ImageModelMiddleware<R> | ImageModelMiddleware<R>[];
 };
+/** Set the registry separator alongside any middleware that needs an operation owner. */
 type RegistryOptions<R, Separator extends string> = MiddlewareOptions<R> & {
   readonly separator?: Separator;
 };
+/** Keep the static registry overload free of middleware-related scope requirements. */
 type StaticRegistryOptions<Separator extends string> = {
   readonly separator?: Separator;
   readonly languageModelMiddleware?: never;
   readonly imageModelMiddleware?: never;
 };
 
+/** Apply the same native binding to a single middleware value or each value in an array. */
 const bindMiddleware = <A, B>(
   values: A | A[] | undefined,
   bind: (value: A) => B,
 ) => (Array.isArray(values) ? values.map(bind) : values && bind(values));
 
+/** Bind language and image middleware with the registry's owner before forwarding SDK options. */
 const nativeMiddleware = <R>(
   options: MiddlewareOptions<R>,
   owner: Owner<R>,
@@ -824,6 +881,7 @@ const nativeMiddleware = <R>(
   };
 };
 
+/** Build a native registry and retain Effect owners for legacy providers and supplied middleware. */
 const createRegistry = <
   Providers extends ProviderMap,
   Separator extends string,
@@ -891,6 +949,7 @@ const createRegistry = <
     );
   });
 
+/** Select the registry overload that matches whether middleware and legacy providers need a scope. */
 interface CreateProviderRegistry {
   <const Providers extends ProviderMap, const Separator extends string = ':'>(
     providers: Providers,
@@ -914,9 +973,12 @@ interface CreateProviderRegistry {
   >;
 }
 
+/** Resolve qualified model IDs across named providers with optional lookup middleware. */
 export const createProviderRegistry = createRegistry as CreateProviderRegistry;
+/** Keep the original experimental spelling available for registry consumers. */
 export const experimental_createProviderRegistry = createProviderRegistry;
 
+/** Apply language model middleware to a provider using an Effect scope that owns its callbacks. */
 export const wrapProvider = <
   R = never,
   const Provider extends RegisteredProvider | LegacyProvider<unknown> =

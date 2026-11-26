@@ -173,25 +173,33 @@ export { tool, type EffectToolOptions } from './internal/tool.js';
 export type { LanguageModelV4 } from './internal/language-model.js';
 export type { ModelMessage, TextPart, UIMessage } from 'ai';
 
+/** Accept SDK registry IDs and supported native model versions at the Core boundary. */
 export type LanguageModel =
   | Extract<SdkLanguageModel, string>
   | LanguageModelV2
   | LanguageModelV3
   | LanguageModelV4;
+/** Use the same model input on one-shot calls and reusable agents. */
 type Model = LanguageModel;
+/** Retain the caller's context record across SDK steps and tool execution. */
 type RuntimeContext = Record<string, unknown>;
+/** Carry complete, partial, and item output types through the native parser. */
 type BoundOutput<A, P, I> = OutputInterface<A, P, I>;
+/** Own the SDK abort signal and the Effect services available to callbacks. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
+/** Hold the public model, tools, and output specification before native binding. */
 type Settings<Tools, Complete, Partial, Element> = {
   readonly model: Model;
   readonly tools?: Tools;
   readonly output?: OutputSpecification<Complete, Partial, Element, unknown>;
 };
 
+/** Remove fields that need Effect adaptation while preserving native option unions. */
 type ReplaceSettings<Options> = Options extends unknown
   ? Omit<Options, 'model' | 'tools' | 'output'>
   : never;
 
+/** Bind the model, tools, and output parser to one operation owner before calling the SDK. */
 const bindSettings = <Tools extends EffectTools, A, P, I, Hook>(
   settings: Settings<Tools, A, P, I>,
   owner: Owner<ToolServices<Tools> | Hook>,
@@ -240,6 +248,7 @@ const bindSettings = <Tools extends EffectTools, A, P, I, Hook>(
   };
 };
 
+/** Preserve generation options and expose only the required Effect callback services. */
 type GenerateOptions<
   T extends EffectTools,
   R extends RuntimeContext,
@@ -290,6 +299,7 @@ export const generateText = <
     }),
   );
 
+/** Preserve stream options and use the same callback bindings as text generation. */
 type StreamOptions<
   T extends EffectTools,
   R extends RuntimeContext,
@@ -335,6 +345,7 @@ export const streamText = <
     );
   });
 
+/** Keep native stream errors on the stream while allowing callers to add an error hook. */
 function bindStreamSettings<
   T extends EffectTools,
   R extends RuntimeContext,
@@ -381,6 +392,7 @@ export const experimental_streamTextLowMemory = <
     );
   });
 
+/** Retain native agent settings with the model, tools, and schema adapted at the boundary. */
 type AgentSettings<
   C,
   T extends EffectTools,
@@ -414,9 +426,12 @@ export class ToolLoopAgent<
   Hook = never,
   Provided extends object = {},
 > {
+  /** Advertise the SDK protocol version used by consumers of an agent. */
   readonly version = 'agent-v1';
+  /** Keep the original settings until a call supplies its operation owner. */
   readonly #settings: AgentSettings<C, T, R, A, P, I, unknown>;
 
+  /** Register an agent factory that binds a fresh owner for each native consumer. */
   constructor(settings: AgentSettings<C, T, R, A, P, I, unknown> & Provided) {
     this.#settings = settings;
     registerNativeAgent(
@@ -426,14 +441,17 @@ export class ToolLoopAgent<
     );
   }
 
+  /** Forward the configured agent identifier for host and UI adapters. */
   get id() {
     return this.#settings.id;
   }
 
+  /** Expose the public tool set so adapters can infer tool input and output. */
   get tools() {
     return this.#settings.tools ?? ({} as T);
   }
 
+  /** Construct a native agent with callbacks bound to this call's owner. */
   #agent(owner: Owner<ToolServices<T> | Hook | CoreServices<Provided>>) {
     const settings = this.#settings;
     return new SdkToolLoopAgent<C, BoundTools<T>, R, BoundOutput<A, P, I>>(
@@ -449,6 +467,7 @@ export class ToolLoopAgent<
     );
   }
 
+  /** Run the configured agent to completion in a scope and return the adapted SDK result. */
   generate<CallHook = never, Call extends object = {}>(
     options: CoreOptions<
       Parameters<
@@ -494,6 +513,7 @@ export class ToolLoopAgent<
     );
   }
 
+  /** Start a scoped generation and retain the owner until the stream ends or the caller closes it. */
   stream<CallHook = never, Call extends object = {}>(
     options: CoreOptions<
       Parameters<

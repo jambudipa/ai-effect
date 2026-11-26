@@ -13,18 +13,22 @@ import type {
   SkillsV4Handle,
 } from './internal/provider-resource.js';
 
+/** Substitute the Effect resource handle for the SDK API field and preserve all upload options. */
 type Options<Native, Api> = {
   [K in keyof Native]: K extends 'api' ? Api : Native[K];
 };
 
+/** Allow a provider to resolve its registered file handle at call time. */
 type FilesProvider = {
   readonly files?: (() => Effect.Effect<FilesV4Handle, AiSdkError>) | undefined;
 };
+/** Allow a provider to resolve its registered skill handle at call time. */
 type SkillsProvider = {
   readonly skills?:
     (() => Effect.Effect<SkillsV4Handle, AiSdkError>) | undefined;
 };
 
+/** Resolve a registered file API and propagate interruption to the native upload request. */
 export const uploadFile = (
   options: Options<
     Parameters<typeof sdk.uploadFile>[0],
@@ -46,6 +50,7 @@ export const uploadFile = (
     );
   });
 
+/** Resolve the provider skill API and fail with `AiSdkError` when it is unavailable. */
 export const uploadSkill = (
   options: Options<
     Parameters<typeof sdk.uploadSkill>[0],
@@ -67,20 +72,27 @@ export const uploadSkill = (
     );
   });
 
+/** Track the installed SDK download callable, including its overloads. */
 type NativeDownload = ReturnType<typeof sdk.createDownload>;
+/** Retain the native request array and per-request abort signals. */
 type DownloadRequests = Parameters<NativeDownload>[0];
+/** Retain positional results, including SDK entries without a downloaded file. */
 type DownloadResults = Awaited<ReturnType<NativeDownload>>;
+/** Carry a parsed URL and a caller signal for a single download. */
 type DownloadRequest = {
   readonly url: URL;
   readonly abortSignal?: AbortSignal;
 };
+/** Use the SDK's non-null result for the single-request overload. */
 type DownloadResult = NonNullable<DownloadResults[number]>;
 
+/** Offer lazy single and batch downloads without exposing native promises. */
 interface Download {
   (request: DownloadRequest): Effect.Effect<DownloadResult, AiSdkError>;
   (requests: DownloadRequests): Effect.Effect<DownloadResults, AiSdkError>;
 }
 
+/** Combine interruption with the caller signals and preserve the native overload behavior. */
 const wrapDownload = (native: NativeDownload): Download => {
   function request(
     item: DownloadRequest,
@@ -106,6 +118,7 @@ const wrapDownload = (native: NativeDownload): Download => {
   return request;
 };
 
+/** Create a reusable downloader with an optional byte limit and custom fetch implementation. */
 export const createDownload = (options?: {
   readonly maxBytes?: number;
   readonly fetch?: typeof globalThis.fetch;

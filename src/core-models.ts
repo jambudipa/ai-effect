@@ -30,23 +30,29 @@ import {
 } from './internal/provider-model.js';
 import type * as legacy from './protocols/provider.js';
 
+/** Accept a model registry ID or a supported embedding model handle. */
 export type EmbeddingModel =
   | string
   | EmbeddingModelV4
   | legacy.EmbeddingModelV3
   | legacy.EmbeddingModelV2<string>;
+/** Accept a model registry ID or a supported image model handle. */
 export type ImageModel =
   string | ImageModelV4 | legacy.ImageModelV3 | legacy.ImageModelV2;
+/** Accept a model registry ID or a supported document reranking handle. */
 export type RerankingModel =
   string | RerankingModelV4 | legacy.RerankingModelV3;
+/** Accept a model registry ID or a supported speech synthesis handle. */
 export type SpeechModel =
   string | SpeechModelV4 | legacy.SpeechModelV3 | legacy.SpeechModelV2;
+/** Accept a model registry ID or a supported transcription model handle. */
 export type TranscriptionModel =
   | string
   | TranscriptionModelV4
   | legacy.TranscriptionModelV3
   | legacy.TranscriptionModelV2;
 
+/** Resolve a version 4 embedding handle or its matching legacy model binding. */
 const getEmbeddingModel = (model: Exclude<EmbeddingModel, string>) =>
   model.specificationVersion === 'v4'
     ? unwrapEmbeddingModel(model)
@@ -54,21 +60,25 @@ const getEmbeddingModel = (model: Exclude<EmbeddingModel, string>) =>
         native.EmbeddingModelV3 | native.EmbeddingModelV2<string>
       >(model);
 
+/** Resolve an image generation handle using the adapter for its protocol version. */
 const getImageModel = (model: Exclude<ImageModel, string>) =>
   model.specificationVersion === 'v4'
     ? unwrapImageModel(model)
     : unwrapLegacyModel<native.ImageModelV3 | native.ImageModelV2>(model);
 
+/** Resolve a reranking handle through version 4 or registered version 3 bindings. */
 const getRerankingModel = (model: Exclude<RerankingModel, string>) =>
   model.specificationVersion === 'v4'
     ? unwrapRerankingModel(model)
     : unwrapLegacyModel<native.RerankingModelV3>(model);
 
+/** Resolve a speech model using its protocol version before opening a synthesis request. */
 const getSpeechModel = (model: Exclude<SpeechModel, string>) =>
   model.specificationVersion === 'v4'
     ? unwrapSpeechModel(model)
     : unwrapLegacyModel<native.SpeechModelV3 | native.SpeechModelV2>(model);
 
+/** Resolve a transcription model using its protocol version before sending audio. */
 const getTranscriptionModel = (model: Exclude<TranscriptionModel, string>) =>
   model.specificationVersion === 'v4'
     ? unwrapTranscriptionModel(model)
@@ -76,11 +86,14 @@ const getTranscriptionModel = (model: Exclude<TranscriptionModel, string>) =>
         native.TranscriptionModelV3 | native.TranscriptionModelV2
       >(model);
 
+/** Reuse the SDK context record constraint for model telemetry callbacks. */
 type Runtime = NonNullable<Parameters<typeof sdk.embed>[0]['runtimeContext']>;
+/** Report missing models using the SDK's capability-specific model category. */
 type ModelType = ConstructorParameters<
   typeof sdk.NoSuchModelError
 >[0]['modelType'];
 
+/** Resolve the native model lazily, fail on an unknown handle, and pass through cancellation. */
 function modelRequest<
   Handle extends { readonly modelId: string },
   Native,
@@ -113,6 +126,7 @@ function modelRequest<
   });
 }
 
+/** Own the bound model callbacks and native request signal for the lifetime of one request. */
 const scopedModelRequest = <
   Handle extends { readonly modelId: string },
   Native,
@@ -145,6 +159,7 @@ const scopedModelRequest = <
     }),
   );
 
+/** Allow Effect callbacks to observe the start and end events of a model request. */
 type Hooks<Start, End, Services> = {
   readonly onStart?: (
     event: TelemetryEvent<Start>,
@@ -160,6 +175,7 @@ type Hooks<Start, End, Services> = {
   ) => Effect.Effect<void, unknown, Services>;
 };
 
+/** Run each configured callback through the request owner and preserve options that need no binding. */
 function bindHooks<Start, End, Services, Native extends object>(
   options: object & Hooks<Start, End, Services>,
   owner: Effect.Success<ReturnType<typeof openOperation<Services>>>,
@@ -192,21 +208,25 @@ function bindHooks<Start, End, Services, Native extends object>(
   } as Native;
 }
 
+/** Remove the SDK's internal test-only field from public request options. */
 type VisibleOptions<Native> = {
   [Key in keyof Native as Key extends '_internal' ? never : Key]: Native[Key];
 };
+/** Replace a model option with its public handle and adapt Effect callback requirements. */
 type Options<Native, Handle, R = never> = ExperimentalOptions<
   VisibleOptions<Native>,
   Handle,
   R
 >;
 
+/** Remove native hooks so the public Effect callback contracts can replace them. */
 type HookInput<Options, Start, End, R> = {
   [
     Key in keyof Options as Key extends keyof Hooks<Start, End, R> ? never : Key
   ]: Options[Key];
 } & Hooks<Start, End, R>;
 
+/** Combine public model input with typed start and end telemetry hooks. */
 type HookOptions<Native, Handle, Start, End, R> = HookInput<
   Options<Native, Handle, R>,
   Start,
@@ -214,6 +234,7 @@ type HookOptions<Native, Handle, Start, End, R> = HookInput<
   R
 >;
 
+/** Request an embedding for one value with scoped start and end callbacks. */
 export const embed = <R extends Runtime = Runtime, Services = never>(
   options: HookOptions<
     Parameters<typeof sdk.embed<R>>[0],
@@ -241,6 +262,7 @@ export const embed = <R extends Runtime = Runtime, Services = never>(
       }),
   );
 
+/** Request embeddings for a batch while preserving the SDK's input-order correspondence. */
 export const embedMany = <R extends Runtime = Runtime, Services = never>(
   options: HookOptions<
     Parameters<typeof sdk.embedMany<R>>[0],
@@ -268,6 +290,7 @@ export const embedMany = <R extends Runtime = Runtime, Services = never>(
       }),
   );
 
+/** Rank documents by their relevance to a query and retain their inferred document type. */
 export const rerank = <
   Document extends string | JSONObject,
   R extends Runtime = Runtime,
@@ -299,6 +322,7 @@ export const rerank = <
       }),
   );
 
+/** Generate an image with a registry ID or registered handle and preserve provider output. */
 export const generateImage = <R = never>(
   options: Options<Parameters<typeof sdk.generateImage>[0], ImageModel, R>,
 ) =>
@@ -319,6 +343,7 @@ export const generateImage = <R = never>(
       }),
   );
 
+/** Synthesize speech and expose the generated audio through lazy encoding accessors. */
 export const generateSpeech = <R = never>(
   options: Options<Parameters<typeof sdk.generateSpeech>[0], SpeechModel, R>,
 ) =>
@@ -339,6 +364,7 @@ export const generateSpeech = <R = never>(
       }),
   );
 
+/** Transcribe audio and preserve native segments and response metadata. */
 export const transcribe = <R = never>(
   options: Options<Parameters<typeof sdk.transcribe>[0], TranscriptionModel, R>,
 ) =>

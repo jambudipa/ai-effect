@@ -12,20 +12,27 @@ import {
 import { lazyValue } from './internal/provider-model.js';
 import { toSdkSchema } from './internal/schema.js';
 
+/** Represent the native SDK schema after the Effect adapter binds it. */
 type Native<A> = ReturnType<typeof sdk.jsonSchema<A>>;
+/** Own the lifetime and Effect dependencies of schema callbacks. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
+/** Resolve a native schema using an operation owner's callback runtime. */
 type Binding<A, R> = (owner: Owner<R>) => Native<A>;
+/** Accept external SDK-compatible schema types the wrapper does not need to construct. */
 type ExternalSchema<A> = Exclude<
   sdk.FlexibleSchema<A>,
   Native<A> | ReturnType<typeof sdk.lazySchema<A>>
 >;
 
+/** Preserve the SDK distinction between successful validation and a validation rejection. */
 export type ValidationResult<A> = sdk.ValidationResult<A>;
+/** Resolve a schema lazily with access to its required Effect services. */
 export type LazySchema<A, R = never> = Effect.Effect<
   Schema<A, R>,
   AiSdkError,
   R
 >;
+/** Accept native, Effect, Standard Schema, and effectful schema inputs at one boundary. */
 export type FlexibleSchema<A, R = never> =
   | Schema<A, R>
   | EffectSchema.ConstraintDecoder<A, R>
@@ -34,14 +41,18 @@ export type FlexibleSchema<A, R = never> =
 
 /** A schema whose conversion and validation run through Effect. */
 export interface Schema<A, R = never> {
+  /** Render the provider-facing JSON Schema document under an owned operation scope. */
   readonly jsonSchema: Effect.Effect<JSONSchema7, AiSdkError, R>;
+  /** Validate an unknown input and carry the SDK's validation result separately from runtime failures. */
   readonly validate: (
     value: unknown,
   ) => Effect.Effect<ValidationResult<A>, AiSdkError, R>;
 }
 
+/** Associate public schema handles with native factories without exposing the SDK binding. */
 const schemaBindings = new WeakMap<object, unknown>();
 
+/** Create public validation operations and store the factory used by SDK calls. */
 function registerSchema<A, R>(binding: Binding<A, R>): Schema<A, R> {
   const schema: Schema<A, R> = {
     jsonSchema: Effect.scoped(
@@ -73,6 +84,7 @@ function registerSchema<A, R>(binding: Binding<A, R>): Schema<A, R> {
   return schema;
 }
 
+/** Adapt an SDK-compatible schema without evaluating it during registration. */
 export const fromNativeSchema = <A>(value: sdk.FlexibleSchema<A>): Schema<A> =>
   registerSchema(() => sdk.asSchema(value));
 
@@ -88,6 +100,7 @@ export const bindSchema = <A, R>(
     }),
   );
 
+/** Normalize supported input forms to a lazily resolved public schema. */
 export const asSchema = <A, R = never>(
   input?: FlexibleSchema<A, R>,
 ): LazySchema<A, R> => {
@@ -108,14 +121,17 @@ export const asSchema = <A, R = never>(
   );
 };
 
+/** Validate unknown input in the same Effect context as JSON Schema generation. */
 export type ValidateFunction<A, R = never> = (
   value: unknown,
 ) => Effect.Effect<ValidationResult<A>, unknown, R>;
+/** Accept a JSON Schema document or a computation resolved only when the SDK requests it. */
 type SchemaDocument<R> =
   | JSONSchema7
   | Effect.Effect<JSONSchema7, unknown, R>
   | (() => JSONSchema7 | Effect.Effect<JSONSchema7, unknown, R>);
 
+/** Register a lazy JSON Schema document and an optional Effect validation callback. */
 export const jsonSchema = <A = unknown, R = never>(
   document: SchemaDocument<R>,
   options?: { readonly validate?: ValidateFunction<A, R> },
@@ -142,20 +158,25 @@ export const jsonSchema = <A = unknown, R = never>(
     }),
   );
 
+/** Create a reusable cached schema resolution effect without running its constructor immediately. */
 export const lazySchema = <A, R>(create: () => LazySchema<A, R>) =>
   Effect.cached(Effect.suspend(create));
 
+/** Wrap a Zod definition with its native conversion options and defer the SDK callback. */
 export const zodSchema = <A>(
   schema: Parameters<typeof sdk.zodSchema<A>>[0],
   options?: Parameters<typeof sdk.zodSchema<A>>[1],
 ): Effect.Effect<Schema<A>> =>
   Effect.sync(() => registerSchema(() => sdk.zodSchema(schema, options)));
 
+/** Carry raw JSON text for the overload without schema validation. */
 type ParseOptions = { readonly text: string };
+/** Carry both source text and the schema that validates or transforms the parsed value. */
 type TypedParseOptions<A, R> = ParseOptions & {
   readonly schema: FlexibleSchema<A, R>;
 };
 
+/** Bind the schema to an operation scope and map native rejection to `AiSdkError`. */
 function withSchema<A, R, Out>(
   operation: string,
   schema: FlexibleSchema<A, R>,
@@ -172,9 +193,11 @@ function withSchema<A, R, Out>(
   );
 }
 
+/** Parse JSON text and fail the effect if the SDK rejects it. */
 export function parseJSON(
   options: ParseOptions,
 ): Effect.Effect<JSONValue, AiSdkError>;
+/** Parse JSON text and validate or transform it with the supplied schema. */
 export function parseJSON<A, R = never>(
   options: TypedParseOptions<A, R>,
 ): Effect.Effect<A, AiSdkError, Exclude<R, Scope>>;
@@ -190,6 +213,7 @@ export function parseJSON<A, R>(
     : runRequest('parseJSON', {}, () => sdk.parseJSON(options));
 }
 
+/** Preserve raw input when available and expose the final value or redacted parse failure. */
 export type ParseResult<A> =
   | { readonly success: true; readonly value: A; readonly rawValue: unknown }
   | {
@@ -198,6 +222,7 @@ export type ParseResult<A> =
       readonly rawValue?: unknown;
     };
 
+/** Replace native details on failure with `AiSdkError` while keeping the result discriminator. */
 const normalizeResult = <A>(
   operation: string,
   result: sdk.ParseResult<A>,
@@ -206,9 +231,11 @@ const normalizeResult = <A>(
     ? result
     : { ...result, error: sdkError(operation, result.error) };
 
+/** Parse JSON text and report parse rejection in the result value. */
 export function safeParseJSON(
   options: ParseOptions,
 ): Effect.Effect<ParseResult<JSONValue>, AiSdkError>;
+/** Parse and validate JSON while keeping parse or validation rejection in the result value. */
 export function safeParseJSON<A, R = never>(
   options: TypedParseOptions<A, R>,
 ): Effect.Effect<ParseResult<A>, AiSdkError, Exclude<R, Scope>>;
@@ -227,6 +254,7 @@ export function safeParseJSON<A, R>(
       );
 }
 
+/** Carry the input, schema, and optional path context for SDK validation. */
 type ValidationOptions<A, R> = {
   readonly value: unknown;
   readonly schema: FlexibleSchema<A, R>;
@@ -235,11 +263,13 @@ type ValidationOptions<A, R> = {
   >;
 };
 
+/** Validate unknown data and fail the effect when the SDK rejects it. */
 export const validateTypes = <A, R = never>(options: ValidationOptions<A, R>) =>
   withSchema('validateTypes', options.schema, (schema) =>
     sdk.validateTypes({ ...options, schema }),
   );
 
+/** Validate unknown data and represent schema rejection as a result value. */
 export const safeValidateTypes = <A, R = never>(
   options: ValidationOptions<A, R>,
 ) =>
@@ -247,11 +277,13 @@ export const safeValidateTypes = <A, R = never>(
     sdk.safeValidateTypes({ ...options, schema }),
   ).pipe(Effect.map((result) => normalizeResult('safeValidateTypes', result)));
 
+/** Run the SDK's protected JSON parser and map parser errors to `AiSdkError`. */
 export const secureJsonParse = (
   text: string,
 ): Effect.Effect<unknown, AiSdkError> =>
   runSync('secureJsonParse', () => sdk.secureJsonParse(text));
 
+/** Validate one provider's named option set and represent a missing entry as `None`. */
 export const parseProviderOptions = <A, R = never>(
   options: Omit<Parameters<typeof sdk.parseProviderOptions<A>>[0], 'schema'> & {
     schema: FlexibleSchema<A, R>;

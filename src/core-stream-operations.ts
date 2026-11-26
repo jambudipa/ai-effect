@@ -53,9 +53,11 @@ import {
 } from './internal/tool.js';
 import type { LanguageModelV2, LanguageModelV3 } from './protocols/provider.js';
 
+/** Accept gateway IDs and model handles for every supported language model protocol. */
 type LanguageModel =
   GatewayModelId | LanguageModelV2 | LanguageModelV3 | LanguageModelV4;
 
+/** Supply a completion request URL, prompt, and transport options to the client stream adapter. */
 export type CallCompletionApiOptions<R = never> = {
   readonly api: string;
   readonly prompt: string;
@@ -177,8 +179,10 @@ export const callCompletionApi = <R = never>(
     }),
   );
 
+/** Return a complete prefix of buffered text or signal that more input is needed. */
 export type ChunkDetector = (buffer: string) => string | undefined | null;
 
+/** Set the smoothing delay in milliseconds and choose a built-in or custom chunk boundary. */
 export type SmoothStreamOptions<R = never> = {
   readonly delayInMs?: number | null;
   readonly chunking?: 'word' | 'line' | RegExp | ChunkDetector | Intl.Segmenter;
@@ -189,18 +193,23 @@ export type SmoothStreamOptions<R = never> = {
   };
 };
 
+/** Expose an Effect stream transform with an SDK binding for native text operations. */
 export interface SmoothStream {
+  /** Apply smoothing to text events and preserve the source stream's Effect requirements. */
   readonly apply: <T extends EffectTools, E, R>(
     source: Stream.Stream<TextStreamPart<BoundTools<T>>, E, R>,
   ) => Stream.Stream<TextStreamPart<BoundTools<T>>, AiSdkError, R>;
 }
 
+/** Produce the native smoothing transform under the caller's operation owner. */
 type BindSmooth = <Tools extends ToolSet>(
   owner: Owner<never>,
 ) => StreamTextTransform<Tools>;
 
+/** Keep native smoothing factories private while exposing their public handles. */
 const smoothBindings = new WeakMap<SmoothStream, BindSmooth>();
 
+/** Retrieve the SDK transform for a registered smoothing handle, if one exists. */
 export const unwrapSmoothStream = <Tools extends ToolSet>(
   stream: SmoothStream,
   owner: Owner<never>,
@@ -260,9 +269,11 @@ export const smoothStream = <R = never>({
     return result;
   });
 
+/** Derive the native stream request shape from the caller's registered tools and output parser. */
 type ModelCallOptions<T extends EffectTools, A, P, I> = Parameters<
   typeof nativeModelCall<BoundTools<T>, OutputInterface<A, P, I>>
 >[0];
+/** Retain prompt and model settings that do not require lifecycle callback adaptation. */
 type ModelCallData<T extends EffectTools> = Prompt &
   LanguageModelCallOptions & {
     readonly toolOrder?: NonNullable<
@@ -280,23 +291,31 @@ type ModelCallData<T extends EffectTools> = Prompt &
       ModelCallOptions<T, string, string, never>['toolsContext']
     >;
   };
+/** Carry the SDK stream-start event before per-call model events begin. */
 type InitialEvent = Parameters<
   NonNullable<ModelCallOptions<{}, string, string, never>['onStart']>
 >[0];
+/** Carry the native metadata available when a language model call starts. */
 type StepStart = Parameters<OnLanguageModelCallStartCallback>[0];
+/** Carry native completion metadata and typed tool results from the model call. */
 type StepEnd<T extends EffectTools> = Parameters<
   OnLanguageModelCallEndCallback<BoundTools<T>>
 >[0];
+/** Derive a repair callback from the SDK request so its tool arguments stay aligned. */
 type Repair<T extends EffectTools> = NonNullable<
   ModelCallOptions<T, string, string, never>['repairToolCall']
 >;
+/** Read the SDK callback map for input refinement of the registered tools. */
 type Refinements<T extends EffectTools> = NonNullable<
   ModelCallOptions<T, string, string, never>['refineToolInput']
 >;
+/** Infer the validated input attached to a named tool's native definition. */
 type ToolInput<T extends EffectTools, Name extends keyof T> = InferToolInput<
   BoundTools<T>[Name]
 >;
+/** Use the SDK's structured context when repairing tool arguments. */
 type RepairContext<T extends EffectTools> = Parameters<Repair<T>>[0];
+/** Read the tracing wrapper signature from the native model call options. */
 type Trace = NonNullable<
   ModelCallOptions<
     {},
@@ -305,10 +324,13 @@ type Trace = NonNullable<
     never
   >['executeLanguageModelCallInTelemetryContext']
 >;
+/** Accept one lifecycle observer or a readonly list of observers. */
 type Lifecycle<A, R> =
   | ((event: A) => CallbackResult<void, R>)
   | readonly ((event: A) => CallbackResult<void, R>)[];
+/** Carry the SDK's telemetry payload when opening a tracing context. */
 type TraceEvent = Parameters<Trace>[0];
+/** Expose call identity and recording settings while allowing payload adaptation. */
 type TraceContext<A> = Partial<StepStart> & {
   readonly callId: string;
   readonly recordInputs?: boolean;
@@ -321,6 +343,7 @@ type TraceContext<A> = Partial<StepStart> & {
   readonly execute: Effect.Effect<A, AiSdkError>;
 };
 
+/** Describe a low-level language model stream with typed hooks, tools, and output parsing services. */
 export type StreamLanguageModelCallOptions<
   T extends EffectTools = {},
   A = string,

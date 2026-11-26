@@ -9,6 +9,7 @@ export class AiSdkError extends Schema.TaggedError<AiSdkError>()('AiSdkError', {
   cause: Schema.Redacted(Schema.Defect(), { disallowJsonEncode: true }),
 }) {}
 
+/** Keep only allowlisted error names, request IDs, and status codes visible and redact the original cause. */
 export const sdkError = (operation: string, cause: unknown): AiSdkError => {
   const error =
     typeof cause === 'object' && cause
@@ -39,14 +40,17 @@ export const sdkError = (operation: string, cause: unknown): AiSdkError => {
   });
 };
 
+/** Cancel the native operation from either the Effect fiber or the caller's signal. */
 export const combineSignals = (
   signal: AbortSignal,
   callerSignal?: AbortSignal,
 ) => (callerSignal ? AbortSignal.any([signal, callerSignal]) : signal);
 
+/** Run a synchronous SDK call lazily and translate a thrown value to `AiSdkError`. */
 export const runSync = <A>(operation: string, run: () => A) =>
   Effect.try({ try: run, catch: (cause) => sdkError(operation, cause) });
 
+/** Run a promise-based SDK request under the combined abort signal and map rejection to `AiSdkError`. */
 export const runRequest = <A>(
   operation: string,
   options: { readonly abortSignal?: AbortSignal },

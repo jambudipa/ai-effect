@@ -2,6 +2,7 @@ import * as sdk from 'ai';
 import { Deferred, Effect, Option, Ref, Semaphore } from 'effect';
 import { runSync } from './internal/operation.js';
 
+/** Wrap a generated file and defer its base64 and byte conversions until requested. */
 export const DefaultGeneratedFile = (
   options: ConstructorParameters<typeof sdk.DefaultGeneratedFile>[0],
 ) =>
@@ -18,20 +19,24 @@ export const DefaultGeneratedFile = (
     };
   });
 
+/** Expose the media metadata and separately executable content encodings of a generated file. */
 export type DefaultGeneratedFile = Effect.Success<
   ReturnType<typeof DefaultGeneratedFile>
 >;
 
+/** Create paired web-stream endpoints for serializing JSON values as server-sent events. */
 export const JsonToSseTransformStream = () =>
   runSync('JsonToSseTransformStream', () => {
     const { readable, writable } = new sdk.JsonToSseTransformStream();
     return { readable, writable };
   });
 
+/** Type the readable and writable endpoints that share one SSE transform. */
 export type JsonToSseTransformStream = Effect.Success<
   ReturnType<typeof JsonToSseTransformStream>
 >;
 
+/** Create an executor that runs one job at a time and lets callers await the current queue draining. */
 export const SerialJobExecutor = Effect.gen(function* () {
   const semaphore = yield* Semaphore.make(1);
   const initial = yield* Deferred.make<void>();
@@ -71,4 +76,5 @@ export const SerialJobExecutor = Effect.gen(function* () {
   };
 });
 
+/** Expose the executor interface without its semaphore and pending-job state. */
 export type SerialJobExecutor = Effect.Success<typeof SerialJobExecutor>;

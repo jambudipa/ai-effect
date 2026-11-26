@@ -5,7 +5,9 @@ import type { EffectTelemetry } from './integrations/internal/telemetry.js';
 import { bindTelemetry } from './internal/experimental-callbacks.js';
 import { openOperation, runSync } from './internal/operation.js';
 
+/** Describe Effect callbacks that receive SDK generation and tool events. */
 export type Telemetry = EffectTelemetry;
+/** Preserve native telemetry settings while allowing one or several Effect integrations. */
 export type TelemetryOptions<
   Runtime extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<NativeOptions<Runtime>, 'integrations'> & {
