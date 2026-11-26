@@ -19,6 +19,14 @@ function bindOptions<Native extends object, Services>(
 ): Native {
   return Object.fromEntries(
     Object.entries(options).map(([name, option]) => {
+      if (Effect.isEffect(option)) {
+        return [
+          name,
+          owner.runCallback(
+            option as Effect.Effect<unknown, unknown, Services>,
+          ),
+        ];
+      }
       if (typeof option === 'function') {
         const callback = option as (
           ...args: unknown[]
@@ -27,14 +35,6 @@ function bindOptions<Native extends object, Services>(
           name,
           (...args: unknown[]) =>
             owner.runCallback(Effect.suspend(() => callback(...args))),
-        ];
-      }
-      if (Effect.isEffect(option)) {
-        return [
-          name,
-          owner.runCallback(
-            option as Effect.Effect<unknown, unknown, Services>,
-          ),
         ];
       }
       return [name, option];

@@ -3,6 +3,7 @@ import type {
   TranscriptionModelV4 as NativeTranscription,
   Experimental_VideoModelV4 as NativeVideo,
 } from '@ai-sdk/provider';
+import { EXPERIMENTAL_EMBEDDING_MODEL_MAX_INPUT_BYTES_PER_CALL } from '@ai-sdk/provider-utils';
 import { Effect } from 'effect';
 import { wrapLanguageModel } from './internal/language-model.js';
 import { wrapLegacyModel } from './internal/legacy-model.js';
@@ -15,6 +16,7 @@ import {
   runSync,
 } from './internal/operation.js';
 import {
+  lazyValue,
   wrapEmbeddingModel,
   wrapEvaluationModel,
   wrapExtractionModel,
@@ -80,7 +82,13 @@ export const MockLanguageModelV4 = mockModel(
 export const MockEmbeddingModelV4 = mockModel(
   'MockEmbeddingModelV4',
   sdk.MockEmbeddingModelV4,
-  wrapEmbeddingModel,
+  (model) =>
+    Object.assign(wrapEmbeddingModel(model), {
+      [EXPERIMENTAL_EMBEDDING_MODEL_MAX_INPUT_BYTES_PER_CALL]: lazyValue(
+        'MockEmbeddingModelV4.maxInputBytesPerCall',
+        () => model[EXPERIMENTAL_EMBEDDING_MODEL_MAX_INPUT_BYTES_PER_CALL],
+      ),
+    }),
   'doEmbedCalls',
 );
 
