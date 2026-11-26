@@ -126,19 +126,21 @@ export const OpenTelemetry = {
           sdkError('OpenTelemetry.make', 'Invalid telemetry ID generator'),
         );
       }
-      return yield* runSync('OpenTelemetry.make', () =>
-        wrapTelemetry(
+      return yield* runSync('OpenTelemetry.make', () => {
+        const telemetry = wrapTelemetry(
           'OpenTelemetry',
           new sdk.OpenTelemetry({
             ...rest,
             ...(nativeDurable && { durable: nativeDurable }),
           }),
-        ),
-      );
+        );
+        // The modern class provides all its hooks and its durable descriptor.
+        return telemetry as OpenTelemetry;
+      });
     }),
 };
-export type OpenTelemetry = Effect.Success<
-  ReturnType<typeof OpenTelemetry.make>
+export type OpenTelemetry = Required<
+  Pick<ReturnType<typeof wrapTelemetry>, keyof sdk.OpenTelemetry>
 >;
 
 export const LegacyOpenTelemetry = {
