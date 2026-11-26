@@ -40,7 +40,9 @@ import {
   type ToolServices,
 } from './tool.js';
 
+/** Accept native host streams and Effect streams with their own requirements. */
 type StreamInput<A, R> = Stream.Stream<A, unknown, R> | ReadableStream<A>;
+/** Convert an Effect stream to a native readable using its current context and optional abort signal. */
 const webStream = <A, R>(stream: StreamInput<A, R>, signal?: AbortSignal) => {
   if (Stream.isStream(stream)) {
     return Effect.context<R>().pipe(
@@ -60,17 +62,21 @@ const webStream = <A, R>(stream: StreamInput<A, R>, signal?: AbortSignal) => {
     : Effect.succeed(stream);
 };
 
+/** Own the native readable's lifetime before exposing its chunks as an Effect stream. */
 export const scopedStream = <A>(operation: string, source: ReadableStream<A>) =>
   ownReadable(operation, source).pipe(
     Effect.map((owned) => foreignStream(operation, owned)),
   );
 
+/** Preserve the message type of the SDK's per-step UI stream callback. */
 type StepEvent<Message extends UIMessage> = Parameters<
   NativeStepEndCallback<Message>
 >[0];
+/** Preserve the SDK's terminal event before adapting its failure outcome. */
 type NativeEndEvent<Message extends UIMessage> = Parameters<
   NativeEndCallback<Message>
 >[0];
+/** Expose the message stream's outcome with native error detail converted to `AiSdkError`. */
 type EndEvent<Message extends UIMessage> = Omit<
   NativeEndEvent<Message>,
   'outcome'
@@ -82,9 +88,11 @@ type EndEvent<Message extends UIMessage> = Omit<
         readonly error?: AiSdkError;
       };
 };
+/** Infer caller-defined metadata from the message schema in use. */
 type MessageMetadata<Message extends UIMessage> =
   Message extends UIMessage<infer Metadata> ? Metadata : unknown;
 
+/** Keep history and lifecycle callbacks aligned when building a UI stream. */
 export type UiLifecycle<Message extends UIMessage, R> = {
   readonly originalMessages?: Message[];
   readonly onStepEnd?: UIMessageStreamOnStepEndCallback<Message, R>;
@@ -94,6 +102,7 @@ export type UiLifecycle<Message extends UIMessage, R> = {
   readonly onError?: (cause: AiSdkError) => string;
 };
 
+/** Observe the UI stream state after a generation step finishes. */
 export type UIMessageStreamOnStepEndCallback<
   Message extends UIMessage = UIMessage,
   R = never,
@@ -105,6 +114,7 @@ export type UIMessageStreamOnStepFinishCallback<
   R = never,
 > = UIMessageStreamOnStepEndCallback<Message, R>;
 
+/** Observe the UI stream's final state and adapted success or failure outcome. */
 export type UIMessageStreamOnEndCallback<
   Message extends UIMessage = UIMessage,
   R = never,
@@ -116,6 +126,7 @@ export type UIMessageStreamOnFinishCallback<
   R = never,
 > = UIMessageStreamOnEndCallback<Message, R>;
 
+/** Configure how the SDK reconstructs messages and emits UI chunks. */
 export type UIMessageStreamOptions<
   Message extends UIMessage = UIMessage,
   R = never,
@@ -131,6 +142,7 @@ export type UIMessageStreamOptions<
   readonly redactToolErrors?: boolean;
 };
 
+/** Bind Effect lifecycle callbacks and support compatibility aliases for the same event. */
 export const bindLifecycle = <Message extends UIMessage, R>(
   operation: string,
   owner: Owner<R>,
@@ -179,6 +191,7 @@ export const bindLifecycle = <Message extends UIMessage, R>(
   };
 };
 
+/** Adapt lifecycle hooks and message ID generation before calling native UI stream helpers. */
 export const bindUiOptions = <Message extends UIMessage, R>(
   operation: string,
   owner: Owner<R>,
@@ -203,6 +216,7 @@ export const bindUiOptions = <Message extends UIMessage, R>(
   }),
 });
 
+/** Keep the UI stream options relevant to converting typed model events into one UI chunk sequence. */
 export type ToUIMessageChunkOptions<
   T extends EffectTools = {},
   Message extends UIMessage = UIMessage,
@@ -279,24 +293,31 @@ export const toUIMessageStream = <
     }),
   );
 
+/** Expose an Effect writer for producing or merging typed UI chunks. */
 export interface UIMessageStreamWriter<Message extends UIMessage = UIMessage> {
+  /** Enqueue one typed part in the UI message stream. */
   readonly write: (
     part: InferUIMessageChunk<Message>,
   ) => Effect.Effect<void, AiSdkError>;
+  /** Copy another stream's chunks into the current native writer with its Effect services available. */
   readonly merge: <R>(
     stream: StreamInput<InferUIMessageChunk<Message>, R>,
   ) => Effect.Effect<void, AiSdkError, R>;
+  /** Offer the native writer's error handler when the SDK provides one. */
   readonly onError?: (cause: unknown) => Effect.Effect<void, AiSdkError>;
 }
 
+/** Allow a producer to record its terminal outcome along with its UI chunks. */
 export interface UIMessageStreamWriterWithOutcome<
   Message extends UIMessage = UIMessage,
 > extends UIMessageStreamWriter<Message> {
+  /** Set the outcome the SDK lifecycle hook observes when the writer finishes. */
   readonly setOutcome: (
     outcome: UIMessageStreamOutcome,
   ) => Effect.Effect<void, AiSdkError>;
 }
 
+/** Configure a UI producer callback, its history, and its lifecycle observers. */
 type CreateUiStreamOptions<Message extends UIMessage, R> = UiLifecycle<
   Message,
   R
@@ -439,10 +460,12 @@ export const consumeStream = <A, R, CallbackServices = never>({
     : consume;
 };
 
+/** Combine response headers and status with a stream of text chunks. */
 type TextHostOptions<R> = ResponseInit & {
   readonly stream: StreamInput<string, R>;
 };
 
+/** Create a Fetch API response for a text stream. */
 export const createTextStreamResponse = <R>({
   stream,
   ...options
@@ -455,6 +478,7 @@ export const createTextStreamResponse = <R>({
     ),
   );
 
+/** Write a text stream to a Node response under the pipe's scope. */
 export const pipeTextStreamToResponse = <R>({
   stream,
   ...options
@@ -471,6 +495,7 @@ export const pipeTextStreamToResponse = <R>({
     }),
   );
 
+/** Configure a UI event response with optional keepalive and SSE consumption. */
 export type UiHostOptions<R, CallbackServices> = ResponseInit & {
   readonly stream: StreamInput<UIMessageChunk, R>;
   readonly keepAliveMs?: number;
@@ -479,6 +504,7 @@ export type UiHostOptions<R, CallbackServices> = ResponseInit & {
   }) => CallbackResult<void, CallbackServices>;
 };
 
+/** Run a supplied SSE consumption callback through the owning Effect operation. */
 export const bindConsume =
   <R>(
     owner: Owner<R>,
@@ -501,9 +527,11 @@ export const bindConsume =
       )
       .catch(() => {});
 
+/** Create a UI event response without a separate consumer callback scope. */
 export function createUIMessageStreamResponse<R>(
   options: UiHostOptions<R, never> & { readonly consumeSseStream?: never },
 ): Effect.Effect<Response, AiSdkError, R>;
+/** Create a UI event response while keeping the supplied SSE consumer in scope. */
 export function createUIMessageStreamResponse<R, CallbackServices>(
   options: UiHostOptions<R, CallbackServices>,
 ): Effect.Effect<
@@ -542,6 +570,7 @@ export function createUIMessageStreamResponse<R, CallbackServices>({
   });
 }
 
+/** Pipe UI chunks to a Node response and retain the optional SSE consumer until completion. */
 export const pipeUIMessageStreamToResponse = <R, CallbackServices>({
   stream,
   consumeSseStream,
@@ -572,8 +601,10 @@ export const pipeUIMessageStreamToResponse = <R, CallbackServices>({
     }),
   );
 
+/** Read only the discriminator and optional text field needed to select deltas. */
 type TextEvent = { readonly type: string; readonly text?: string };
 
+/** Extract text deltas from an event stream without changing its error or service types. */
 export const toTextStream = <E, R>({
   stream,
 }: {

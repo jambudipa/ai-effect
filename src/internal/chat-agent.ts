@@ -38,15 +38,19 @@ import { openOperation, runRequest, runSync, sdkError } from './operation.js';
 import { unwrapSteering, type Steering } from './steering.js';
 import type { BoundTools, EffectTools, ToolServices } from './tool.js';
 
+/** Preserve the application's SDK runtime context record during the agent call. */
 type Runtime = Record<string, unknown>;
+/** Infer UI tool parts from the same tool set the native agent uses. */
 type AgentMessage<Tools extends EffectTools> = UIMessage<
   unknown,
   UIDataTypes,
   InferUITools<BoundTools<Tools>>
 >;
+/** Observe a completed generation step using the call's typed tools and callback services. */
 type GenerationStep<Tools extends EffectTools, Services> = (
   event: GenerateTextStepEndEvent<BoundTools<Tools>>,
 ) => CallbackResult<void, Services>;
+/** Allow an SDK stream transform to inspect tools and stop its owning stream. */
 type AgentTransform<Tools extends EffectTools> = (options: {
   readonly tools: Tools;
   readonly stopStream: () => Effect.Effect<void>;
@@ -54,9 +58,11 @@ type AgentTransform<Tools extends EffectTools> = (options: {
   TextStreamPart<BoundTools<Tools>>,
   TextStreamPart<BoundTools<Tools>>
 >;
+/** Accept a caller transform or a registered smoothing handle on an agent stream. */
 type Transform<Tools extends EffectTools> =
   AgentTransform<Tools> | SmoothStream;
 
+/** Bind an agent, its call options, and UI lifecycle hooks to one stream request. */
 export type AgentUIMessageStreamOptions<
   CallOptions,
   Tools extends EffectTools,
@@ -96,6 +102,7 @@ export type AgentUIMessageStreamOptions<
   >;
 };
 
+/** Open the registered native agent under an owner shared by the UI stream and callbacks. */
 const openAgentStream = <
   C = never,
   T extends EffectTools = {},
@@ -209,6 +216,7 @@ const openAgentStream = <
     return stream.pipe(Stream.onEnd(owner.markComplete));
   });
 
+/** Produce typed UI message chunks while retaining the agent operation's scope. */
 export const createAgentUIStream = <
   C = never,
   T extends EffectTools = {},
@@ -222,6 +230,7 @@ export const createAgentUIStream = <
   options: AgentUIMessageStreamOptions<C, T, R, A, P, I, Message, Services>,
 ) => Stream.unwrap(openAgentStream(options));
 
+/** Wrap agent UI chunks in the SDK's streaming HTTP response format. */
 export const createAgentUIStreamResponse = <
   C = never,
   T extends EffectTools = {},
@@ -253,6 +262,7 @@ export const createAgentUIStreamResponse = <
       : createUIMessageStreamResponse(settings);
   });
 
+/** Pipe agent UI events to a Node response and keep the operation alive until streaming ends. */
 export const pipeAgentUIStreamToResponse = <
   C = never,
   T extends EffectTools = {},

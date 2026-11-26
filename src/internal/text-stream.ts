@@ -29,17 +29,21 @@ import {
   type AiSdkError,
 } from './operation.js';
 
+/** Track the native SDK result while adapting streams and promise-valued fields. */
 type NativeResult<
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,
   Output extends OutputInterface,
 > = StreamTextResult<Tools, Runtime, Output>;
 
+/** Represent ordinary text events after routing native abort and error parts to the Effect error channel. */
 type TextEvent<Tools extends ToolSet> = TextStreamPart<Tools> & {
   type: Exclude<TextStreamPart<ToolSet>['type'], 'error' | 'abort'>;
 };
 
+/** Infer the item type used when adapting a native readable field. */
 type StreamValue<Value> = Value extends ReadableStream<infer A> ? A : never;
+/** Identify deferred metadata fields whose native values are promises. */
 type AsyncFieldKeys<Value> = {
   [K in keyof Value]: Exclude<Value[K], undefined> extends PromiseLike<unknown>
     ? K
@@ -47,21 +51,26 @@ type AsyncFieldKeys<Value> = {
 }[keyof Value] &
   keyof Value;
 
+/** Offer lazy typed access to native metadata after the SDK settles it. */
 type Metadata<Value> = {
   [K in AsyncFieldKeys<Value>]-?: Effect.Effect<Resolved<Value[K]>, AiSdkError>;
 };
+/** Resolve a promise field's value type and retain plain values unchanged. */
 type Resolved<Value> = Value extends PromiseLike<infer A> ? A : Value;
 
+/** Allow a caller to observe an SDK stream failure in its Effect context. */
 type ConsumerOptions<R> = {
   readonly onError?: (cause: AiSdkError) => CallbackResult<void, R>;
 };
 
+/** Combine UI conversion options with response settings before attaching the stream. */
 type UiResponseOptions<Message extends UIMessage, R> = UIMessageStreamOptions<
   Message,
   R
 > &
   Omit<UiHostOptions<never, R>, 'stream'>;
 
+/** Retain distinct response overloads depending on whether the caller supplies an SSE consumer. */
 interface UiResponse {
   <Message extends UIMessage = UIMessage, R = never>(
     options?: UiResponseOptions<Message, R> & {
@@ -73,6 +82,7 @@ interface UiResponse {
   ): Effect.Effect<Response, AiSdkError, R | Scope.Scope>;
 }
 
+/** Expose stream branches, deferred results, and response adapters for a scoped SDK text operation. */
 export type TextStreamResult<
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,
@@ -130,12 +140,14 @@ export type TextStreamResult<
   ) => Effect.Effect<Response, AiSdkError>;
 };
 
+/** Read the SDK result type for the stream mode that can be consumed only once. */
 type NativeSingleConsumer<
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,
   Output extends OutputInterface,
 > = ReturnType<typeof experimental_streamTextLowMemory<Tools, Runtime, Output>>;
 
+/** Keep the dedicated SDK consumption interface while adapting its outputs to Effect. */
 export type StreamTextSingleConsumerResult<
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,
@@ -145,6 +157,7 @@ export type StreamTextSingleConsumerResult<
   keyof NativeSingleConsumer<Tools, Runtime, Output>
 >;
 
+/** Open the selected native stream lazily before reading its parts. */
 const streamParts = <A>(operation: string, get: () => ReadableStream<A>) =>
   Stream.unwrap(
     runSync(operation, get).pipe(
@@ -159,6 +172,7 @@ const streamParts = <A>(operation: string, get: () => ReadableStream<A>) =>
     ),
   );
 
+/** Wrap one-consumer result accessors without creating extra native stream readers. */
 export const wrapSingleConsumerTextStream = <
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,
@@ -282,6 +296,7 @@ export const wrapSingleConsumerTextStream = <
   };
 };
 
+/** Adapt native text, full, and output streams under a shared cancellation and completion owner. */
 export const wrapTextStream = <
   Tools extends ToolSet,
   Runtime extends Record<string, unknown>,

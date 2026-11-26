@@ -19,18 +19,22 @@ import {
 } from './operation.js';
 import { bindTools, type EffectTools, type ToolServices } from './tool.js';
 
+/** Infer application-defined data part payloads from a UI message type. */
 export type MessageData<Message extends UIMessage> =
   Message extends UIMessage<unknown, infer Data> ? Data : UIDataTypes;
+/** Infer the UI tool input and output map from a message type. */
 type MessageTools<Message extends UIMessage> =
   Message extends UIMessage<unknown, UIDataTypes, infer Tools>
     ? Tools
     : UITools;
 
+/** Associate a validation schema with each named application data part. */
 export type UIDataPartSchemas<
   Data extends UIDataTypes = UIDataTypes,
   R = never,
 > = { readonly [Name in keyof Data & string]?: FlexibleSchema<Data[Name], R> };
 
+/** Validate untrusted message history with optional schemas for metadata, data parts, and tools. */
 export type ValidateUIMessagesOptions<
   Message extends UIMessage = UIMessage,
   R = never,
@@ -57,12 +61,14 @@ export type ValidateUIMessagesOptions<
   };
 };
 
+/** Keep validation failure in a result value while retaining successful typed messages. */
 export type SafeValidateUIMessagesResult<
   Message extends UIMessage = UIMessage,
 > =
   | { readonly success: true; readonly data: Message[] }
   | { readonly success: false; readonly error: AiSdkError };
 
+/** Bind only configured entries to native schemas and retain each entry's key. */
 const fields = <Input, Output, E, R>(
   values: Readonly<Record<string, Input | undefined>>,
   bind: (value: Input) => Effect.Effect<Output, E, R>,
@@ -151,6 +157,7 @@ export const safeValidateUIMessages = <
     }),
   );
 
+/** Validate unknown UI history and expose SDK rejection on the Effect error channel. */
 export const validateUIMessages = <
   Message extends UIMessage = UIMessage,
   R = never,
@@ -161,6 +168,7 @@ export const validateUIMessages = <
     result.success ? Effect.succeed(result.data) : Effect.fail(result.error),
   );
 
+/** Convert typed UI history to model input after binding optional Effect tools. */
 export const convertToModelMessages = <
   Message extends UIMessage = UIMessage,
   Tools extends EffectTools = {},
