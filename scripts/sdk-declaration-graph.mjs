@@ -86,6 +86,31 @@ export function describeConstructorAdapter(checker, exported) {
   };
 }
 
+const workflowDeserializeInput =
+  /^[^.]+\.__@WORKFLOW_DESERIALIZE@\d+\(input\)(?=$|\.)/u;
+const workflowConfigurationCallbacks = new Set([
+  'config._internal.currentDate',
+  'config.convertUsage',
+  'config.errorStructure.errorToMessage',
+  'config.errorStructure.isRetryable',
+  'config.fetch',
+  'config.generateId',
+  'config.headers',
+  'config.mapReasoning',
+  'config.metadataExtractor.createStreamExtractor',
+  'config.metadataExtractor.extractMetadata',
+  'config.supportedUrls',
+  'config.transformRequestBody',
+  'config.url',
+  'config.webSocket',
+]);
+
+function isWorkflowCallback(path, input) {
+  return (
+    input && workflowConfigurationCallbacks.has(path.slice(input[0].length + 1))
+  );
+}
+
 export function findSdkOperations(
   checker,
   publicSymbols,
@@ -93,9 +118,16 @@ export function findSdkOperations(
   visited = new Set(),
 ) {
   const operations = [];
+  // A callback type can also occur in an exported result. Check both routes.
+  const visitedWorkflowInput = new Set();
+  const visitedWorkflowCallbacks = new Set();
 
   function report(path, declaration) {
-    operations.push({ path, source: sourcePath(declaration) });
+    const input = path.match(workflowDeserializeInput);
+    const callerOwned = Boolean(
+      isWorkflowCallback(path, input) && !ts.isGetAccessor(declaration),
+    );
+    operations.push({ path, source: sourcePath(declaration), callerOwned });
   }
 
   function visitSymbol(symbol, path) {
@@ -111,8 +143,14 @@ export function findSdkOperations(
   }
 
   function visitType(type, path) {
-    if (visited.has(type)) return;
-    visited.add(type);
+    const input = path.match(workflowDeserializeInput);
+    const seen = !input
+      ? visited
+      : isWorkflowCallback(path, input)
+        ? visitedWorkflowCallbacks
+        : visitedWorkflowInput;
+    if (seen.has(type)) return;
+    seen.add(type);
     if (type.isUnionOrIntersection()) {
       for (const member of type.types) visitType(member, path);
       return;

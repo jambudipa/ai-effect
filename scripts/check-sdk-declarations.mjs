@@ -127,6 +127,7 @@ function inspect(context, { mode, bundler, flags }) {
   );
   const checker = program.getTypeChecker();
   const checkedTypes = new Set();
+  let workflowCallbacks = 0;
   const failures = findPrivateSdkImports(program, publicSdkPaths).map(
     ({ source, specifier }) =>
       `Private SDK declaration import ${specifier} in ${source}`,
@@ -198,12 +199,21 @@ function inspect(context, { mode, bundler, flags }) {
       [],
       checkedTypes,
     )) {
+      if (operation.callerOwned) {
+        workflowCallbacks++;
+        continue;
+      }
       failures.push(
         `${path.wrapper} leaks SDK operation ${operation.path} from ${operation.source}`,
       );
     }
   }
   const diagnostics = ts.getPreEmitDiagnostics(program);
+  if (workflowCallbacks) {
+    console.log(
+      `${context}: checked ${workflowCallbacks} caller-owned Workflow configuration callbacks`,
+    );
+  }
   if (diagnostics.length) {
     failures.push(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
   }
