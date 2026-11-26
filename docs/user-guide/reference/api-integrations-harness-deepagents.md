@@ -235,4 +235,3 @@ Version reported by the native Deep Agents adapter.
 ```text
 export declare const VERSION: string;
 ```
-

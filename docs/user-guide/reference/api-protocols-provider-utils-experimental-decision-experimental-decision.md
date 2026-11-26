@@ -22,4 +22,3 @@ export type Experimental_DecisionLanguageModel = ReturnType<typeof wrapEvaluatio
 ```text
 Experimental_DecisionLanguageModel: WrappedWorkflowLanguageConstructor<typeof NativeModel, Experimental_DecisionLanguageModel>
 ```
-

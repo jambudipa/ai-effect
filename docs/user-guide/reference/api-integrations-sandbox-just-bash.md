@@ -461,4 +461,3 @@ export declare const resumeJustBashNetworkSandboxSession: (options: SDKContract.
     }, import("../internal/operation.js").AiSdkError, never>;
 }, import("../internal/operation.js").AiSdkError, import("effect/Scope").Scope>;
 ```
-

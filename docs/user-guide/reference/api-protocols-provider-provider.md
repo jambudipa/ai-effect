@@ -8632,4 +8632,3 @@ Use a registered model for video generation, polling, or webhook integration.
 ```text
 export type VideoModelV4 = ReturnType<typeof wrapVideoModel>;
 ```
-

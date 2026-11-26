@@ -1017,4 +1017,3 @@ export interface TraceTreeReporterOptions<E = never, R = never> {
     readonly write?: (chunk: string) => Effect.Effect<void, E, R>;
 }
 ```
-

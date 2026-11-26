@@ -37,4 +37,3 @@ export type Experimental_EvaluationLanguageModel = ReturnType<typeof wrapEvaluat
 ```text
 Experimental_EvaluationLanguageModel: WrappedWorkflowLanguageConstructor<typeof NativeModel, Experimental_EvaluationLanguageModel>
 ```
-

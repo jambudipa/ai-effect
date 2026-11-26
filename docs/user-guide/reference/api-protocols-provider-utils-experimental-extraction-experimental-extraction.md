@@ -23,4 +23,3 @@ export type Experimental_ExtractionLanguageModel = ReturnType<typeof wrapExtract
 ```text
 Experimental_ExtractionLanguageModel: WrappedWorkflowLanguageConstructor<typeof NativeModel, Experimental_ExtractionLanguageModel>
 ```
-

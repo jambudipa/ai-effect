@@ -214,4 +214,3 @@ interface UIMessage<METADATA = unknown, DATA_PARTS extends UIDataTypes = UIDataT
   parts: Array<UIMessagePart<DATA_PARTS, TOOLS>>;
 }
 ```
-

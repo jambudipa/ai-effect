@@ -482,4 +482,3 @@ Version reported by the pinned native ACP adapter.
 ```text
 export declare const VERSION: string;
 ```
-

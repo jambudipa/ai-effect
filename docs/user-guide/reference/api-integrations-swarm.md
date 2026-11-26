@@ -134,4 +134,3 @@ export type SwarmResult<C, R = never, E = never> = {
     readonly activeAgent: Agent<C, R, E>;
 };
 ```
-

@@ -12,4 +12,3 @@ sources: [src/providers/inception.ts, package.json]
 ## Import
 
 `@jambudipa/ai-effect/inception` selects the package export for this provider. See the [provider source](../../../src/providers/inception.ts).
-

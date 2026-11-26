@@ -82,4 +82,3 @@ Version reported by the native Claude Code adapter.
 ```text
 export declare const VERSION: string;
 ```
-

@@ -22,4 +22,3 @@ export declare const valibotSchema: <S extends Valibot.GenericSchema<unknown, un
     validate: (input: unknown) => Effect.Effect<Valibot.InferOutput<S>, import("../internal/operation.js").AiSdkError, never>;
 }, import("../internal/operation.js").AiSdkError, never>;
 ```
-

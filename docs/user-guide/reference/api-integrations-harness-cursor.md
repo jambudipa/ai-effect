@@ -66,4 +66,3 @@ Version reported by the native Cursor adapter.
 ```text
 export declare const VERSION: string;
 ```
-

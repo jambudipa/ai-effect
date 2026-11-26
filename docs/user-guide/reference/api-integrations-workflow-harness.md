@@ -182,4 +182,3 @@ Configure a time-bounded slice with a registered Effect agent.
 ```text
 export type RunHarnessAgentTimeSliceOptions = Options<SDKContract.RunHarnessAgentTimeSliceOptions>;
 ```
-

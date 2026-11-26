@@ -60,4 +60,3 @@ Workflow request options with Effect callbacks for request preparation and compl
 ```text
 export type WorkflowChatTransportOptions<M extends UIMessage = UIMessage, E = never, R = never> = WithEffectCallbacks<NativeOptions<M>, (typeof callbacks)[number], E, R>;
 ```
-

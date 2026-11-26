@@ -270,4 +270,3 @@ Accept a complete next state or a function that derives it from the current stat
 ```text
 export type ValueOrUpdater<State> = State | ((current: State) => State);
 ```
-

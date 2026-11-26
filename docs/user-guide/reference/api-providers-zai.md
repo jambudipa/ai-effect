@@ -150,4 +150,3 @@ requests the value.
 ```text
 export type ZaiProviderSettings<E = never, R = never> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
 ```
-

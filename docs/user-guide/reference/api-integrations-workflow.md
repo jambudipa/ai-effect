@@ -539,4 +539,3 @@ type WorkflowToolApprovalSecret = {
   environmentVariable: string;
 };
 ```
-

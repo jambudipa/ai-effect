@@ -75,4 +75,3 @@ type VoyageRerankingModelOptions = {
   truncation?: boolean;
 };
 ```
-

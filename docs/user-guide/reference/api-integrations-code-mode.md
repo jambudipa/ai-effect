@@ -509,4 +509,3 @@ export type RunCodeModeInput<T extends EffectTools = EffectTools, E = never, R =
     readonly options?: CodeModeOptions<E, R>;
 };
 ```
-

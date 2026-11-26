@@ -126,4 +126,3 @@ when the SDK requests the value.
 ```text
 export type GoogleVertexXaiProviderSettings<E = never, R = never> = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
 ```
-

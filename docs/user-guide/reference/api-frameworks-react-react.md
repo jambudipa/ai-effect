@@ -441,4 +441,3 @@ type.
 ```text
 export type UseObjectOptions<S extends Decoder, Result = DecodedSchema<S>> = ObjectOptions<S, Result>;
 ```
-

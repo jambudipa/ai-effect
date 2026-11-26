@@ -74,4 +74,3 @@ Version reported by the native GitHub Copilot adapter.
 ```text
 export declare const VERSION: string;
 ```
-

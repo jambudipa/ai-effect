@@ -3111,4 +3111,3 @@ Wrap a Zod definition with its native conversion options and defer the SDK callb
 ```text
 zodSchema: <A>(schema: Parameters<typeof sdk.zodSchema<A>>[0], options?: Parameters<typeof sdk.zodSchema<A>>[1]) => Effect.Effect<Schema<A>>
 ```
-

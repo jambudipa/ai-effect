@@ -47,4 +47,3 @@ Convert an ordered sequence of LlamaIndex deltas to AI SDK UI chunks.
 ```text
 export declare const toUIMessageStream: <R = never, E = never, RI = never, EI = never>(input: Stream.Stream<EngineResponse, EI, RI> | AsyncIterable<EngineResponse>, callbacks?: StreamCallbacks<R, E>) => Stream.Stream<import("ai").UIMessageChunk, import("../internal/operation.js").AiSdkError, Exclude<R, import("effect/Scope").Scope> | Exclude<RI, import("effect/Scope").Scope>>;
 ```
-

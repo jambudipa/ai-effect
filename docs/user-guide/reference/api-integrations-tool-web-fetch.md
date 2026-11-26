@@ -24,4 +24,3 @@ The following declaration preserves the exact public type through the package en
 declare const experimental_createWebFetchTool: (...args: Parameters<typeof createNativeTool>) =>
   ReturnType<typeof import('@jambudipa/ai-effect/tool-web-fetch').experimental_createWebFetchTool>;
 ```
-

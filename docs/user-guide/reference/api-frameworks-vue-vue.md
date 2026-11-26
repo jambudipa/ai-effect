@@ -211,4 +211,3 @@ Configure a Vue structured request endpoint and infer its result from the decode
 ```text
 export type UseObjectOptions<S extends Decoder, Result = DecodedSchema<S>> = ObjectOptions<S, Result>;
 ```
-

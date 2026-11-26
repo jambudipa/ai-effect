@@ -227,4 +227,3 @@ Version reported by the pinned native Pi adapter.
 ```text
 export declare const VERSION: string;
 ```
-

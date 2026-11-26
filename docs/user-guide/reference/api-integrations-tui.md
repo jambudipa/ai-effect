@@ -75,4 +75,3 @@ Controls how terminal UI sections for stream parts are displayed.
 ```text
 type TerminalPartDisplayMode = 'full' | 'collapsed' | 'auto-collapsed' | 'hidden';
 ```
-

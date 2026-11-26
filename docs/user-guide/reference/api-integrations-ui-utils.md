@@ -348,7 +348,7 @@ interface Message {
     content: string;
     /**
   Reasoning for the message.
-  
+
   @deprecated Use `parts` instead.
      */
     reasoning?: string;
@@ -362,7 +362,7 @@ interface Message {
     role: 'system' | 'user' | 'assistant' | 'data';
     /**
   For data messages.
-  
+
   @deprecated Data messages will be removed.
      */
     data?: JSONValue;
@@ -373,7 +373,7 @@ interface Message {
     /**
   Tool invocations (that can be tool calls or tool results, depending on whether or not the invocation has finished)
   that the assistant made as part of this message.
-  
+
   @deprecated Use `parts` instead.
      */
     toolInvocations?: Array<ToolInvocation>;
@@ -663,4 +663,3 @@ Adapt a supported Zod schema to the legacy protocol with deferred validation.
 ```text
 export declare const zodSchema: <A>(...args: Parameters<typeof sdk.zodSchema<A>>) => Effect.Effect<Schema<A, never>, AiSdkError, never>;
 ```
-

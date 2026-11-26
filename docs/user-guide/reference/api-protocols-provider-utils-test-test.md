@@ -76,4 +76,3 @@ Create a deterministic fixture ID generator whose successive reads run in Effect
 ```text
 mockId: (options?: Parameters<typeof sdk.mockId>[0]) => Effect.Effect<IdGenerator, AiSdkError, never>
 ```
-

@@ -96,4 +96,3 @@ Expose the version of the HeyGen SDK used by this adapter.
 ```text
 VERSION: string
 ```
-

@@ -310,4 +310,3 @@ export type ToolCallRepairFunction<E = never, R = never> = (options: {
     readonly messages: LanguageModelV2Prompt;
 }) => Effect.Effect<LanguageModelV2ToolCall | null, E, R>;
 ```
-

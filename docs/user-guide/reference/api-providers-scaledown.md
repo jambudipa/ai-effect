@@ -105,4 +105,3 @@ The source declaration does not provide a JSDoc description.
 ```text
 VERSION: string
 ```
-

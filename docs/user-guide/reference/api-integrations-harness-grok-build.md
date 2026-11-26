@@ -66,4 +66,3 @@ Version reported by the native Grok Build adapter.
 ```text
 export declare const VERSION: string;
 ```
-

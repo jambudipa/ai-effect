@@ -39,4 +39,3 @@ export declare const mockFetchError: (...args: Parameters<SDK["mockFetchError"]>
 ```text
 export declare const mockFetchTextStream: (...args: Parameters<SDK["mockFetchTextStream"]>) => Effect.Effect<void, import("../internal/operation.js").AiSdkError, never>;
 ```
-

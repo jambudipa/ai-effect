@@ -24,4 +24,3 @@ The following declaration preserves the exact public type through the package en
 declare const experimental_createBashTool: (options: Options) =>
   ReturnType<typeof import('@jambudipa/ai-effect/tool-bash').experimental_createBashTool>;
 ```
-

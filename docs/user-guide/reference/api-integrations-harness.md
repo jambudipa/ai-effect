@@ -2030,4 +2030,3 @@ Check whether the native tool selection permits the supplied built-in tool.
 ```text
 export declare const isHarnessV1BuiltinToolIncluded: (...args: Parameters<typeof sdk.isHarnessV1BuiltinToolIncluded>) => boolean;
 ```
-

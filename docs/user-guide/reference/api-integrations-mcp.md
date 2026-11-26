@@ -857,4 +857,3 @@ export declare const validateJSONRPCMessage: (message: unknown) => Effect.Effect
     id?: string | number | undefined;
 }, AiSdkError, never>;
 ```
-

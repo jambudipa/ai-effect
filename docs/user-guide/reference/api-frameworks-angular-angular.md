@@ -151,4 +151,3 @@ decoder.
 ```text
 export type StructuredObjectOptions<S extends HostSchema<unknown>, A = DecodedSchema<S>> = ObjectOptions<S, A>;
 ```
-

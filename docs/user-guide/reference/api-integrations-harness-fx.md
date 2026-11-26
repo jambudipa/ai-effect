@@ -68,4 +68,3 @@ Version reported by the pinned native Fx adapter.
 ```text
 export declare const VERSION: string;
 ```
-

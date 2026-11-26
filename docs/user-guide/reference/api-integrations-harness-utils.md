@@ -862,4 +862,3 @@ type WriteSkillsResult = {
   unchanged: string[];
 };
 ```
-

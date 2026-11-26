@@ -94,4 +94,3 @@ export type UrlResponse = Exclude<SdkUrlResponse, {
     controller: TestResponseController;
 });
 ```
-

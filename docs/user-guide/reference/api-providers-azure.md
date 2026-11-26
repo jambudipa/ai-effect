@@ -348,4 +348,3 @@ Expose the version of the Azure OpenAI SDK used by this adapter.
 ```text
 VERSION: string
 ```
-

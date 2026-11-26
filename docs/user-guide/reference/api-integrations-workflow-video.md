@@ -50,4 +50,3 @@ type WorkflowGenerateVideoResult = Extract<GetVideoStatusResult, {
   status: 'completed';
 }>;
 ```
-

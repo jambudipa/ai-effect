@@ -638,4 +638,3 @@ Expose the version of the OpenAI SDK used by this adapter.
 ```text
 VERSION: string
 ```
-

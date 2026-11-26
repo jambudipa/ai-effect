@@ -212,4 +212,3 @@ export type WrappedMcpTools<T extends EffectToolSet = EffectToolSet> = {
     readonly toolApproval: Approval;
 };
 ```
-

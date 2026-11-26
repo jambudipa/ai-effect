@@ -65,4 +65,3 @@ Version reported by the pinned native Cline adapter.
 ```text
 export declare const VERSION: string;
 ```
-

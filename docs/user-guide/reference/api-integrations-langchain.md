@@ -91,4 +91,3 @@ export interface ToUIMessageStreamOptions<TState = unknown, R = never, E = never
     readonly sendFinish?: boolean;
 }
 ```
-
