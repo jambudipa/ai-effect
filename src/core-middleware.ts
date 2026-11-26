@@ -30,26 +30,35 @@ import type {
   LanguageModelV3,
 } from './protocols/provider.js';
 
+/** Keep middleware callback services available for the lifetime of the wrapped model. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
+/** Represent middleware logic that runs in the owning Effect context. */
 type Middleware<R, A> = Effect.Effect<A, unknown, R>;
+/** Allow protocol v4 middleware to override provider and model identity. */
 type Identity<Model> = {
   readonly specificationVersion: 'v4';
   readonly overrideProvider?: (options: { model: Model }) => string;
   readonly overrideModelId?: (options: { model: Model }) => string;
 };
+/** Pass the wrapped model and its current native call parameters together. */
 type Arguments<Model, Params> = { model: Model; params: Params };
+/** Carry language model settings before a generation or stream request. */
 type LanguageArgs = Arguments<
   LanguageModelV4,
   native.LanguageModelV4CallOptions
 >;
+/** Carry embedding settings before the provider receives the input batch. */
 type EmbeddingArgs = Arguments<
   EmbeddingModelV4,
   native.EmbeddingModelV4CallOptions
 >;
+/** Carry image model settings before the provider receives the generation request. */
 type ImageArgs = Arguments<ImageModelV4, native.ImageModelV4CallOptions>;
+/** Expose native stream metadata and adapt its chunks to an Effect stream. */
 type LanguageStream = Omit<native.LanguageModelV4StreamResult, 'stream'> & {
   stream: Stream.Stream<native.LanguageModelV4StreamPart, AiSdkError>;
 };
+/** Offer middleware restart points for both the native generation and streaming paths. */
 type LanguageNext = LanguageArgs & {
   doGenerate: () => Effect.Effect<
     native.LanguageModelV4GenerateResult,
@@ -58,6 +67,7 @@ type LanguageNext = LanguageArgs & {
   doStream: () => Effect.Effect<LanguageStream, AiSdkError>;
 };
 
+/** Transform language model parameters and wrap generation or streaming with Effect callbacks. */
 export type LanguageModelMiddleware<R = never> = Identity<LanguageModelV4> & {
   readonly overrideSupportedUrls?: (options: {
     model: LanguageModelV4;
@@ -73,6 +83,7 @@ export type LanguageModelMiddleware<R = never> = Identity<LanguageModelV4> & {
   ) => Middleware<R, LanguageStream>;
 };
 
+/** Transform embedding parameters and override native call limits or execution. */
 export type EmbeddingModelMiddleware<R = never> = Identity<EmbeddingModelV4> & {
   readonly overrideMaxEmbeddingsPerCall?: (options: {
     model: EmbeddingModelV4;
@@ -90,7 +101,9 @@ export type EmbeddingModelMiddleware<R = never> = Identity<EmbeddingModelV4> & {
   ) => Middleware<R, native.EmbeddingModelV4Result>;
 };
 
+/** Track generated image results and metadata from the installed provider protocol. */
 type ImageResult = Awaited<ReturnType<native.ImageModelV4['doGenerate']>>;
+/** Transform image parameters and wrap image generation in the operation context. */
 export type ImageModelMiddleware<R = never> = Identity<ImageModelV4> & {
   readonly overrideMaxImagesPerCall?: (options: {
     model: ImageModelV4;
@@ -114,13 +127,19 @@ export type ImageModelMiddleware<R = never> = Identity<ImageModelV4> & {
   ) => Middleware<R, ImageResult>;
 };
 
+/** Preserve the v4-specific import name for the language middleware contract. */
 export type LanguageModelV4Middleware<R = never> = LanguageModelMiddleware<R>;
+/** Preserve the v4-specific import name for the embedding middleware contract. */
 export type EmbeddingModelV4Middleware<R = never> = EmbeddingModelMiddleware<R>;
+/** Preserve the v4-specific import name for the image middleware contract. */
 export type ImageModelV4Middleware<R = never> = ImageModelMiddleware<R>;
 
+/** Recall native built-in language middleware without rebinding its callbacks. */
 const languageBuiltins = new WeakMap<object, sdk.LanguageModelMiddleware>();
+/** Recall native built-in embedding middleware without rebinding its callbacks. */
 const embeddingBuiltins = new WeakMap<object, sdk.EmbeddingModelMiddleware>();
 
+/** Pass public model handles to provider and model identifier override callbacks. */
 function bindIdentity<Model, Native>(
   identity: Identity<Model>,
   wrap: (model: Native) => Model,
@@ -139,6 +158,7 @@ function bindIdentity<Model, Native>(
   };
 }
 
+/** Adapt a native readable to an Effect stream while retaining the other result fields. */
 const fromStream = (
   result: native.LanguageModelV4StreamResult,
 ): LanguageStream => ({
@@ -150,6 +170,7 @@ const fromStream = (
   }),
 });
 
+/** Convert a middleware result to the native readable expected by the SDK. */
 const toStream = (
   result: LanguageStream,
 ): native.LanguageModelV4StreamResult => ({
@@ -157,6 +178,7 @@ const toStream = (
   stream: Stream.toReadableStream(result.stream),
 });
 
+/** Expose effectful continuations for the SDK generation and stream callbacks. */
 function languageNext(
   options: Parameters<
     NonNullable<sdk.LanguageModelMiddleware['wrapStream']>
@@ -180,6 +202,7 @@ function languageNext(
   };
 }
 
+/** Bind language middleware to the owner or recover its registered native built-in. */
 export function bindLanguageMiddleware<R>(
   middleware: LanguageModelMiddleware<R>,
   owner: Owner<R>,
@@ -228,6 +251,7 @@ export function bindLanguageMiddleware<R>(
   return bound;
 }
 
+/** Bind embedding middleware to the owner or recover its registered native built-in. */
 function bindEmbeddingMiddleware<R>(
   middleware: EmbeddingModelMiddleware<R>,
   owner: Owner<R>,
@@ -280,6 +304,7 @@ function bindEmbeddingMiddleware<R>(
   return embeddingBuiltins.get(middleware) ?? bound;
 }
 
+/** Run user-defined image middleware callbacks under the wrapping operation's owner. */
 export function bindImageMiddleware<R>(
   middleware: ImageModelMiddleware<R>,
   owner: Owner<R>,
@@ -332,6 +357,7 @@ export function bindImageMiddleware<R>(
   return bound;
 }
 
+/** Accept an ordered middleware list and optional model identity overrides. */
 type ModelOptions<Model, M> = {
   readonly model: Model;
   readonly middleware: M | readonly M[];
@@ -339,10 +365,12 @@ type ModelOptions<Model, M> = {
   readonly providerId?: string;
 };
 
+/** Preserve middleware order while treating a single value as a one-item list. */
 function list<A>(value: A | readonly A[]): readonly A[] {
   return Array.isArray(value) ? value : [value as A];
 }
 
+/** Reject an unknown registered model before installing SDK middleware. */
 function requireModel<A, Model extends { modelId: string }>(
   operation: string,
   model: Model,
@@ -359,6 +387,7 @@ function requireModel<A, Model extends { modelId: string }>(
       );
 }
 
+/** Resolve a supported language model and keep its middleware callbacks in the caller's scope. */
 export const wrapLanguageModel = <R = never>({
   model,
   middleware,
@@ -393,6 +422,7 @@ export const wrapLanguageModel = <R = never>({
     );
   });
 
+/** Resolve a supported embedding model and keep its middleware callbacks in the caller's scope. */
 export const wrapEmbeddingModel = <R = never>({
   model,
   middleware,
@@ -425,6 +455,7 @@ export const wrapEmbeddingModel = <R = never>({
     );
   });
 
+/** Resolve a supported image model and keep its middleware callbacks in the caller's scope. */
 export const wrapImageModel = <R = never>({
   model,
   middleware,
@@ -457,6 +488,7 @@ export const wrapImageModel = <R = never>({
     );
   });
 
+/** Expose built-in language middleware and retain the native identity for future bindings. */
 function languageBuiltin(
   middleware: sdk.LanguageModelMiddleware,
 ): LanguageModelMiddleware {
@@ -507,6 +539,7 @@ function languageBuiltin(
   return wrapped;
 }
 
+/** Build native continuation callbacks from the current Effect middleware invocation. */
 function builtinNext(
   operation: string,
   { model, doGenerate, doStream, params }: LanguageNext,
@@ -528,6 +561,7 @@ function builtinNext(
   });
 }
 
+/** Supply default embedding settings through the native SDK middleware adapter. */
 export const defaultEmbeddingSettingsMiddleware = (
   options: Parameters<typeof sdk.defaultEmbeddingSettingsMiddleware>[0],
 ): EmbeddingModelMiddleware => {
@@ -558,6 +592,7 @@ export const defaultEmbeddingSettingsMiddleware = (
   return wrapped;
 };
 
+/** Add tool input examples to descriptions with optional caller formatting. */
 export const addToolInputExamplesMiddleware = (options?: {
   readonly prefix?: string;
   readonly format?: (
@@ -567,21 +602,26 @@ export const addToolInputExamplesMiddleware = (options?: {
   readonly remove?: boolean;
 }) => languageBuiltin(sdk.addToolInputExamplesMiddleware(options));
 
+/** Set the SDK middleware fallback instructions for language model calls. */
 export const defaultInstructionsMiddleware = (
   options: Parameters<typeof sdk.defaultInstructionsMiddleware>[0],
 ) => languageBuiltin(sdk.defaultInstructionsMiddleware(options));
 
+/** Supply native defaults for language model call settings. */
 export const defaultSettingsMiddleware = (
   options: Parameters<typeof sdk.defaultSettingsMiddleware>[0],
 ) => languageBuiltin(sdk.defaultSettingsMiddleware(options));
 
+/** Extract JSON text before downstream parsing using an optional transformation. */
 export const extractJsonMiddleware = (options?: {
   readonly transform?: (text: string) => string;
 }) => languageBuiltin(sdk.extractJsonMiddleware(options));
 
+/** Move tagged reasoning text into the SDK's reasoning result fields. */
 export const extractReasoningMiddleware = (
   options: Parameters<typeof sdk.extractReasoningMiddleware>[0],
 ) => languageBuiltin(sdk.extractReasoningMiddleware(options));
 
+/** Produce simulated stream events from a completed native model response. */
 export const simulateStreamingMiddleware = () =>
   languageBuiltin(sdk.simulateStreamingMiddleware());

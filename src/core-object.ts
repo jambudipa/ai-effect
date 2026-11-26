@@ -16,17 +16,23 @@ import {
 } from './internal/operation.js';
 import { lazyValue } from './internal/provider-model.js';
 
+/** Keep the SDK output mode discriminator for object, array, enum, and untyped requests. */
 type Mode = 'object' | 'array' | 'enum' | 'no-schema';
+/** Represent the native schema once its Effect validation has been bound. */
 type NativeSchema = ReturnType<typeof sdk.jsonSchema<unknown>>;
+/** Derive structured streaming options from the installed SDK's mode union. */
 type NativeOptions<A> = Parameters<
   typeof sdk.streamObject<NativeSchema, Mode, A>
 >[0];
+/** Represent legacy native model versions recognized by the structured output bridge. */
 type LegacyNative = Exclude<
   sdk.LanguageModel,
   string | { specificationVersion: 'v4' }
 >;
+/** Own the native signal and the context that structured parsing callbacks use. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
+/** Keep SDK option variants while replacing model, schema, and callback bindings at the public boundary. */
 type OwnedNativeOptions<Options, R> = Options extends object
   ? CoreOptions<
       Omit<Options, 'model' | 'schema' | 'enum' | 'output' | '_internal'>,
@@ -34,6 +40,7 @@ type OwnedNativeOptions<Options, R> = Options extends object
     >
   : never;
 
+/** Accept a schema-driven object request with a supported public model input. */
 type ObjectInput<A, R> = OwnedNativeOptions<NativeOptions<A>, R> & {
   readonly model: LanguageModel;
   readonly schema: FlexibleSchema<A, R>;
@@ -42,26 +49,32 @@ type ObjectInput<A, R> = OwnedNativeOptions<NativeOptions<A>, R> & {
   readonly schemaDescription?: string;
 };
 
+/** Remove a mode-specific option while preserving each branch of a native option union. */
 type OmitMode<Options, Key extends PropertyKey> = Options extends object
   ? Omit<Options, Key>
   : never;
 
+/** Select array output and use the supplied schema for each element. */
 type ArrayInput<A, R> = OmitMode<ObjectInput<A, R>, 'output'> & {
   readonly output: 'array';
 };
+/** Select from a fixed list of allowed string values without an object schema. */
 type EnumInput<A, R> = OmitMode<ObjectInput<A, R>, 'output' | 'schema'> & {
   readonly output: 'enum';
   readonly enum: readonly A[];
 };
+/** Choose untyped JSON output without requiring a validation schema. */
 type UntypedInput<R> = OmitMode<
   ObjectInput<JSONValue, R>,
   'output' | 'schema'
 > & {
   readonly output: 'no-schema';
 };
+/** Represent the four structured generation modes before native binding. */
 type Input<A, R> =
   ObjectInput<A, R> | ArrayInput<A, R> | EnumInput<A, R> | UntypedInput<R>;
 
+/** Resolve the registered model and optional schema in the caller's operation scope. */
 function bindOptions<A, R>(
   operation: string,
   options: Input<A, R>,
@@ -96,6 +109,7 @@ function bindOptions<A, R>(
   });
 }
 
+/** Preserve completed object output and expose JSON response creation as an Effect. */
 export type GenerateObjectResult<A> = Omit<
   sdk.GenerateObjectResult<A>,
   'toJsonResponse'
@@ -105,9 +119,11 @@ export type GenerateObjectResult<A> = Omit<
   ) => Effect.Effect<Response, AiSdkError>;
 };
 
+/** Generate a complete object validated against the supplied schema. */
 export function generateObject<A, R = never>(
   options: ObjectInput<A, R>,
 ): Effect.Effect<GenerateObjectResult<A>, AiSdkError, Exclude<R, Scope.Scope>>;
+/** Generate an array and validate its elements with the supplied schema. */
 export function generateObject<A, R = never>(
   options: ArrayInput<A, R>,
 ): Effect.Effect<
@@ -115,9 +131,11 @@ export function generateObject<A, R = never>(
   AiSdkError,
   Exclude<R, Scope.Scope>
 >;
+/** Generate one value from a literal enumeration. */
 export function generateObject<const A extends string, R = never>(
   options: EnumInput<A, R>,
 ): Effect.Effect<GenerateObjectResult<A>, AiSdkError, Exclude<R, Scope.Scope>>;
+/** Generate valid JSON with no separate validation schema. */
 export function generateObject<R = never>(
   options: UntypedInput<R>,
 ): Effect.Effect<
@@ -164,11 +182,13 @@ export function generateObject<A, R>(
   );
 }
 
+/** Keep the native object stream type visible while adapting its iterables and metadata. */
 type NativeStream<P, A, I> = sdk.StreamObjectResult<
   P,
   A,
   sdk.AsyncIterableStream<I>
 >;
+/** Identify native result fields whose asynchronous values require lazy Effect accessors. */
 type AsyncFields =
   | 'warnings'
   | 'usage'
@@ -177,6 +197,7 @@ type AsyncFields =
   | 'response'
   | 'finishReason'
   | 'object';
+/** Preserve the result metadata shape while moving promise rejection to the Effect error channel. */
 type StreamObjectData<P, A, I> = {
   [Key in AsyncFields]: Effect.Effect<
     Awaited<NativeStream<P, A, I>[Key]>,
@@ -184,6 +205,7 @@ type StreamObjectData<P, A, I> = {
   >;
 };
 
+/** Expose partial data, complete output, and available array elements from a scoped SDK stream. */
 export type StreamObjectResult<P, A, I = never> = StreamObjectData<P, A, I> & {
   readonly partialObjectStream: Stream.Stream<P, AiSdkError>;
   readonly elementStream: Stream.Stream<I, AiSdkError>;
@@ -200,8 +222,10 @@ export type StreamObjectResult<P, A, I = never> = StreamObjectData<P, A, I> & {
   ) => Effect.Effect<Response, AiSdkError>;
 };
 
+/** Infer the chunk type carried by a native readable stream. */
 type ReadableValue<Value> = Value extends ReadableStream<infer A> ? A : never;
 
+/** Adapt structured streams and mark the owning operation complete when native output finishes. */
 function wrapObjectStream<P, A, I>(
   native: NativeStream<P, A, I>,
   markComplete: Effect.Effect<void>,
@@ -247,6 +271,7 @@ function wrapObjectStream<P, A, I>(
   };
 }
 
+/** Open a scoped stream of partial values for schema-validated object output. */
 export function streamObject<A, R = never>(
   options: ObjectInput<A, R>,
 ): Effect.Effect<
@@ -254,12 +279,15 @@ export function streamObject<A, R = never>(
   AiSdkError,
   Scope.Scope | R
 >;
+/** Open a scoped stream that exposes completed array elements as well as partial output. */
 export function streamObject<A, R = never>(
   options: ArrayInput<A, R>,
 ): Effect.Effect<StreamObjectResult<A[], A[], A>, AiSdkError, Scope.Scope | R>;
+/** Open a scoped stream whose final value is one of the specified literals. */
 export function streamObject<const A extends string, R = never>(
   options: EnumInput<A, R>,
 ): Effect.Effect<StreamObjectResult<string, A>, AiSdkError, Scope.Scope | R>;
+/** Open a scoped stream of partial JSON values without a validator schema. */
 export function streamObject<R = never>(
   options: UntypedInput<R>,
 ): Effect.Effect<

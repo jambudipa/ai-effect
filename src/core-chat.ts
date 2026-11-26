@@ -92,30 +92,45 @@ export {
   type ValidateUIMessagesOptions,
 } from './internal/chat-validation.js';
 
+/** Submit a decision for a pending tool approval from a chat host. */
 export type ChatAddToolApproveResponseFunction =
   HostChat<UIMessage>['addToolApprovalResponse'];
+/** Add a result to the UI history for a tool call the host handles. */
 export type ChatAddToolOutputFunction<Message extends UIMessage = UIMessage> =
   HostChat<Message>['addToolOutput'];
+/** Report an SDK or transport failure through the chat host callback. */
 export type ChatOnErrorCallback = NonNullable<ChatInit<UIMessage>['onError']>;
+/** Receive application data streamed alongside typed UI message parts. */
 export type ChatOnDataCallback<Message extends UIMessage = UIMessage> =
   NonNullable<ChatInit<Message>['onData']>;
+/** Observe the final message and status when a host completes a request. */
 export type ChatOnFinishCallback<Message extends UIMessage = UIMessage> =
   NonNullable<ChatInit<Message>['onFinish']>;
+/** Handle a typed tool request from the native chat host. */
 export type ChatOnToolCallCallback<Message extends UIMessage = UIMessage> =
   NonNullable<ChatInit<Message>['onToolCall']>;
 
 /** The synchronous host state contract for an abstract chat. */
 export interface ChatState<Message extends UIMessage> {
+  /** Track whether the chat is submitting, consuming output, ready, or failed. */
   status: 'submitted' | 'streaming' | 'ready' | 'error';
+  /** Expose the latest chat failure with redacted diagnostics. */
   error: AiSdkError | undefined;
+  /** Retain the current UI history using the consumer's message type. */
   messages: Message[];
+  /** Store SDK-queued messages while the active request still owns the transport. */
   experimental_queuedMessages?: Message[];
+  /** Append a message through the host's reactive state mechanism. */
   pushMessage(message: Message): void;
+  /** Remove the last message through the host's state mechanism. */
   popMessage(): void;
+  /** Replace a UI message at the SDK's requested history index. */
   replaceMessage(index: number, message: Message): void;
+  /** Give the SDK a snapshot that matches the host's state semantics. */
   snapshot<A>(value: A): A;
 }
 
+/** Present Effect chat state to the native host and convert assigned errors at the boundary. */
 const nativeState = <Message extends UIMessage>(
   state: ChatState<Message>,
 ): NativeChatState<Message> => ({
@@ -149,11 +164,14 @@ const nativeState = <Message extends UIMessage>(
   snapshot: (value) => state.snapshot(value),
 });
 
+/** Instantiate the native state constructor as a concrete adapter. */
 class NativeStateChat<
   Message extends UIMessage,
 > extends NativeAbstractChat<Message> {}
 
+/** Build a host chat whose message state storage belongs to the caller. */
 class StateChat<Message extends UIMessage> extends HostChat<Message> {
+  /** Bind the caller's state and configured callbacks to the host lifetime. */
   constructor({
     state,
     ...config
@@ -169,6 +187,7 @@ class StateChat<Message extends UIMessage> extends HostChat<Message> {
   }
 }
 
+/** Type chat consumers against the host wrapper and its typed UI state. */
 export type AbstractChat<Message extends UIMessage = UIMessage> =
   HostChat<Message>;
 
@@ -184,8 +203,10 @@ export const AbstractChat = <Message extends UIMessage = UIMessage>(
     (chat) => Effect.ignore(chat.dispose()),
   );
 
+/** Accept a transport setting directly or defer its resolution until request time. */
 type Resolvable<A, R> = CallbackResult<A, R> | (() => CallbackResult<A, R>);
 
+/** Resolve an Effect-capable request setting in the current transport operation context. */
 const resolve =
   <A, R>(
     owner: Owner<R>,
@@ -203,6 +224,7 @@ const resolve =
       signal,
     );
 
+/** Expose shared SDK request details before building an HTTP send or reconnect request. */
 type HttpRequest = {
   id: string;
   requestMetadata: unknown;
@@ -212,18 +234,21 @@ type HttpRequest = {
   api: string;
 };
 
+/** Distinguish new messages from regeneration while preserving typed UI history. */
 type HttpSend<Message> = HttpRequest & {
   messages: Message[];
   trigger: 'submit-message' | 'regenerate-message';
   messageId: string | undefined;
 };
 
+/** Override HTTP options for one SDK request without changing persistent transport configuration. */
 type HttpReconfiguration = {
   readonly api?: string;
   readonly headers?: HeadersInit;
   readonly credentials?: RequestCredentials;
 };
 
+/** Customize an outgoing message request using its trigger, history, and optional Effect services. */
 export type PrepareSendMessagesRequest<
   Message extends UIMessage = UIMessage,
   R = never,
@@ -231,10 +256,12 @@ export type PrepareSendMessagesRequest<
   options: HttpSend<Message>,
 ) => CallbackResult<HttpReconfiguration & { readonly body: object }, R>;
 
+/** Customize an HTTP reconnect request in the same context as the transport. */
 export type PrepareReconnectToStreamRequest<R = never> = (
   options: HttpRequest,
 ) => CallbackResult<HttpReconfiguration, R>;
 
+/** Configure defaults and per-request hooks for an HTTP chat transport. */
 export type HttpChatTransportInitOptions<
   Message extends UIMessage,
   R = never,
@@ -248,6 +275,7 @@ export type HttpChatTransportInitOptions<
   readonly prepareReconnectToStreamRequest?: PrepareReconnectToStreamRequest<R>;
 };
 
+/** Translate Effect-aware HTTP settings into native request option callbacks. */
 const bindHttp = <Message extends UIMessage, R>(
   owner: Owner<R>,
   options: HttpChatTransportInitOptions<Message, R>,
@@ -308,6 +336,7 @@ const bindHttp = <Message extends UIMessage, R>(
   };
 };
 
+/** Construct a cancellable HTTP adapter and preserve the configured replay contract for reconnects. */
 const httpTransport = <Message extends UIMessage, R>(
   settings: HttpChatTransportInitOptions<Message, R>,
   make: (
@@ -336,17 +365,23 @@ const httpTransport = <Message extends UIMessage, R>(
     });
   });
 
+/** Use a transport that decodes the SDK UI-message stream protocol. */
 export type DefaultChatTransport<Message extends UIMessage = UIMessage> =
   ChatTransport<Message>;
+/** Use a transport that maps plain response text to chat message chunks. */
 export type TextStreamChatTransport<Message extends UIMessage = UIMessage> =
   ChatTransport<Message>;
+/** Use the chat transport interface for requests and reconnects over HTTP. */
 export type HttpChatTransport<Message extends UIMessage = UIMessage> =
   ChatTransport<Message>;
+/** Use an in-process transport backed by a registered agent. */
 export type DirectChatTransport<Message extends UIMessage = UIMessage> =
   ChatTransport<Message>;
+/** Use a chat transport that sends and reconnects through a WebSocket. */
 export type WebSocketChatTransport<Message extends UIMessage = UIMessage> =
   ChatTransport<Message>;
 
+/** Create the SDK's UI message HTTP transport with replay enabled by default. */
 export const DefaultChatTransport = <
   Message extends UIMessage = UIMessage,
   R = never,
@@ -362,6 +397,7 @@ export const DefaultChatTransport = <
     resumeStreamIsReplay,
   );
 
+/** Create an HTTP transport for responses that contain a plain text stream. */
 export const TextStreamChatTransport = <
   Message extends UIMessage = UIMessage,
   R = never,
@@ -405,6 +441,7 @@ export const HttpChatTransport = <
     });
   });
 
+/** Carry request metadata, body, and headers when preparing a socket request. */
 type SocketSettings = {
   id: string;
   requestMetadata: unknown;
@@ -412,12 +449,14 @@ type SocketSettings = {
   headers: Record<string, string>;
 };
 
+/** Add the message history and send trigger to shared socket request settings. */
 type SocketSend<Message> = SocketSettings & {
   messages: Message[];
   trigger: 'submit-message' | 'regenerate-message';
   messageId: string | undefined;
 };
 
+/** Describe the native host socket methods used by the SDK transport bridge. */
 type WebSocketHost = {
   readyState: number;
   readonly bufferedAmount?: number;
@@ -429,12 +468,14 @@ type WebSocketHost = {
   onclose: ((event: unknown) => void) | null;
 };
 
+/** Accept a WebSocket constructor supplied by the browser or another host implementation. */
 type WebSocketConstructor = new (
   url: string | URL,
   protocols?: string | string[],
   options?: { headers?: Record<string, string | undefined> },
 ) => WebSocketHost;
 
+/** Adapt the outgoing socket request before sending UI history and its triggering message ID. */
 export type PrepareWebSocketChatTransportSendMessagesRequest<
   Message extends UIMessage = UIMessage,
   R = never,
@@ -445,10 +486,12 @@ export type PrepareWebSocketChatTransportSendMessagesRequest<
   R
 >;
 
+/** Adapt the socket request when reconnecting to a previous response stream. */
 export type PrepareWebSocketChatTransportReconnectToStreamRequest<R = never> = (
   request: SocketSettings,
 ) => CallbackResult<{ body?: object; headers?: HeadersInit }, R>;
 
+/** Configure the socket endpoint, host constructor, and Effect-aware request preparation. */
 export type WebSocketChatTransportInitOptions<
   Message extends UIMessage,
   R = never,
@@ -466,6 +509,7 @@ export type WebSocketChatTransportInitOptions<
   readonly prepareReconnectToStreamRequest?: PrepareWebSocketChatTransportReconnectToStreamRequest<R>;
 };
 
+/** Distinguish a decoded socket chat request from a recoverable validation failure. */
 export type SafeValidateWebSocketChatTransportRequestResult<
   Message extends UIMessage = UIMessage,
 > =
@@ -475,6 +519,7 @@ export type SafeValidateWebSocketChatTransportRequestResult<
     }
   | { readonly success: false; readonly error: AiSdkError };
 
+/** Check an untrusted socket request before accepting its chat protocol fields. */
 export const safeValidateWebSocketChatTransportRequest = <
   Message extends UIMessage = UIMessage,
 >({
@@ -495,6 +540,7 @@ export const safeValidateWebSocketChatTransportRequest = <
   );
 };
 
+/** Create a socket transport with Effect-bound request options and native replay behavior. */
 export const WebSocketChatTransport = <
   Message extends UIMessage = UIMessage,
   R = never,
@@ -567,13 +613,16 @@ export const WebSocketChatTransport = <
     return wrapChatTransport(native);
   });
 
+/** Share the SDK record constraint on application context and agent options. */
 type Runtime = Record<string, unknown>;
+/** Infer direct transport UI tool parts from the native bindings of the agent's tools. */
 type DirectMessage<Tools extends EffectTools> = UIMessage<
   unknown,
   never,
   InferUITools<BoundTools<Tools>>
 >;
 
+/** Accept a registered agent with optional call and UI stream settings. */
 export type DirectChatTransportOptions<
   C,
   T extends EffectTools,
@@ -588,6 +637,7 @@ export type DirectChatTransportOptions<
   readonly options?: C;
 };
 
+/** Run an agent directly inside the chat stream scope and report no reconnectable stream. */
 export const DirectChatTransport = <
   C = never,
   T extends EffectTools = {},
