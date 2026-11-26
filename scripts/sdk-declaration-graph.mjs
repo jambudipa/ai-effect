@@ -55,7 +55,7 @@ function typeArguments(checker, type) {
 }
 
 /** Report raw SDK calls, constructors, methods, and getters in the public types. */
-function exportedValueType(checker, exported) {
+export function exportedValueType(checker, exported) {
   const symbol =
     exported.flags & ts.SymbolFlags.Alias
       ? checker.getAliasedSymbol(exported)
