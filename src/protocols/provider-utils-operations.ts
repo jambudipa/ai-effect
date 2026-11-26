@@ -14,6 +14,8 @@ import {
 } from '../internal/operation.js';
 import {
   adaptProviderTool,
+  type AdaptArguments,
+  type AdaptedDescriptor,
   type ProviderToolHandle,
 } from '../internal/provider-tool.js';
 import {
@@ -863,20 +865,17 @@ export const createProviderDefinedToolFactory = <
   C extends sdk.Context = {},
 >(
   options: ToolFactoryOptions<I>,
-): Effect.Effect<
-  AdaptedFactory<
-    ReturnType<typeof sdk.createProviderDefinedToolFactory<I, Args, C>>
-  >,
-  AiSdkError
-> =>
-  runSync('ProviderUtils.createProviderDefinedToolFactory', () =>
-    adaptFactory(
-      'ProviderUtils.createProviderDefinedTool',
-      sdk.createProviderDefinedToolFactory<I, Args, C>({
-        ...options,
-        inputSchema: toSdkSchema(options.inputSchema),
-      }),
-    ),
+): Effect.Effect<ProviderDefinedToolFactory<I, Args, C>, AiSdkError> =>
+  runSync(
+    'ProviderUtils.createProviderDefinedToolFactory',
+    () =>
+      adaptFactory(
+        'ProviderUtils.createProviderDefinedTool',
+        sdk.createProviderDefinedToolFactory<I, Args, C>({
+          ...options,
+          inputSchema: toSdkSchema(options.inputSchema),
+        }),
+      ) as ProviderDefinedToolFactory<I, Args, C>,
   );
 
 export const createProviderDefinedToolFactoryWithOutputSchema = <
@@ -1041,13 +1040,41 @@ export type Tool<I = unknown, A = unknown, C = unknown, E = never, R = never> =
   | ProviderDefinedTool<I, A, R>
   | ProviderExecutedTool<I, A, R>;
 
+// Both SDK factories accept the same settings after choosing an output type.
+type ProviderDefinedArgs<
+  I,
+  A,
+  Args extends object,
+  C extends sdk.Context,
+> = Parameters<sdk.ProviderDefinedToolFactoryWithOutputSchema<I, A, Args, C>>;
+type ProviderDefinedOptions<
+  I,
+  A,
+  Args extends object,
+  C extends sdk.Context,
+  R,
+> = AdaptArguments<ProviderDefinedArgs<I, A, Args, C>, R>[0];
+
 export type ProviderDefinedToolFactory<
   I,
   Args extends object,
   C extends sdk.Context = {},
-> = Effect.Success<
-  ReturnType<typeof createProviderDefinedToolFactory<I, Args, C>>
->;
+> = {
+  // Settings inference selects the second signature when no type arguments are supplied.
+  <A, R = never, Provided = unknown>(
+    options: Provided &
+      (unknown extends Provided
+        ? ProviderDefinedOptions<I, A, Args, C, R>
+        : never),
+  ): Effect.Effect<
+    AdaptedDescriptor<
+      ProviderDefinedArgs<I, A, Args, C>,
+      sdk.ProviderDefinedTool<I, A, C> & NativeProviderTool,
+      [ProviderDefinedOptions<I, A, Args, C, R>]
+    >,
+    AiSdkError
+  >;
+} & AdaptedFactory<sdk.ProviderDefinedToolFactory<I, Args, C>>;
 
 export type ProviderDefinedToolFactoryWithOutputSchema<
   I,
