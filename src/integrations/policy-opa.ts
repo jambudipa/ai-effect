@@ -105,6 +105,7 @@ type ApprovalInput = Omit<NativeInput, 'tools'> & {
 };
 
 interface Approval {
+  (options: ApprovalInput): Effect.Effect<ToolApprovalStatus, AiSdkError>;
   readonly evaluate: (
     options: ApprovalInput,
   ) => Effect.Effect<ToolApprovalStatus, AiSdkError>;
@@ -119,25 +120,24 @@ const toNativeInput = (input: ApprovalInput): NativeInput => ({
 });
 
 const wrapApproval = (native: NativeApproval): Approval => {
-  const approval: Approval = {
-    evaluate: (options) =>
-      runValue('OPA.approval.evaluate', () => {
-        const input = toNativeInput(options);
-        if (typeof native === 'function') return native(input);
-        const rule = native[input.toolCall.toolName];
-        if (!rule) return 'not-applicable';
-        return typeof rule === 'function'
-          ? rule(input.toolCall.input, {
-              toolCallId: input.toolCall.toolCallId,
-              messages: input.messages,
-              toolContext: (input.toolsContext as Record<string, unknown>)[
-                input.toolCall.toolName
-              ] as never,
-              runtimeContext: input.runtimeContext,
-            })
-          : rule;
-      }),
-  };
+  const evaluate = (options: ApprovalInput) =>
+    runValue('OPA.approval.evaluate', () => {
+      const input = toNativeInput(options);
+      if (typeof native === 'function') return native(input);
+      const rule = native[input.toolCall.toolName];
+      if (!rule) return 'not-applicable';
+      return typeof rule === 'function'
+        ? rule(input.toolCall.input, {
+            toolCallId: input.toolCall.toolCallId,
+            messages: input.messages,
+            toolContext: (input.toolsContext as Record<string, unknown>)[
+              input.toolCall.toolName
+            ] as never,
+            runtimeContext: input.runtimeContext,
+          })
+        : rule;
+    });
+  const approval: Approval = Object.assign(evaluate, { evaluate });
   approvals.set(approval, native);
   return approval;
 };
@@ -177,7 +177,7 @@ export const opaPolicy = <R = never, E = never>(options: PolicyOptions<R, E>) =>
 
 export const optionalOpaPolicy = <R = never, E = never>(
   options: Omit<PolicyOptions<R, E>, 'client'> & {
-    readonly client?: PolicyClient<R, E>;
+    readonly client?: PolicyClient<R, E> | undefined;
   },
 ) =>
   options.client
