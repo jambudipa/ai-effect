@@ -141,15 +141,14 @@ export type SdkImageModelInput = Omit<
   readonly supportsMaskInputs?: SdkImageModelV4['supportsMaskInputs'];
 };
 
-export const wrapImageModel = (model: SdkImageModelInput) =>
+const imageModel = <Limit>(
+  model: SdkImageModelInput,
+  maxImagesPerCall: Limit,
+) =>
   // Some SDK classes explicitly return undefined from these optional getters.
   registerModel(imageModels, model as SdkImageModelV4, {
     ...modelMetadata(model),
-    maxImagesPerCall: (options: { modelId: string }) =>
-      lazyValue('ImageModelV4.maxImagesPerCall', () => {
-        const limit = model.maxImagesPerCall;
-        return typeof limit === 'function' ? limit.call(model, options) : limit;
-      }),
+    maxImagesPerCall,
     supportsFileInputs: lazyValue(
       'ImageModelV4.supportsFileInputs',
       () => model.supportsFileInputs,
@@ -163,6 +162,24 @@ export const wrapImageModel = (model: SdkImageModelInput) =>
       model.doGenerate.bind(model),
     ),
   });
+
+export const wrapImageModel = (model: SdkImageModelInput) =>
+  imageModel(model, (options: { modelId: string }) =>
+    lazyValue('ImageModelV4.maxImagesPerCall', () => {
+      const limit = model.maxImagesPerCall;
+      return typeof limit === 'function' ? limit.call(model, options) : limit;
+    }),
+  );
+
+export const wrapFixedImageModel = <Limit extends number | undefined>(
+  model: Omit<SdkImageModelInput, 'maxImagesPerCall'> & {
+    readonly maxImagesPerCall: Limit;
+  },
+) =>
+  imageModel(
+    model,
+    lazyValue('ImageModelV4.maxImagesPerCall', () => model.maxImagesPerCall),
+  );
 
 export const wrapSpeechModel = (
   model: SdkSpeechModelV4 & Partial<SdkStreamingSpeechModelV4>,
@@ -326,7 +343,8 @@ export const wrapVideoModel = (model: SdkVideoModelV4) => {
 };
 
 export type EmbeddingModelV4 = ReturnType<typeof wrapEmbeddingModel>;
-export type ImageModelV4 = ReturnType<typeof wrapImageModel>;
+export type ImageModelV4 =
+  ReturnType<typeof wrapImageModel> | ReturnType<typeof wrapFixedImageModel>;
 export type SpeechModelV4 = ReturnType<typeof wrapSpeechModel>;
 export type TranscriptionModelV4 = ReturnType<typeof wrapTranscriptionModel>;
 export type RerankingModelV4 = ReturnType<typeof wrapRerankingModel>;

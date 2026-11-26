@@ -16,6 +16,7 @@ import {
 import { wrapLanguageModel } from '../internal/language-model.js';
 import {
   wrapEmbeddingModel,
+  wrapFixedImageModel,
   wrapImageModel,
 } from '../internal/provider-model.js';
 
@@ -86,6 +87,8 @@ export const FireworksImageModel: AdaptedConstructor<
 > = adaptModelConstructor(
   'FireworksImageModel',
   SdkFireworksImageModel,
-  wrapImageModel,
+  wrapFixedImageModel,
 );
-export type FireworksImageModel = ReturnType<typeof wrapImageModel>;
+export type FireworksImageModel = ReturnType<
+  typeof wrapFixedImageModel<SdkFireworksImageModel['maxImagesPerCall']>
+>;

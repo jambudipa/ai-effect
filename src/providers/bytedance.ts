@@ -13,7 +13,11 @@ import {
   adaptModelConstructor,
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
-import { wrapImageModel, wrapVideoModel } from '../internal/provider-model.js';
+import {
+  wrapFixedImageModel,
+  wrapImageModel,
+  wrapVideoModel,
+} from '../internal/provider-model.js';
 
 export { VERSION } from '@ai-sdk/bytedance';
 export type {
@@ -59,6 +63,8 @@ export const ByteDanceImageModel: AdaptedConstructor<
 > = adaptModelConstructor(
   'ByteDanceImageModel',
   SdkByteDanceImageModel,
-  wrapImageModel,
+  wrapFixedImageModel,
 );
-export type ByteDanceImageModel = ReturnType<typeof wrapImageModel>;
+export type ByteDanceImageModel = ReturnType<
+  typeof wrapFixedImageModel<SdkByteDanceImageModel['maxImagesPerCall']>
+>;
