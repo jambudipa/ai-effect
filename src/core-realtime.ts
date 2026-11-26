@@ -5,6 +5,7 @@ import {
 } from 'ai';
 import { Effect, Exit, Option, Scope } from 'effect';
 import {
+  type AiSdkError,
   openOperation,
   runRequest,
   runSync,
@@ -25,6 +26,7 @@ type ToolCall = Parameters<NonNullable<NativeOptions['onToolCall']>>[0];
 type ServerEvent = Parameters<NonNullable<NativeOptions['onEvent']>>[0];
 type ClientEvent = Parameters<NativeSession['sendEvent']>[0];
 type ConnectOptions = Parameters<NativeSession['connect']>[0];
+type ConnectResult<R> = Effect.Effect<undefined, AiSdkError, Scope.Scope | R>;
 type CloseOptions = Parameters<NativeSession['close']>[0];
 type ResponseOptions = Parameters<NativeSession['requestResponse']>[0];
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
@@ -183,6 +185,8 @@ export abstract class Experimental_AbstractRealtimeSession<R = never> {
     });
   }
 
+  connect(): ConnectResult<R>;
+  connect(options: ConnectOptions): ConnectResult<R>;
   connect(options?: ConnectOptions) {
     return Effect.uninterruptibleMask((restore) =>
       Effect.gen({ self: this }, function* () {

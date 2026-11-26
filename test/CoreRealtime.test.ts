@@ -4,6 +4,7 @@ import type {
   Experimental_RealtimeModelV4Transport,
 } from '@ai-sdk/provider';
 import { Context, Deferred, Effect, Fiber } from 'effect';
+import { expectTypeOf } from 'vitest';
 import { Experimental_AbstractRealtimeSession } from '../src/core-realtime.js';
 import { runRequest } from '../src/internal/operation.js';
 import { wrapRealtimeModel } from '../src/internal/provider-realtime.js';
@@ -89,6 +90,9 @@ it.effect(
           }),
       });
 
+      expectTypeOf<Parameters<typeof session.connect>>().toEqualTypeOf<
+        [options: { stream?: MediaStream; capture?: boolean }]
+      >();
       const connect = session.connect({ capture: false });
       expect(session.status).toBe('disconnected');
       yield* Effect.scoped(
