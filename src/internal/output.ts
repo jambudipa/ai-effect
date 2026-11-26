@@ -1,6 +1,11 @@
-import { Output as sdkOutput, type OutputInterface } from 'ai';
-import { Effect, type Scope } from 'effect';
-import type { FlexibleSchema } from '../core-schema.js';
+import {
+  type DeepPartial,
+  Output as sdkOutput,
+  type OutputInterface,
+} from 'ai';
+import { Effect, type Schema as EffectSchema, type Scope } from 'effect';
+import type { InferSchema } from '../core-contracts.js';
+import type { FlexibleSchema, LazySchema, Schema } from '../core-schema.js';
 import { bindLazySchema } from './lazy-schema.js';
 import { openOperation, runSync, type AiSdkError } from './operation.js';
 import { lazyValue } from './provider-model.js';
@@ -111,6 +116,40 @@ export const bindOutput = <A, P, I, R>(
 };
 
 type NamedOutput = { readonly name?: string; readonly description?: string };
+type StructuredOutputKind = 'object' | 'array';
+type ValidatedSchema<S> = 0 extends 1 & S
+  ? never
+  : [S] extends [FlexibleSchema<unknown, unknown>]
+    ? S
+    : never;
+type OutputValue<A, S> = [A] extends [never] ? InferSchema<S> : A;
+type SchemaServices<S> = S extends
+  | Schema<unknown, infer R>
+  | EffectSchema.ConstraintDecoder<unknown, infer R>
+  | LazySchema<unknown, infer R>
+  ? R
+  : never;
+type StructuredOptions<Kind, S> = NamedOutput &
+  (Kind extends 'object'
+    ? { readonly schema: S }
+    : {
+        readonly element: S;
+        readonly minItems?: number;
+        readonly maxItems?: number;
+      });
+type StructuredResult<Kind, A, R> = Effect.Effect<
+  Kind extends 'object'
+    ? OutputSpecification<A, DeepPartial<A>, never, R>
+    : OutputSpecification<A[], A[], A, R>
+>;
+interface StructuredOutput<Kind extends StructuredOutputKind> {
+  <A = never, S = FlexibleSchema<A>>(
+    options: StructuredOptions<Kind, ValidatedSchema<S>>,
+  ): StructuredResult<Kind, OutputValue<A, S>, SchemaServices<S>>;
+  <A, R = never>(
+    options: StructuredOptions<Kind, FlexibleSchema<A, R>>,
+  ): StructuredResult<Kind, A, R>;
+}
 
 /** Construct the SDK's output modes without exposing the SDK parser. */
 export const Output = {
@@ -120,10 +159,10 @@ export const Output = {
   choice: <Choice extends string>(
     options: NamedOutput & { readonly options: Array<Choice> },
   ) => runSync('Output.choice', () => wrapOutput(sdkOutput.choice(options))),
-  object: <A, R = never>({
+  object: (<A, R = never>({
     schema,
     ...options
-  }: NamedOutput & { readonly schema: FlexibleSchema<A, R> }) =>
+  }: StructuredOptions<'object', FlexibleSchema<A, R>>) =>
     Effect.succeed(
       makeOutput('object', (owner: Owner<R>) =>
         sdkOutput.object({
@@ -131,15 +170,11 @@ export const Output = {
           schema: bindLazySchema(schema, owner, 'Output.object.schema'),
         }),
       ),
-    ),
-  array: <A, R = never>({
+    )) as StructuredOutput<'object'>,
+  array: (<A, R = never>({
     element,
     ...options
-  }: NamedOutput & {
-    readonly element: FlexibleSchema<A, R>;
-    readonly minItems?: number;
-    readonly maxItems?: number;
-  }) =>
+  }: StructuredOptions<'array', FlexibleSchema<A, R>>) =>
     Effect.succeed(
       makeOutput('array', (owner: Owner<R>) =>
         sdkOutput.array({
@@ -147,5 +182,5 @@ export const Output = {
           element: bindLazySchema(element, owner, 'Output.array.element'),
         }),
       ),
-    ),
+    )) as StructuredOutput<'array'>,
 };
