@@ -169,6 +169,9 @@ export function describeTypeMembers(checker, type, { recursive = false } = {}) {
       if (lazy || counts.calls || counts.constructors) {
         records.push({
           path: childPath,
+          ...(member.name.startsWith('__@') && {
+            symbolKey: member.escapedName,
+          }),
           kind: lazy ? 'lazy' : 'callable',
           ...counts,
           optional,

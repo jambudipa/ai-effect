@@ -38,6 +38,8 @@ const realtimeFactories = new Set([
   '@ai-sdk/gateway createGateway',
   '@ai-sdk/gateway createGatewayProvider',
   '@ai-sdk/gateway gateway',
+  '@ai-sdk/openai createOpenAI',
+  '@ai-sdk/openai openai',
 ]);
 const builtinDefaults = new Map([
   [
@@ -86,6 +88,8 @@ const absentSlots = new Map([
   [
     'ai toolSearch',
     [
+      'contextSchema',
+      'description',
       'needsApproval',
       'onInputStart',
       'onInputDelta',
@@ -93,12 +97,30 @@ const absentSlots = new Map([
       'toModelOutput',
     ],
   ],
+  ...[
+    '@ai-sdk/code-mode experimental_codeModeTool',
+    '@ai-sdk/code-mode experimental_createCodeModeTool',
+    '@ai-sdk/tool-bash experimental_createBashTool',
+    '@ai-sdk/tool-web-fetch experimental_createWebFetchTool',
+  ].map((tool) => [tool, ['description', 'needsApproval']]),
 ]);
 
 export function memberProjection(upstream, exported, member) {
   const operation = `${upstream} ${exported}`;
   if (member.path.length !== 1) return;
   const [name] = member.path;
+  if (
+    (upstream === 'ai' || upstream === '@ai-sdk/provider-utils') &&
+    exported === 'experimental_toolCaller' &&
+    member.optional &&
+    !member.constructors
+  ) {
+    return {
+      path: [name],
+      retainedInput: true,
+      relation: 'retained-tool-input',
+    };
+  }
   if (transports.has(operation) && Object.hasOwn(transportEvents, name)) {
     return {
       path: ['events', 'subscribe'],
@@ -117,6 +139,29 @@ export function memberProjection(upstream, exported, member) {
     // The broad model-ID overload already accepts the inherited one-argument
     // factory call with the same result.
     return { path: [name], calls: 4, relation: 'equivalent-overload' };
+  }
+}
+
+export function resultProjection(upstream, exported, result) {
+  if (upstream === 'ai' && exported === 'smoothStream' && result.calls) {
+    return {
+      path: ['apply'],
+      resultBrand: '~effect/Stream',
+      relation: 'stream-application',
+    };
+  }
+  if (
+    upstream === '@ai-sdk/provider-utils' &&
+    exported === 'getWebSocketConstructor' &&
+    result.constructors
+  ) {
+    return {
+      path: [],
+      calls: result.constructors,
+      constructors: 0,
+      resultBrand: '~effect/Effect',
+      relation: 'scoped-socket-factory',
+    };
   }
 }
 

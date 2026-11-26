@@ -3,6 +3,7 @@ import { exportedValueType } from './sdk-declaration-graph.mjs';
 import {
   memberProjection,
   nativeMemberUnavailable,
+  resultProjection,
 } from './sdk-member-projections.mjs';
 
 const schemaProperties = new Set([
@@ -55,20 +56,25 @@ function* receivers(checker, root, visited = new Set()) {
   if (payload) {
     yield* receivers(
       checker,
-      { type: payload.type, route: [...root.route, payload.step] },
+      { ...root, type: payload.type, route: [...root.route, payload.step] },
       visited,
     );
   }
 }
 
-function* publicMembers(checker, root, path) {
+function* publicMembers(checker, root, path, symbolKey) {
   if (!path.length) {
     yield* receivers(checker, root);
     return;
   }
   const [name, ...rest] = path;
-  for (const { type, route } of receivers(checker, root)) {
-    const symbol = type.getProperty(name);
+  for (const { type, route, optional } of receivers(checker, root)) {
+    const symbol =
+      !rest.length && symbolKey
+        ? type
+            .getProperties()
+            .find((property) => property.escapedName === symbolKey)
+        : type.getProperty(name);
     if (!symbol) continue;
     const declarations = symbol.getDeclarations() ?? [];
     const hidden = ts.ModifierFlags.Private | ts.ModifierFlags.Protected;
@@ -81,9 +87,9 @@ function* publicMembers(checker, root, path) {
       type: checker.getNonNullableType(checker.getTypeOfSymbol(symbol)),
       route: [...route, name],
       accessor: declarations.some(ts.isGetAccessorDeclaration),
-      optional: Boolean(symbol.flags & ts.SymbolFlags.Optional),
+      optional: optional || Boolean(symbol.flags & ts.SymbolFlags.Optional),
     };
-    if (rest.length) yield* publicMembers(checker, member, rest);
+    if (rest.length) yield* publicMembers(checker, member, rest, symbolKey);
     else yield member;
   }
 }
@@ -96,6 +102,7 @@ function* returnReceivers(checker, value, kind, allowLazyConstructor) {
       signatures.map((signature, index) => ({
         route: [...prefix, `${label}[${index}]`],
         type: signature.getReturnType(),
+        input: signature.getParameters()[0],
       }));
     if (kind === 'call') {
       yield* emit(calls, 'call');
@@ -122,70 +129,115 @@ function* returnReceivers(checker, value, kind, allowLazyConstructor) {
   }
 }
 
-function findAdapter(checker, roots, member) {
+function* alternatives(type) {
+  if (type.isUnion()) {
+    for (const member of type.types) yield* alternatives(member);
+  } else yield type;
+}
+
+function* memberCandidates(checker, roots, member) {
   for (const root of roots) {
-    for (const actual of publicMembers(checker, root, member.path)) {
-      const signatures = actual.type.getCallSignatures();
-      const calls = signatures.length;
-      const constructors = actual.type.getConstructSignatures().length;
-      const effect = Boolean(actual.type.getProperty('~effect/Effect'));
-      const lazyCall = signatures.some(
-        (signature) =>
-          !signature.getParameters().length &&
-          payloadOf(checker, signature.getReturnType())?.step === 'yield',
-      );
-      const effectValue = effect && member.parameterless && member.calls === 1;
-      const dataGetter =
-        member.accessor &&
-        !member.calls &&
-        dataGetters.has(member.path.at(-1)) &&
-        isPrimitiveType(actual.type);
-      const schema =
-        schemaProperties.has(member.path.at(-1)) &&
-        [...receivers(checker, actual)].find(
-          ({ type }) =>
-            type.getProperty('validate') && type.getProperty('jsonSchema'),
-        );
-      if (calls < member.calls && !effectValue && !schema) continue;
-      if (constructors < member.constructors) continue;
-      if (!member.optional && actual.optional) continue;
-      if (
-        member.registration &&
-        !signatures.some((signature) => {
-          const [listeners] = signature.getParameters();
-          return (
-            listeners &&
-            checker.getTypeOfSymbol(listeners).getProperty(member.registration)
-          );
-        })
-      ) {
-        continue;
-      }
-      if (
-        member.kind === 'lazy' &&
-        !(
-          actual.accessor ||
-          effect ||
-          lazyCall ||
-          schema ||
-          dataGetter ||
-          hasPromise(checker, actual.type)
-        )
-      ) {
-        continue;
-      }
-      return {
-        route: schema ? [...schema.route, 'validate'] : actual.route,
-        calls,
-        constructors,
-        effect,
-        accessor: actual.accessor,
-        optional: actual.optional,
-        ...(schema && { relation: 'schema-validation' }),
-        ...(effectValue && { relation: 'effect-value' }),
-        ...(dataGetter && { relation: 'data-getter' }),
-      };
+    for (const actual of publicMembers(
+      checker,
+      root,
+      member.path,
+      member.symbolKey,
+    )) {
+      for (const type of alternatives(actual.type)) yield { ...actual, type };
     }
+  }
+}
+
+function retainedInput(checker, roots, path) {
+  for (const root of roots) {
+    if (!root.input) continue;
+    const input = checker.getTypeOfSymbol(root.input);
+    if (!(input.flags & ts.TypeFlags.TypeParameter)) continue;
+    for (const { route, type } of receivers(checker, root)) {
+      if (
+        type === input ||
+        (type.isIntersection() && type.types.includes(input))
+      ) {
+        return { route: [...route, ...path], input: 0 };
+      }
+    }
+  }
+  return null;
+}
+
+function findAdapter(checker, roots, member) {
+  if (member.retainedInput) return retainedInput(checker, roots, member.path);
+  for (const actual of memberCandidates(checker, roots, member)) {
+    const signatures = actual.type.getCallSignatures();
+    const calls = signatures.length;
+    const constructors = actual.type.getConstructSignatures().length;
+    const effect = Boolean(actual.type.getProperty('~effect/Effect'));
+    const lazyCall = signatures.some(
+      (signature) =>
+        !signature.getParameters().length &&
+        payloadOf(checker, signature.getReturnType())?.step === 'yield',
+    );
+    const effectValue = effect && member.parameterless && member.calls === 1;
+    const dataGetter =
+      member.accessor &&
+      !member.calls &&
+      dataGetters.has(member.path.at(-1)) &&
+      isPrimitiveType(actual.type);
+    const schema = schemaProperties.has(member.path.at(-1))
+      ? [...receivers(checker, actual)].find(
+          ({ type }) =>
+            (type.getProperty('validate') && type.getProperty('jsonSchema')) ||
+            type.getProperty('~effect/Schema/Schema'),
+        )
+      : undefined;
+    if (calls < member.calls && !effectValue && !schema) continue;
+    if (constructors < member.constructors) continue;
+    if (!member.optional && actual.optional) continue;
+    if (
+      member.resultBrand &&
+      !signatures.some((signature) =>
+        signature.getReturnType().getProperty(member.resultBrand),
+      )
+    )
+      continue;
+    if (
+      member.registration &&
+      !signatures.some((signature) => {
+        const [listeners] = signature.getParameters();
+        return (
+          listeners &&
+          checker.getTypeOfSymbol(listeners).getProperty(member.registration)
+        );
+      })
+    ) {
+      continue;
+    }
+    if (
+      member.kind === 'lazy' &&
+      !(
+        actual.accessor ||
+        effect ||
+        lazyCall ||
+        schema ||
+        dataGetter ||
+        hasPromise(checker, actual.type)
+      )
+    ) {
+      continue;
+    }
+    return {
+      route: schema?.type.getProperty('validate')
+        ? [...schema.route, 'validate']
+        : (schema?.route ?? actual.route),
+      calls,
+      constructors,
+      effect,
+      accessor: actual.accessor,
+      optional: actual.optional,
+      ...(schema && { relation: 'schema-validation' }),
+      ...(effectValue && { relation: 'effect-value' }),
+      ...(dataGetter && { relation: 'data-getter' }),
+    };
   }
   return null;
 }
@@ -202,12 +254,13 @@ export function describeMemberAdapters(
   const exported = wrapper?.name;
   const map = (members, roots) =>
     members.map((expected) => {
+      const { symbolKey, ...record } = expected;
       if (
         exported &&
         nativeMemberUnavailable(upstreamPath, exported, expected)
       ) {
         return {
-          ...expected,
+          ...record,
           coverage: 'sdk-slot-unimplemented',
           adapter: null,
         };
@@ -215,7 +268,7 @@ export function describeMemberAdapters(
       const direct = findAdapter(checker, roots, expected);
       if (direct)
         return {
-          ...expected,
+          ...record,
           coverage: direct.relation ?? 'named-adapter',
           adapter: direct,
         };
@@ -226,7 +279,7 @@ export function describeMemberAdapters(
         findAdapter(checker, roots, { ...expected, ...projection });
       if (projected) {
         return {
-          ...expected,
+          ...record,
           coverage: projection.relation,
           adapter: projected,
           projection,
@@ -237,7 +290,7 @@ export function describeMemberAdapters(
         origins.length > 0 &&
         !origins.some((name) => name === 'ai' || name.startsWith('@ai-sdk/'));
       return {
-        ...expected,
+        ...record,
         coverage: external ? 'external-declaration' : 'unmapped',
         adapter: null,
       };
@@ -262,15 +315,24 @@ export function describeMemberAdapters(
       return {
         ...root,
         ...((root.calls || root.constructors) && {
-          adapter: findAdapter(checker, roots, {
-            path: [],
-            kind: 'callable',
-            calls: root.calls,
-            constructors: root.constructors,
-          }),
+          adapter: matchingResult(checker, roots, root, upstreamPath, exported),
         }),
         members: map(members, roots),
       };
     }),
   };
+}
+
+function matchingResult(checker, roots, root, upstreamPath, exported) {
+  const expected = {
+    ...root,
+    path: [],
+    kind: 'callable',
+  };
+  const direct = findAdapter(checker, roots, expected);
+  if (direct) return direct;
+  const projection = resultProjection(upstreamPath, exported, root);
+  if (!projection) return null;
+  const adapter = findAdapter(checker, roots, { ...expected, ...projection });
+  return adapter && { ...adapter, relation: projection.relation };
 }
