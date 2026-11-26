@@ -4,6 +4,7 @@ import { Effect } from 'effect';
 import { unwrapLanguageModel, type LanguageModelV4 } from './language-model.js';
 import { runSync, sdkError } from './operation.js';
 
+/** Resolve a registered v4 model and map a failed native transformation to `AiSdkError`. */
 export function withLanguageModel<A>(
   operation: string,
   model: LanguageModelV4,

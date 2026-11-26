@@ -30,9 +30,13 @@ import {
 } from './provider-tool.js';
 import { streamTool } from './tool-stream.js';
 
+/** Use the SDK's open record constraint for per-tool runtime context. */
 type ContextData = Record<string, unknown>;
+/** Give registered tool handlers access to the scoped Effect sandbox when the SDK supplies one. */
 type SandboxOptions = { readonly experimental_sandbox?: SandboxSession };
+/** Track native execution options before replacing the sandbox field. */
 type NativeExecutionOptions<Context> = ToolExecutionOptions<Context>;
+/** Preserve SDK invocation context and expose an Effect sandbox session at the callback boundary. */
 export type EffectToolExecutionOptions<Context> = {
   [
     Name in keyof NativeExecutionOptions<Context> as Name extends 'experimental_sandbox'
@@ -41,13 +45,16 @@ export type EffectToolExecutionOptions<Context> = {
   ]: NativeExecutionOptions<Context>[Name];
 } & SandboxOptions;
 
+/** Limit approval callbacks to invocation context, message history, and call identity. */
 type ApprovalOptions<Context> = Pick<
   EffectToolExecutionOptions<Context>,
   'context' | 'messages' | 'toolCallId'
 >;
+/** Type a tool handler that returns one result or emits multiple results effectfully. */
 type ToolExecution<Output, Failure, Services> =
   | Effect.Effect<Output, Failure, Services>
   | Stream.Stream<Output, Failure, Services>;
+/** Describe public configurable fields for registered function and dynamic tools. */
 type ToolOptions<Input, Output, Failure, Services, Context> = {
   readonly type?: 'function' | 'dynamic';
   readonly description?:
@@ -92,7 +99,9 @@ type ToolOptions<Input, Output, Failure, Services, Context> = {
   }) => Effect.Effect<NativeToolResult, Failure, Services>;
 };
 
+/** Brand the compile-time tool metadata used to infer inputs, outputs, context, and services. */
 export declare const toolTypes: unique symbol;
+/** Propagate tool type information that is otherwise lost when binding to the native SDK. */
 type ToolTypes<Input, Output, Context, Services> = {
   readonly [toolTypes]?: {
     readonly input: Input;
@@ -102,6 +111,7 @@ type ToolTypes<Input, Output, Context, Services> = {
   };
 };
 
+/** Define a public Effect tool with schema, execution, and lifecycle callbacks. */
 export type EffectToolOptions<
   Input,
   Output,
@@ -111,6 +121,7 @@ export type EffectToolOptions<
 > = ToolOptions<Input, Output, Failure, Services, Context> &
   ToolTypes<Input, Output, Context, Services>;
 
+/** Accept structural tool declarations with a schema and optional Effect execution. */
 type FunctionToolDefinition = {
   readonly inputSchema: FlexibleSchema<unknown, unknown>;
   readonly execute?: (
@@ -118,21 +129,26 @@ type FunctionToolDefinition = {
   ) => ToolExecution<unknown, unknown, unknown>;
 };
 
+/** Infer the supplied callback result without assuming the declaration defines it. */
 type Callback<Definition, Key> = Key extends keyof Definition
   ? NonNullable<Definition[Key]> extends (...args: never[]) => infer Result
     ? Result
     : never
   : never;
+/** Read a supplied input, output, or context schema from its definition. */
 type SchemaValue<Definition, Key> = Key extends keyof Definition
   ? NonNullable<Definition[Key]>
   : never;
+/** Infer the services needed to decode schema input under the operation owner. */
 type SchemaRequirements<Value> = Value extends { DecodingServices: infer R }
   ? R
   : Value extends WrappedSchema<unknown, infer R> | LazySchema<unknown, infer R>
     ? R
     : never;
+/** Infer requirements from a scalar Effect or streaming tool lifecycle callback. */
 type CallbackRequirements<Result> =
   Result extends ToolExecution<unknown, unknown, infer R> ? R : never;
+/** Collect requirements from a tool's schema decoding and its individual callbacks. */
 type FunctionRequirements<Definition> =
   | SchemaRequirements<
       SchemaValue<Definition, 'inputSchema' | 'outputSchema' | 'contextSchema'>
@@ -148,13 +164,16 @@ type FunctionRequirements<Definition> =
         | 'toModelOutput'
       >
     >;
+/** Infer emitted output from the declared Effect or Stream result. */
 type ExecutionOutput<Result> =
   Result extends ToolExecution<infer Output, unknown, unknown> ? Output : never;
+/** Prefer the explicit execution output type when a definition has a handler. */
 type InferredOutput<Definition, Output> = Definition extends {
   readonly execute: (...args: never[]) => infer Result;
 }
   ? ExecutionOutput<Result>
   : Output;
+/** Retain the supplied execution function's exact result type on a callable tool. */
 type CallableTool<Definition, Input, Context> = Definition extends {
   readonly execute: (...args: never[]) => infer Result;
 }
@@ -166,6 +185,7 @@ type CallableTool<Definition, Input, Context> = Definition extends {
     }
   : Definition;
 
+/** Expose a directly callable tool whose handler returns a single Effect result. */
 type ScalarTool<Input, Output, Failure, Services> = EffectToolOptions<
   Input,
   Output,
@@ -178,6 +198,7 @@ type ScalarTool<Input, Output, Failure, Services> = EffectToolOptions<
   ) => Effect.Effect<Output, Failure, Services>;
 };
 
+/** Allow callers to supply input, output, and context types explicitly on a tool definition. */
 type ExplicitTool<
   Input,
   Output,
@@ -186,6 +207,7 @@ type ExplicitTool<
   Services = never,
 > = EffectToolOptions<Input, Output, Failure, Services, Context>;
 
+/** Require a callable handler when callers declare all execution types explicitly. */
 type ExplicitExecutableTool<Input, Output, Context, Failure, Services> =
   ExplicitTool<Input, Output, Context, Failure, Services> & {
     readonly execute: NonNullable<
@@ -208,9 +230,11 @@ export function tool<
     Context,
     FunctionRequirements<Definition>
   >;
+/** Preserve direct calls to a scalar Effect execution handler. */
 export function tool<Input, Output, Failure, Services>(
   options: ScalarTool<Input, Output, Failure, Services>,
 ): ScalarTool<Input, Output, Failure, Services>;
+/** Preserve the output and context types for a tool with explicit execution settings. */
 export function tool<
   Input,
   Output,
@@ -220,6 +244,7 @@ export function tool<
 >(
   options: ExplicitExecutableTool<Input, Output, Context, Failure, Services>,
 ): ExplicitExecutableTool<Input, Output, Context, Failure, Services>;
+/** Keep explicit input, output, and context types when execution is optional. */
 export function tool<
   Input,
   Output,
@@ -229,15 +254,19 @@ export function tool<
 >(
   options: ExplicitTool<Input, Output, Context, Failure, Services>,
 ): ExplicitTool<Input, Output, Context, Failure, Services>;
+/** Declare a tool that validates input and context without a typed result. */
 export function tool<Input, Context extends ContextData>(
   options: ExplicitTool<Input, never, Context>,
 ): ExplicitTool<Input, never, Context>;
+/** Declare a tool that supplies typed output and context without a typed input. */
 export function tool<Output, Context extends ContextData>(
   options: ExplicitTool<never, Output, Context>,
 ): ExplicitTool<never, Output, Context>;
+/** Declare the tool context alone when the tool has neither a typed input nor output. */
 export function tool<Context extends ContextData>(
   options: ExplicitTool<never, never, Context>,
 ): ExplicitTool<never, never, Context>;
+/** Return the registered provider tool handle with its precise type intact. */
 export function tool<
   const Definition extends ProviderToolHandle<unknown, unknown, unknown>,
 >(options: Definition): Definition;
@@ -245,6 +274,7 @@ export function tool(options: EffectTools[string]): EffectTools[string] {
   return options;
 }
 
+/** Infer services from either a registered provider handle or a user-defined tool's callbacks. */
 type DefinitionRequirements<Definition> =
   Definition extends ProviderToolHandle<unknown, unknown, infer Services>
     ? Services
@@ -252,6 +282,7 @@ type DefinitionRequirements<Definition> =
       ? Services
       : FunctionRequirements<Definition>;
 
+/** Include services for sandbox caller preparation and for the tools it can invoke. */
 type CallerRequirements<Definition> = Definition extends {
   readonly experimental_toolCaller: ToolCaller<
     infer R,
@@ -266,10 +297,12 @@ type CallerRequirements<Definition> = Definition extends {
         : DefinitionRequirements<Bound>)
   : never;
 
+/** Combine directly required services with the requirements of an attached tool caller. */
 export type ToolRequirements<Definition> = Definition extends unknown
   ? DefinitionRequirements<Definition> | CallerRequirements<Definition>
   : never;
 
+/** Map names to public function tool definitions and registered provider handles. */
 export type EffectTools = Readonly<
   Record<
     string,
@@ -279,6 +312,7 @@ export type EffectTools = Readonly<
   >
 >;
 
+/** Describe how a tool prepares a caller and binds the tools it may invoke. */
 export type ToolCaller<
   R = never,
   Bound extends EffectTools[string] = EffectTools[string],
@@ -300,6 +334,7 @@ export type ToolCaller<
       ) => Effect.Effect<ProviderOptions, AiSdkError, R>;
     };
 
+/** Associate a tool definition with a caller without losing its own public option types. */
 export type ToolWithCaller<
   T extends object,
   R = never,
@@ -309,6 +344,7 @@ export type ToolWithCaller<
   readonly experimental_toolCaller: ToolCaller<R, Bound, Prepare>;
 };
 
+/** Track the unannotated tool and its latest caller so rebinding can preserve native identity. */
 const toolCallers = new WeakMap<
   EffectTools[string],
   {
@@ -317,6 +353,7 @@ const toolCallers = new WeakMap<
   }
 >();
 
+/** Return a copied tool with a non-enumerable caller annotation and its original binding identity. */
 export const annotateToolCaller = <
   T extends EffectTools[string],
   R,
@@ -338,6 +375,7 @@ export const annotateToolCaller = <
   return annotated;
 };
 
+/** Infer input from a registered provider tool or the user-defined schema and metadata. */
 export type InferToolInput<Definition> =
   Definition extends ProviderToolHandle<infer Input, unknown, unknown>
     ? Input
@@ -349,6 +387,7 @@ export type InferToolInput<Definition> =
         ? Input
         : never;
 
+/** Infer output from the registered tool metadata or the user-defined execution contract. */
 export type InferToolOutput<Definition> =
   Definition extends ProviderToolHandle<unknown, infer Output, unknown>
     ? Output
@@ -356,11 +395,13 @@ export type InferToolOutput<Definition> =
       ? Output
       : ExecutionOutput<Callback<Definition, 'execute'>>;
 
+/** Read the context type carried by a tool's compile-time metadata. */
 type DeclaredContext<Definition> =
   Definition extends ToolTypes<unknown, unknown, infer Context, unknown>
     ? Context
     : unknown;
 
+/** Treat unspecified or empty context as unrequired when preparing tool inputs. */
 export type InferToolContext<Definition> =
   unknown extends DeclaredContext<Definition>
     ? never
@@ -370,6 +411,7 @@ export type InferToolContext<Definition> =
         ? never
         : DeclaredContext<Definition>;
 
+/** Require context only for tool entries whose declared context needs fields. */
 type RequiredToolContext<Tools extends EffectTools> = {
   [
     Name in keyof Tools as InferToolContext<Tools[Name]> extends never
@@ -380,6 +422,7 @@ type RequiredToolContext<Tools extends EffectTools> = {
   ]: InferToolContext<Tools[Name]>;
 };
 
+/** Keep context optional for tool entries that do not require a nonempty record. */
 type OptionalToolContext<Tools extends EffectTools> = {
   [
     Name in keyof Tools as InferToolContext<Tools[Name]> extends never
@@ -390,22 +433,26 @@ type OptionalToolContext<Tools extends EffectTools> = {
   ]?: InferToolContext<Tools[Name]>;
 };
 
+/** Assemble the context record keyed by tool name with the appropriate optional fields. */
 export type InferToolSetContext<Tools extends EffectTools> = {
   [
     Name in keyof (RequiredToolContext<Tools> & OptionalToolContext<Tools>)
   ]: (RequiredToolContext<Tools> & OptionalToolContext<Tools>)[Name];
 };
 
+/** Collect the services required by every tool the SDK can execute in an operation. */
 export type ToolServices<Tools extends EffectTools> = ToolRequirements<
   Tools[keyof Tools]
 >;
 
 // ToolSet accepts several SDK tool variants. Keep the compatible variants
 // without intersecting their typed arguments with the untyped index signature.
+/** Reject inferred values that do not satisfy the native SDK tool definition contract. */
 type CompatibleSdkTool<Native> = Native extends ToolSet[string]
   ? Native
   : never;
 
+/** Translate a public tool definition to native input, output, and context types. */
 type NativeTool<Definition> = Definition extends EffectTools[string]
   ? CompatibleSdkTool<
       Tool<
@@ -419,12 +466,15 @@ type NativeTool<Definition> = Definition extends EffectTools[string]
     >
   : never;
 
+/** Preserve registered tool names while mapping each value to its native definition. */
 export type BoundTools<Tools extends EffectTools> = {
   [Name in keyof Tools]: NativeTool<Tools[Name]>;
 };
 
+/** Store deferred native bindings separately from public handles and release them with the handle. */
 const deferredTools = new WeakMap<object, (owner: Owner<never>) => Tool>();
 
+/** Register a native factory for a tool whose binding must wait for an operation owner. */
 export function rememberFunctionTool<
   Handle extends object,
   Services,
@@ -434,8 +484,10 @@ export function rememberFunctionTool<
   return handle;
 }
 
+/** Provide the lifetime and services shared by native tool callbacks during one operation. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
+/** Convert the SDK sandbox field to a public session before invoking a user callback. */
 const sandboxOptions = <
   Options extends Pick<NativeExecutionOptions<unknown>, 'experimental_sandbox'>,
 >({
@@ -452,6 +504,7 @@ const sandboxOptions = <
     : {}),
 });
 
+/** Adapt schemas and tool callbacks using the operation owner while retaining the supplied tool settings. */
 const bindFunctionTool = <R>(
   name: string,
   definition: ToolOptions<unknown, unknown, unknown, R, ContextData>,
@@ -584,6 +637,7 @@ const bindFunctionTool = <R>(
   } as Tool<unknown, unknown, ContextData>);
 };
 
+/** Resolve registered descriptors, function definitions, and caller annotations into the SDK tool set. */
 export const bindTools = <Tools extends EffectTools>(
   tools: Tools,
   owner: Owner<NoInfer<ToolServices<Tools>>>,

@@ -5,6 +5,7 @@ import type { Owner } from './chat-boundary.js';
 import { runRequest } from './operation.js';
 import { lazyValue } from './provider-model.js';
 
+/** Track the native schema type whose conversion and validation the public handle defers. */
 type NativeSchema<A> = ReturnType<typeof nativeJsonSchema<A>>;
 
 /** Bind a lazy schema once per SDK operation and own validation callbacks. */

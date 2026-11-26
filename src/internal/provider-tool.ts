@@ -16,8 +16,11 @@ import { runRequest, runSync, sdkError } from './operation.js';
 import type { openOperation } from './operation.js';
 import { streamTool } from './tool-stream.js';
 
+/** Accept descriptors for provider-defined tools whether the provider executes them or delegates execution. */
 type NativeProviderTool = ProviderDefinedTool | ProviderExecutedTool;
+/** Bind provider tool callbacks to the scope and services of the SDK operation. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
+/** Identify descriptor members whose callbacks need the Effect bridge. */
 type CallbackName =
   | 'execute'
   | 'needsApproval'
@@ -26,23 +29,35 @@ type CallbackName =
   | 'onInputAvailable'
   | 'toModelOutput';
 
+/** Brand provider tool handles at compile time without adding runtime state. */
 declare const providerToolType: unique symbol;
 
+/** Expose provider tool metadata, schema, and effectful callbacks without exposing its native descriptor. */
 export interface ProviderToolHandle<
   Input,
   Output,
   Services,
   SchemaOutput = unknown,
 > {
+  /** Distinguish a registered provider tool from a user-defined function tool. */
   readonly type: 'provider';
+  /** Identify the native tool with its provider-qualified name. */
   readonly id: `${string}.${string}`;
+  /** Keep the provider-specific configuration that the SDK sends with the descriptor. */
   readonly args: Readonly<Record<string, unknown>>;
+  /** Indicate that the provider executes the tool rather than requesting a local result. */
   readonly isProviderExecuted: boolean;
+  /** Indicate whether the provider accepts a result after the initial generation step. */
   readonly supportsDeferredResults?: boolean;
+  /** Expose the display label when the native descriptor supplies one. */
   readonly title?: string;
+  /** Allow the SDK to defer loading the tool definition until it is selected. */
   readonly deferLoading?: boolean;
+  /** Validate arguments against the native tool's adapted schema. */
   readonly inputSchema: Schema<Input>;
+  /** Validate tool results when the native descriptor supplies a result schema. */
   readonly outputSchema?: Schema<SchemaOutput>;
+  /** Retain inferred input, output, and service types across native registration. */
   readonly [providerToolType]?: {
     readonly input: Input;
     readonly output: Output;
@@ -50,12 +65,14 @@ export interface ProviderToolHandle<
   };
 }
 
+/** Replace the SDK sandbox argument with the Effect session available to callbacks. */
 type AdaptSandboxArgument<Arg> = {
   [Key in keyof Arg]: Key extends 'experimental_sandbox'
     ? SandboxSession
     : Arg[Key];
 };
 
+/** Wrap a native sandbox session only when the callback received one. */
 const wrapSandboxArgument = (value: unknown): unknown => {
   if (
     !value ||
@@ -71,13 +88,16 @@ const wrapSandboxArgument = (value: unknown): unknown => {
     ),
   };
 };
+/** Allow either one Effect result or an Effect stream of results from a provider tool callback. */
 type ProviderExecution<Output, R> =
   Effect.Effect<Output, unknown, R> | Stream.Stream<Output, unknown, R>;
 
+/** Preserve execution element types while keeping other callback completions effectful. */
 type CallbackResult<Name, Result, R> = Name extends 'execute'
   ? ProviderExecution<EmittedOutput<Awaited<Result>>, R>
   : Effect.Effect<Awaited<Result>, unknown, R>;
 
+/** Adapt each relevant argument and make the callback run under its bound Effect context. */
 type AdaptCallback<Value, R, Name> = Value extends (
   ...args: infer Args
 ) => infer Result
@@ -86,16 +106,19 @@ type AdaptCallback<Value, R, Name> = Value extends (
     ) => CallbackResult<Name, Result, R>
   : Value;
 
+/** Transform only native callback settings and leave provider-specific data options as supplied. */
 type AdaptOptions<Options, R> = {
   [Name in keyof Options]: Name extends CallbackName
     ? AdaptCallback<Options[Name], R, Name>
     : Options[Name];
 };
 
+/** Apply the options adapter to each argument in the native factory's positional tuple. */
 export type AdaptArguments<Args extends unknown[], R> = {
   [Index in keyof Args]: AdaptOptions<Args[Index], R>;
 };
 
+/** Keep the runtime callback selection aligned with the callback names in the type adapter. */
 const callbackNames: ReadonlyArray<string> = [
   'execute',
   'needsApproval',
@@ -105,16 +128,19 @@ const callbackNames: ReadonlyArray<string> = [
   'toModelOutput',
 ];
 
+/** Associate public handles with native factory bindings without retaining unused handles. */
 const providerTools = new WeakMap<
   object,
   (owner: Owner<never>) => NativeProviderTool
 >();
 
+/** Recognize only descriptors previously registered by the provider tool adapter. */
 export const isProviderTool = (
   value: unknown,
 ): value is ProviderToolHandle<unknown, unknown, unknown> =>
   typeof value === 'object' && !!value && providerTools.has(value);
 
+/** Resolve a tool's native descriptor under the current owner and validation contract. */
 export const bindProviderTool = <I, A, R>(
   handle: ProviderToolHandle<I, A, R>,
   owner: Owner<R>,
@@ -130,6 +156,7 @@ export const bindProviderTool = <I, A, R>(
   return bind(owner) as Tool<I, A>;
 };
 
+/** Run native-facing callbacks in Effect and expose streamed execution as a scoped native iterable. */
 const bindCallback =
   <R>(
     name: string,
@@ -169,6 +196,7 @@ const bindCallback =
       : streamTool(result, owner, operation, abortSignal);
   };
 
+/** Bind supported callback fields without modifying the caller's factory argument objects. */
 const bindArguments = <Args extends unknown[], R>(
   args: AdaptArguments<Args, R>,
   owner: Owner<R>,
@@ -192,32 +220,40 @@ const bindArguments = <Args extends unknown[], R>(
       : options,
   ) as Args;
 
+/** Read a defined option field only when it exists on the corresponding native argument. */
 type Field<Options, Key> = Options extends object
   ? Key extends keyof Options
     ? Options[Key]
     : never
   : never;
 
+/** Obtain the execution or callback result type from the supplied function contract. */
 type CallbackEffect<C> = C extends (...args: never[]) => infer A ? A : never;
 
+/** Extract an emitted item type when the native result can emit multiple values. */
 type EmittedOutput<A> = A extends AsyncIterable<infer Output> ? Output : A;
 
+/** Infer the success value of either an Effect or streaming tool execution result. */
 type ResultValue<Result> =
   Result extends Stream.Stream<infer A, unknown, unknown>
     ? A
     : Effect.Success<Result>;
+/** Infer the Effect environment required by a scalar or streaming result. */
 type ResultServices<Result> =
   Result extends Stream.Stream<unknown, unknown, infer R>
     ? R
     : Effect.Services<Result>;
 
+/** Read the result item type from the caller's supplied execution handler. */
 type ExecutionOutput<Args extends unknown[]> = ResultValue<
   CallbackEffect<Field<Args[number], 'execute'>>
 >;
+/** Combine the services required by all supplied provider tool callbacks. */
 type ToolRequirements<Args extends unknown[]> = ResultServices<
   CallbackEffect<Field<Args[number], CallbackName>>
 >;
 
+/** Use provider output typing for provider-executed tools and infer local execution output where supplied. */
 type ToolOutput<
   Definition extends NativeProviderTool,
   Args extends unknown[],
@@ -229,6 +265,7 @@ type ToolOutput<
     : InferToolOutput<Definition>
   : InferToolOutput<Definition>;
 
+/** Preserve the caller's callback return type while adapting native arguments to Effect values. */
 type RetainedCallback<Native, Provided, Name> = Native extends (
   ...args: infer Args
 ) => infer Result
@@ -241,6 +278,7 @@ type RetainedCallback<Native, Provided, Name> = Native extends (
     ? Native
     : never;
 
+/** Expose callbacks only where the caller's factory options provided matching handlers. */
 type DescriptorCallbacks<Args extends unknown[], Provided extends unknown[]> = {
   readonly [
     Name in CallbackName as [
@@ -259,6 +297,7 @@ type DescriptorCallbacks<Args extends unknown[], Provided extends unknown[]> = {
   >;
 };
 
+/** Describe the public handle with adapted schema, callback, and service types. */
 export type AdaptedDescriptor<
   Args extends unknown[],
   Tool extends NativeProviderTool,
@@ -271,6 +310,7 @@ export type AdaptedDescriptor<
 > &
   DescriptorCallbacks<Args, Provided>;
 
+/** Copy the supplied callback functions to the public handle for direct invocation. */
 const retainedCallbacks = (
   preview: NativeProviderTool,
   args: readonly unknown[],
@@ -292,6 +332,7 @@ const retainedCallbacks = (
   );
 };
 
+/** Keep the native factory's arguments and infer the dependencies of each supplied callback. */
 export type AdaptedTool<
   Args extends unknown[],
   Tool extends NativeProviderTool,
@@ -301,6 +342,7 @@ export type AdaptedTool<
   AdaptedDescriptor<Args, Tool, Provided>,
   import('./operation.js').AiSdkError
 >;
+/** Construct a descriptor lazily and defer callback binding until the model operation uses the tool. */
 export const adaptProviderTool =
   <Args extends unknown[], Result extends NativeProviderTool>(
     operation: string,
@@ -353,12 +395,16 @@ export const adaptProviderTool =
       return handle as AdaptedDescriptor<Args, Result, Provided>;
     });
 
+/** Identify the pinned Bash tools that support a native default execution adapter. */
 type BashToolName = 'bash_20241022' | 'bash_20250124';
+/** Carry the command and optional session reset understood by the native Bash descriptor. */
 type BashInput = { command: string; restart?: boolean };
+/** Expose the exit status and separately captured output streams of the native default. */
 type DefaultBashOutput = Pick<
   Effect.Success<ReturnType<SandboxSession['run']>>,
   'exitCode' | 'stdout' | 'stderr'
 >;
+/** Adapt the Bash lifecycle and approval callbacks without changing its public execution input. */
 type BashCallbacks<Output, R> = AdaptOptions<
   Pick<
     Tool<BashInput, Output, {}>,
@@ -372,23 +418,29 @@ type BashCallbacks<Output, R> = AdaptOptions<
     output: NoInfer<Output>;
   }) => Effect.Effect<BashModelOutput, unknown, R>;
 };
+/** Preserve the native model-facing result shape for Bash output conversion. */
 type BashModelOutput = Awaited<
   ReturnType<NonNullable<Tool<BashInput, unknown, {}>['toModelOutput']>>
 >;
+/** Replace native sandbox handles in the callback's argument tuple. */
 type AdaptSandboxArguments<Args extends unknown[]> = {
   [Key in keyof Args]: AdaptSandboxArgument<Args[Key]>;
 };
+/** Derive Bash invocation arguments from the native tool protocol. */
 type BashExecutionArgs = Parameters<
   NonNullable<Tool<BashInput, unknown, {}>['execute']>
 >;
 
+/** Give a custom Bash handler the Effect sandbox session when one was supplied. */
 type BashExecution<Result> = (
   ...args: AdaptSandboxArguments<BashExecutionArgs>
 ) => Result;
+/** Represent the native default execution with its mapped SDK failure channel. */
 type BashDefaultExecution = BashExecution<
   Effect.Effect<DefaultBashOutput, import('./operation.js').AiSdkError>
 >;
 
+/** Expose the cancellable native default only when the caller supplied no execution callback. */
 const bashDefaults = (
   operation: string,
   preview: NativeProviderTool,
@@ -415,9 +467,11 @@ const bashDefaults = (
   };
 };
 
+/** Combine Bash descriptor metadata with the caller's effectful callbacks. */
 type BashHandle<Output, R> = ProviderToolHandle<BashInput, Output, R> &
   BashCallbacks<Output, R>;
 
+/** Infer Bash tool output and service requirements for custom or default execution. */
 interface AdaptedBashTool {
   <Output, E, ExecutionServices, R = never>(
     options: {
@@ -459,6 +513,7 @@ interface AdaptedBashTool {
   >;
 }
 
+/** Apply the special Bash adapter only to supported versions and adapt other factory descriptors uniformly. */
 export type AdaptedTools<Tools> = {
   [Name in keyof Tools]: Name extends BashToolName
     ? AdaptedBashTool
@@ -469,10 +524,12 @@ export type AdaptedTools<Tools> = {
       : never;
 };
 
+/** Accept native provider tool factories indexed by the names exported by a provider. */
 type ToolFactories = Readonly<
   Record<string, (...args: never[]) => NativeProviderTool>
 >;
 
+/** Wrap each factory and preserve the provider export names used to select tools. */
 export const wrapProviderTools = <Tools extends ToolFactories>(
   name: string,
   tools: Tools,

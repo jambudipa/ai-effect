@@ -2,8 +2,10 @@ import { jsonSchema, type JSONSchema7 } from 'ai';
 import { Effect, JsonSchema, Result, Schema } from 'effect';
 import type { openOperation } from './operation.js';
 
+/** Keep the decoder's Effect requirements available when native validation invokes it. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
+/** Convert an Effect schema to the native SDK format and bind validation to the optional operation owner. */
 export const toSdkSchema = <A, R>(
   schema: Schema.ConstraintDecoder<A, R>,
   owner?: Owner<R>,
