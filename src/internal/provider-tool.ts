@@ -167,7 +167,12 @@ const bindArguments = <Args extends unknown[], R>(
           Object.entries(options).map(([key, value]) => [
             key,
             callbackNames.includes(key) && typeof value === 'function'
-              ? bindCallback(key, value, owner, `${operation}.${key}`)
+              ? bindCallback(
+                  key,
+                  value as (...args: unknown[]) => unknown,
+                  owner,
+                  `${operation}.${key}`,
+                )
               : value,
           ]),
         )
