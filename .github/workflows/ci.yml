@@ -27,6 +27,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run docs:audit
+      - run: node --test scripts/docs-audit.test.mjs
       - run: node scripts/check-sdk-surface.mjs
       - run: node scripts/sync-sdk-exports.mjs --check
       - run: node scripts/generate-sdk-data-types.mjs --check
