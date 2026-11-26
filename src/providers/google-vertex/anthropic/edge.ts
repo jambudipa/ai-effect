@@ -14,6 +14,7 @@ import {
 } from '../../../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../../../internal/language-model.js';
 
+/** Adapt language model selection from the edge Anthropic on Vertex AI SDK to Effect. */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('googleVertexAnthropic', sdk, wrapLanguageModel), {
     ...wrapProviderBase('googleVertexAnthropic', sdk),
@@ -28,12 +29,28 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('googleVertexAnthropic.tools', sdk.tools),
   });
+/**
+ * Provider returned by the adapter, with Effect-based model selection for Anthropic on
+ * Vertex AI.
+ */
 export type GoogleVertexAnthropicProvider = ReturnType<typeof wrapProvider>;
+/**
+ * Reserve `generateAuthToken` and `headers` for settings the SDK may read through lazy
+ * Effect resolvers.
+ */
 type ResolverKey = 'generateAuthToken' | 'headers';
+/**
+ * Keep the native Anthropic on Vertex AI options and allow the SDK to obtain
+ * `generateAuthToken` and `headers` through Effect resolvers.
+ */
 export type GoogleVertexAnthropicProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Anthropic on Vertex AI provider inside an Effect. Keep the scope open when
+ * using an Effect resolver for `generateAuthToken` and `headers`.
+ */
 export const createGoogleVertexAnthropic = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -41,8 +58,20 @@ export const createGoogleVertexAnthropic = adaptProviderFactory<
 >('createGoogleVertexAnthropic', ['generateAuthToken', 'headers'], (settings) =>
   wrapProvider(sdkCreateGoogleVertexAnthropic(settings)),
 );
+/**
+ * Expose the same Anthropic on Vertex AI factory as `createGoogleVertexAnthropic` under
+ * the SDK alias.
+ */
 export const createVertexAnthropic = createGoogleVertexAnthropic;
+/**
+ * Adapt the preconfigured provider from the edge Anthropic on Vertex AI SDK. Use the
+ * factory to supply explicit settings.
+ */
 export const googleVertexAnthropic: GoogleVertexAnthropicProvider =
   wrapProvider(sdkGoogleVertexAnthropic);
+/**
+ * Expose the same Anthropic on Vertex AI provider as `googleVertexAnthropic` under the SDK
+ * alias.
+ */
 export const vertexAnthropic: GoogleVertexAnthropicProvider =
   googleVertexAnthropic;
