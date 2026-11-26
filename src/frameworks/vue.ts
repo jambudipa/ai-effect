@@ -28,12 +28,14 @@ import {
 export type { CompletionOptions as UseCompletionOptions } from './options.js';
 export type { ChatInit } from './chat.js';
 
+/** Register native cleanup when Vue exposes a current scope. */
 const disposeWithScope = (cleanup: () => void) => {
   if (getCurrentScope()) onScopeDispose(cleanup);
 };
 
 /** @deprecated Use useChat. */
 export class Chat<Message extends UIMessage> extends HostChat<Message> {
+  /** Create the native Vue chat and register its disposal when a Vue scope is active. */
   constructor(options: ChatInit<Message>) {
     const view = withLifetime(disposeWithScope, () => {
       void native.dispose().catch(() => {});
@@ -43,15 +45,20 @@ export class Chat<Message extends UIMessage> extends HostChat<Message> {
   }
 }
 
+/** Preserve the typed chat configuration and optional Vue subscription throttle. */
 export type UseChatOptions<Message extends UIMessage> = ChatInit<Message> & {
   readonly throttle?: number;
 };
 
+/** Infer tool names and output types from the message type passed to the Vue hook. */
 type MessageTools<Message> =
   Message extends UIMessage<infer _Meta, infer _Data, infer Tools>
     ? Tools
     : never;
 
+/**
+ * Expose Vue refs and view-owned chat commands. Accept plain options, a ref, or a getter.
+ */
 export function useChat<Message extends UIMessage = UIMessage>(
   options?: MaybeRefOrGetter<UseChatOptions<Message>>,
 ) {
@@ -127,10 +134,12 @@ export function useChat<Message extends UIMessage = UIMessage>(
   };
 }
 
+/** Keep typed Vue message and status refs alongside Effect chat operations. */
 export type UseChatHelpers<Message extends UIMessage> = ReturnType<
   typeof useChat<Message>
 >;
 
+/** Expose native Vue completion refs and lazy request commands bound to the Vue scope. */
 export function useCompletion<Body extends object = object>(
   options?: CompletionOptions<NoInfer<Body>>,
 ) {
@@ -163,17 +172,27 @@ export function useCompletion<Body extends object = object>(
   };
 }
 
+/**
+ * Expose Vue completion state and Effect controls with the configured request body type.
+ */
 export type UseCompletionHelpers<Body extends object = object> = ReturnType<
   typeof useCompletion<Body>
 >;
 
+/** Restrict structured output options to schemas supported by the native host bridge. */
 type Decoder = HostSchema<unknown>;
+/** Use the converted schema shape accepted by the native Vue hook. */
 type NativeSchema = ReturnType<typeof nativeSchema<unknown>>;
+/** Configure a Vue structured request endpoint and infer its result from the decoder. */
 export type UseObjectOptions<
   S extends Decoder,
   Result = DecodedSchema<S>,
 > = ObjectOptions<S, Result>;
 
+/**
+ * Expose Vue partial object state and bind structured request controls to the active Vue
+ * scope.
+ */
 export function useObject<
   S extends Decoder,
   Result = DecodedSchema<S>,
@@ -194,14 +213,18 @@ export function useObject<
   };
 }
 
+/** Carry the inferred result and request types on Vue structured output controls. */
 export type UseObjectHelpers<Result, Input> = ReturnType<
   typeof useObject<Decoder, Result, Input>
 >;
+/** Keep the previous Vue hook name for structured object generation. */
 export const experimental_useObject = useObject;
+/** Preserve the former Vue schema-derived options type name. */
 export type Experimental_UseObjectOptions<
   S extends Decoder,
   Result,
 > = UseObjectOptions<S, Result>;
+/** Preserve the former Vue result and input helper type name. */
 export type Experimental_UseObjectHelpers<Result, Input> = UseObjectHelpers<
   Result,
   Input

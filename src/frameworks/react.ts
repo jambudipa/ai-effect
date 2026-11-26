@@ -52,11 +52,23 @@ export type {
 export type { ChatInit } from './chat.js';
 export type { CompletionOptions as UseCompletionOptions } from './options.js';
 
+/**
+ * Track native React chat instances by wrapper identity for hooks that need the original
+ * SDK instance.
+ */
 const nativeChats = new WeakMap<object, unknown>();
 
+/**
+ * Expose a reusable React chat handle with native state subscriptions and Effect commands.
+ */
 export class Chat<Message extends UIMessage> extends HostChat<Message> {
+  /** Keep the native React chat that owns this handle and its subscriptions. */
   readonly #native: sdk.Chat<Message>;
 
+  /**
+   * Build the native chat with view-bound callbacks and register its wrapper for React
+   * hooks.
+   */
   constructor(options: ChatInit<Message>) {
     const view = new ViewLifetime();
     const native = new sdk.Chat<Message>(nativeChatOptions(options, view));
@@ -65,6 +77,9 @@ export class Chat<Message extends UIMessage> extends HostChat<Message> {
     nativeChats.set(this, native);
   }
 
+  /**
+   * Bind a native state subscription to the chat view and return its cleanup function.
+   */
   #subscription(register: () => () => void) {
     return Effect.acquireRelease(
       runSync('Chat.subscribe', () => {
@@ -81,6 +96,7 @@ export class Chat<Message extends UIMessage> extends HostChat<Message> {
     );
   }
 
+  /** Subscribe to native message changes and preserve the SDK throttle option. */
   readonly '~registerMessagesCallback' = (
     callback: () => void,
     throttle?: number,
@@ -88,16 +104,23 @@ export class Chat<Message extends UIMessage> extends HostChat<Message> {
     this.#subscription(() =>
       this.#native['~registerMessagesCallback'](callback, throttle),
     );
+  /** Subscribe to native status changes for React state updates. */
   readonly '~registerStatusCallback' = (callback: () => void) =>
     this.#subscription(() => this.#native['~registerStatusCallback'](callback));
+  /** Subscribe to native error changes for React state updates. */
   readonly '~registerErrorCallback' = (callback: () => void) =>
     this.#subscription(() => this.#native['~registerErrorCallback'](callback));
+  /** Subscribe to changes in the native queued message state. */
   readonly '~registerQueuedMessagesCallback' = (callback: () => void) =>
     this.#subscription(() =>
       this.#native['~registerQueuedMessagesCallback'](callback),
     );
 }
 
+/**
+ * Own the request controller for the current React key and stop active work when React
+ * releases the view.
+ */
 const useLifetime = (key?: unknown) => {
   const { view, stop } = useMemo(
     () => ({
@@ -116,17 +139,24 @@ const useLifetime = (key?: unknown) => {
   return { view, stop };
 };
 
+/**
+ * Carry the React chat identity and throttling settings understood by the native hook.
+ */
 type ChatControls = Readonly<{
   throttle?: number;
   experimental_throttle?: number;
   resume?: boolean;
 }>;
 
+/**
+ * Accept either an existing Effect chat handle or its setup options with React controls.
+ */
 export type UseChatOptions<Message extends UIMessage> = (
   { readonly chat: Chat<Message> } | ChatInit<Message>
 ) &
   ChatControls;
 
+/** Expose native React chat state alongside view-owned Effect commands. */
 export type UseChatHelpers<Message extends UIMessage> = Pick<
   HostChat<Message>,
   | 'id'
@@ -150,6 +180,7 @@ export type UseChatHelpers<Message extends UIMessage> = Pick<
   ) => void;
 };
 
+/** Infer the available tool names and output types from the React chat message. */
 type MessageTools<Message> =
   Message extends UIMessage<infer _Meta, infer _Data, infer Tools>
     ? Tools
@@ -252,6 +283,10 @@ export function useChat<Message extends UIMessage = UIMessage>(
   };
 }
 
+/**
+ * Expose native text state and lazy completion commands. Unmount stops work owned by the
+ * current view.
+ */
 export function useCompletion<Body extends object = object>(
   options?: CompletionOptions<NoInfer<Body>> &
     Pick<ChatControls, 'throttle' | 'experimental_throttle'>,
@@ -294,17 +329,27 @@ export function useCompletion<Body extends object = object>(
   };
 }
 
+/**
+ * Expose text state and Effect control operations returned by the React completion hook.
+ */
 export type UseCompletionHelpers<Body extends object = object> = ReturnType<
   typeof useCompletion<Body>
 >;
 
+/** Restrict structured output hooks to host-compatible schemas. */
 type Decoder = HostSchema<unknown>;
+/** Use the schema conversion result as the native hook input type. */
 type NativeSchema = ReturnType<typeof nativeSchema<unknown>>;
+/**
+ * Configure the React endpoint and schema while preserving the inferred decoded result
+ * type.
+ */
 export type UseObjectOptions<
   S extends Decoder,
   Result = DecodedSchema<S>,
 > = ObjectOptions<S, Result>;
 
+/** Expose React partial object state and view-owned submit, stop, and clear Effects. */
 export function useObject<
   S extends Decoder,
   Result = DecodedSchema<S>,
@@ -326,25 +371,35 @@ export function useObject<
   };
 }
 
+/** Keep the decoded result and request input types on React structured output helpers. */
 export type UseObjectHelpers<Result, Input> = ReturnType<
   typeof useObject<Decoder, Result, Input>
 >;
+/** Keep the former experimental export name for the structured output hook. */
 export const experimental_useObject = useObject;
+/** Retain the older React options type name for schema-driven object generation. */
 export type Experimental_UseObjectOptions<
   S extends Decoder,
   Result,
 > = UseObjectOptions<S, Result>;
+/** Retain the older React helpers type name and preserve its request and result types. */
 export type Experimental_UseObjectHelpers<Result, Input> = UseObjectHelpers<
   Result,
   Input
 >;
 
+/** Keep the native realtime tool callback payload when adapting its result boundary. */
 type RealtimeToolCall = Parameters<
   NonNullable<NativeRealtimeOptions['onToolCall']>
 >[0];
+/** Use the native event payload for React realtime notifications. */
 type RealtimeEvent = Parameters<
   NonNullable<NativeRealtimeOptions['onEvent']>
 >[0];
+/**
+ * Keep native session options, require an Effect model handle, and allow view-owned
+ * callbacks.
+ */
 export type Experimental_UseRealtimeOptions = {
   readonly model: RealtimeModelV4;
   readonly api: NativeRealtimeOptions['api'];
@@ -360,14 +415,20 @@ export type Experimental_UseRealtimeOptions = {
   readonly onError?: (error: AiSdkError) => HostResult<void>;
 };
 
+/** Type a lazy React controller operation that carries `AiSdkError` failures. */
 type Command<Args extends unknown[] = []> = (
   ...args: Args
 ) => Effect.Effect<void, AiSdkError>;
 
+/** Preserve the native arguments accepted by the realtime connection command. */
 type RealtimeConnectOptions = Parameters<
   Experimental_AbstractRealtimeSession['connect']
 >[0];
 
+/**
+ * Expose native session state with Effect commands for connection, events, tools, and
+ * audio.
+ */
 export type Experimental_UseRealtimeReturn = {
   readonly status: Experimental_RealtimeStatus;
   readonly messages: UIMessage[];
@@ -396,6 +457,10 @@ export type Experimental_UseRealtimeReturn = {
   readonly stopPlayback: Command;
 };
 
+/**
+ * Bind realtime callbacks to the React view. The native hook owns transport cleanup on
+ * unmount.
+ */
 export function experimental_useRealtime(
   options: Experimental_UseRealtimeOptions,
 ): Experimental_UseRealtimeReturn {
@@ -484,10 +549,19 @@ export function experimental_useRealtime(
   };
 }
 
+/** Use the display mode values understood by the native MCP UI host. */
 type DisplayMode = 'inline' | 'fullscreen' | 'pip';
+/**
+ * Keep the app tool request name and argument record when passing it to the host callback.
+ */
 type ToolCall = { name: string; arguments?: Record<string, unknown> };
+/** Represent optional dimensions sent through the native resize event. */
 type Size = { width?: number; height?: number };
 
+/**
+ * Provide the native app bridge callbacks with view-owned Effect outcomes and an optional
+ * tool allowlist.
+ */
 export type MCPAppBridgeHandlers = {
   readonly allowedTools?: string[];
   readonly callTool?: (request: ToolCall) => HostResult<unknown>;
@@ -506,8 +580,10 @@ export type MCPAppBridgeHandlers = {
   readonly onError?: (error: AiSdkError) => HostResult<void>;
 };
 
+/** Identify the browser capabilities an MCP app sandbox can request from the host. */
 export type MCPAppPermission =
   'camera' | 'microphone' | 'geolocation' | 'clipboardWrite';
+/** Provide an HTML app resource and its declared sandbox resource metadata. */
 export type MCPAppResource = {
   uri: string;
   mimeType: 'text/html;profile=mcp-app';
@@ -525,11 +601,15 @@ export type MCPAppResource = {
     [key: string]: unknown;
   };
 };
+/** Identify the UI resource and its declared model or app visibility for lazy loading. */
 export type MCPAppMetadata = {
   resourceUri: string;
   mimeType: MCPAppResource['mimeType'];
   visibility?: Array<'model' | 'app'>;
 };
+/**
+ * Configure the native sandbox URL, target origin, and explicitly allowed permissions.
+ */
 export type MCPAppSandboxConfig = {
   url: string | URL;
   title?: string;
@@ -541,6 +621,9 @@ export type MCPAppSandboxConfig = {
   allowedPermissions?: MCPAppPermission[];
 };
 
+/**
+ * Supply the tool UI part, sandbox settings, and static resource or view-owned loader.
+ */
 export type MCPAppRendererProps = {
   readonly part: ToolUIPart<UITools> | DynamicToolUIPart;
   readonly sandbox: MCPAppSandboxConfig;
@@ -557,6 +640,10 @@ export type MCPAppRendererProps = {
   readonly fallback?: ReactNode;
 };
 
+/**
+ * Render the native app component and bind resource and bridge requests to the React view
+ * lifetime.
+ */
 export function MCPAppRenderer({
   loadResource,
   handlers,
@@ -640,4 +727,5 @@ export function MCPAppRenderer({
   });
 }
 
+/** Retain the former experimental name for the same MCP app renderer. */
 export const experimental_MCPAppRenderer = MCPAppRenderer;

@@ -21,6 +21,7 @@ export type {
   UseCompletionOptions,
 } from '../integrations/ui-utils.js';
 
+/** Keep native chat settings with Effect-capable lifecycle and response callbacks. */
 export type UseChatOptions = LegacyChatOptions & {
   readonly maxSteps?: number;
   readonly experimental_prepareRequestBody?: (
@@ -32,18 +33,22 @@ export type UseChatOptions = LegacyChatOptions & {
 
 // The pinned Solid hooks return functions. The SDK type also includes JSX
 // bindings that apply when callers supply event handlers to Solid.
+/** Retain the native event input handler accepted by the Solid host. */
 type InputChangeHandler = Extract<
   ReturnType<typeof sdk.useChat>['handleInputChange'],
   (...args: never[]) => void
 >;
 
+/** Register native release only when a Solid owner is available. */
 const cleanup = (release: () => void) => {
   if (getOwner()) onCleanup(release);
 };
 
+/** Evaluate reactive option accessors when the SDK needs the current configuration. */
 const read = <A>(value: A | Accessor<A>): A =>
   typeof value === 'function' ? (value as Accessor<A>)() : value;
 
+/** Bridge the optional response observer into the owning view callback runtime. */
 const responseCallback = (
   view: ViewLifetime,
   handler?: (response: Response) => HostResult<void>,
@@ -55,6 +60,10 @@ const responseCallback = (
       }
     : {};
 
+/**
+ * Provide Solid chat state and Effect commands, with active requests stopped when the
+ * owner releases the view.
+ */
 export function useChat(options?: UseChatOptions | Accessor<UseChatOptions>) {
   const view = withLifetime(cleanup, () => native.stop());
   const native = sdk.useChat(() => {
@@ -107,8 +116,13 @@ export function useChat(options?: UseChatOptions | Accessor<UseChatOptions>) {
   };
 }
 
+/** Expose Solid accessors for chat state and scoped Effects for requests. */
 export type UseChatHelpers = ReturnType<typeof useChat>;
 
+/**
+ * Keep native completion signals and run completion requests through the owning view
+ * lifetime.
+ */
 export function useCompletion(
   options?: UseCompletionOptions | Accessor<UseCompletionOptions>,
 ) {
@@ -157,9 +171,17 @@ export function useCompletion(
   };
 }
 
+/** Expose Solid text and input accessors with Effect completion controls. */
 export type UseCompletionHelpers = ReturnType<typeof useCompletion>;
 
+/**
+ * Accept an Effect decoder whose schema can be converted to the native Solid hook format.
+ */
 type Decoder = Schema.ConstraintDecoder<unknown>;
+/**
+ * Supply the endpoint, Effect schema, and callback settings for Solid structured
+ * generation.
+ */
 export type Experimental_UseObjectOptions<
   Result,
   S extends Decoder = Schema.ConstraintDecoder<Result>,
@@ -181,6 +203,10 @@ export type Experimental_UseObjectOptions<
   readonly credentials?: RequestCredentials;
 };
 
+/**
+ * Stream structured results into Solid accessors and validate with the supplied Effect
+ * decoder.
+ */
 export function experimental_useObject<Result, Input = unknown>(
   options:
     | Experimental_UseObjectOptions<Result>
@@ -229,10 +255,17 @@ export function experimental_useObject<Result, Input = unknown>(
   };
 }
 
+/**
+ * Retain the structured result and request types on Solid accessors and Effect commands.
+ */
 export type Experimental_UseObjectHelpers<Result, Input> = ReturnType<
   typeof experimental_useObject<Result, Input>
 >;
 
+/**
+ * Expose native assistant thread state and view-owned message commands with interruption
+ * handling.
+ */
 export function useAssistant(
   options: UseAssistantOptions | Accessor<UseAssistantOptions>,
 ) {
@@ -277,4 +310,5 @@ export function useAssistant(
   };
 }
 
+/** Expose the Solid assistant thread accessors and Effect request controls. */
 export type UseAssistantHelpers = ReturnType<typeof useAssistant>;

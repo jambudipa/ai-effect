@@ -27,10 +27,15 @@ import type {
 
 export type * from './rsc-types.js';
 
+/**
+ * Collect the Effect service requirements shared by the provider actions before wrapping
+ * them.
+ */
 type Services<Actions extends AIActions> = Effect.Services<
   ReturnType<Actions[keyof Actions]>
 >;
 
+/** Supply the native provider settings with Effect actions and server state callbacks. */
 type CreateAIOptions<State, UI, Actions extends AIActions, R> = {
   readonly actions: Actions;
   readonly initialAIState?: State;
@@ -39,6 +44,10 @@ type CreateAIOptions<State, UI, Actions extends AIActions, R> = {
   readonly onGetUIState?: OnGetUIState<UI, R>;
 };
 
+/**
+ * Build the native RSC provider and capture the service context for its scoped actions and
+ * state callbacks.
+ */
 export const createAI = <State, UI, Actions extends AIActions, R = never>(
   options: CreateAIOptions<State, UI, Actions, R>,
 ) =>
@@ -88,16 +97,21 @@ export const createAI = <State, UI, Actions extends AIActions, R = never>(
     });
   });
 
+/**
+ * Read a snapshot of the complete server state from the current provider action context.
+ */
 export function getAIState<AI extends ProviderComponent>(): Effect.Effect<
   Readonly<InferAIState<AI, unknown>>,
   AiSdkError
 >;
+/** Read one server state field while retaining its type from the provider component. */
 export function getAIState<
   AI extends ProviderComponent,
   Key extends keyof InferAIState<AI, unknown> = keyof InferAIState<AI, unknown>,
 >(
   key: Key,
 ): Effect.Effect<Readonly<InferAIState<AI, unknown>[Key]>, AiSdkError>;
+/** Read a server state field when the caller does not supply a concrete provider type. */
 export function getAIState(
   key: PropertyKey,
 ): Effect.Effect<unknown, AiSdkError>;
@@ -109,15 +123,19 @@ export function getAIState(
   );
 }
 
+/** Infer the mutable server state type from the provided RSC component contract. */
 type AIState<AI extends ProviderComponent> = InferAIState<AI, unknown>;
 
+/** Get a writer for the complete server state in the active provider action. */
 export function getMutableAIState<
   AI extends ProviderComponent,
 >(): Effect.Effect<MutableAIState<AIState<AI>>, AiSdkError>;
+/** Get a writer limited to the selected typed field of the server state. */
 export function getMutableAIState<
   AI extends ProviderComponent,
   Key extends keyof AIState<AI> = keyof AIState<AI>,
 >(key: Key): Effect.Effect<MutableAIState<AIState<AI>[Key]>, AiSdkError>;
+/** Get a keyed state writer when the concrete provider type is unavailable. */
 export function getMutableAIState(
   key: PropertyKey,
 ): Effect.Effect<MutableAIState<unknown>, AiSdkError>;
@@ -141,6 +159,7 @@ export function getMutableAIState(
   });
 }
 
+/** Describe the synchronous native handle that backs a server value or UI node stream. */
 type NativeStreamable<Hosted, A> = {
   readonly value: Hosted;
   update(value: A): unknown;
@@ -149,6 +168,7 @@ type NativeStreamable<Hosted, A> = {
   done(...args: [] | [A]): unknown;
 };
 
+/** Expose the native streamable value and lazy commands for updates and finalization. */
 type Streamable<Hosted, A> = {
   readonly value: Hosted;
   readonly update: (
@@ -165,6 +185,9 @@ type Streamable<Hosted, A> = {
   ) => Effect.Effect<Streamable<Hosted, A>, AiSdkError>;
 };
 
+/**
+ * Acquire the native writer in a scope and complete it on release unless it already ended.
+ */
 const scopedStreamable = <Hosted, A>(
   name: string,
   create: () => NativeStreamable<Hosted, A>,
@@ -211,11 +234,15 @@ const scopedStreamable = <Hosted, A>(
     }),
   );
 
+/**
+ * Create a scoped writer for streaming React nodes. Pass its hosted value to the client.
+ */
 export const createStreamableUI = (initialValue?: ReactNode) =>
   scopedStreamable('createStreamableUI', () =>
     sdk.createStreamableUI(initialValue),
   );
 
+/** Create a scoped writer for streaming typed values from a server action. */
 export const createStreamableValue = <A, E = unknown>(
   initialValue?: A | ReadableStream<A>,
 ) =>
@@ -223,16 +250,30 @@ export const createStreamableValue = <A, E = unknown>(
     sdk.createStreamableValue<A, E>(initialValue),
   );
 
+/** Associate each stream UI tool name with the Effect decoder for its input. */
 type RenderSchemas = Readonly<
   Record<string, Schema.ConstraintDecoder<unknown>>
 >;
+/**
+ * Keep each tool input type when its decoder becomes the native SDK validation schema.
+ */
 type BoundSchemas<Tools extends RenderSchemas> = {
   [K in keyof Tools]: ReturnType<typeof toSdkSchema<Tools[K]['Type'], never>>;
 };
+/**
+ * Derive the native stream UI options with the converted schemas for the selected tools.
+ */
 type NativeStreamUIOptions<Tools extends RenderSchemas> = Parameters<
   typeof sdk.streamUI<BoundSchemas<Tools>>
 >[0];
+/**
+ * Permit immediate or asynchronous React node results at the native renderer boundary.
+ */
 type RenderNode = ReactNode | Promise<ReactNode>;
+/**
+ * Allow native node renderers, incremental generators, and Effect renderers in the
+ * operation environment.
+ */
 type HostRenderer<Args extends unknown[], R> = (
   ...args: Args
 ) =>
@@ -240,9 +281,13 @@ type HostRenderer<Args extends unknown[], R> = (
   | Generator<RenderNode, RenderNode, void>
   | AsyncGenerator<RenderNode, RenderNode, void>
   | Effect.Effect<ReactNode, unknown, R>;
+/** Use the native stream UI completion payload when invoking the caller Effect hook. */
 type FinishEvent = Parameters<
   NonNullable<NativeStreamUIOptions<{}>['onFinish']>
 >[0];
+/**
+ * Configure a wrapped model and optional typed tool and text renderers for an RSC request.
+ */
 type StreamUIOptions<
   Tools extends RenderSchemas,
   R,
@@ -278,6 +323,10 @@ type StreamUIOptions<
     readonly onFinish?: (event: FinishEvent) => Effect.Effect<void, unknown, R>;
   };
 
+/**
+ * Start native RSC rendering in the caller scope and adapt its raw event reader to an
+ * Effect stream.
+ */
 export const streamUI = <Tools extends RenderSchemas = {}, R = never>(
   options: StreamUIOptions<Tools, R>,
 ) =>
