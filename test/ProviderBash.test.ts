@@ -20,11 +20,12 @@ it.effect('runs both pinned default Bash executors as Effects', () =>
     type Sandbox = Parameters<typeof registerSandbox>[0];
     const output = { exitCode: 0, stdout: 'fixture stdout', stderr: '' };
     const sandbox = { description: 'fixture sandbox' } as Sandbox;
+    const runNative = Effect.runPromiseWith(yield* Effect.context<never>());
     let calls: RunOptions[] = [];
     registerSandbox(sandbox, {
       run: (options: RunOptions) => {
         calls = [...calls, options];
-        return Effect.runPromise(Effect.succeed(output));
+        return runNative(Effect.succeed(output));
       },
     } as Pick<NativeSandbox, 'run'> as NativeSandbox);
     const legacy = yield* anthropic.tools.bash_20241022();
