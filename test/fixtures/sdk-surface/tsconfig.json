@@ -10,5 +10,5 @@
     "outDir": ".compiled",
     "allowJs": true
   },
-  "include": ["core.mts", "host-types.mts", "shared.mjs"]
+  "include": ["core.mts", "host-types.mts", "shared.mjs", "workflow.mts"]
 }

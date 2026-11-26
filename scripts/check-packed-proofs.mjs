@@ -116,6 +116,7 @@ try {
     const vite = join(scope, 'vite/bin/vite.js');
     run(fixture, process.execPath, [tsc, '-p', 'tsconfig.json']);
     run(fixture, process.execPath, ['.compiled/core.mjs']);
+    run(fixture, process.execPath, ['.compiled/workflow.mjs']);
     run(fixture, process.execPath, ['legacy.cjs']);
     run(fixture, process.execPath, [
       join(scope, 'vitest/vitest.mjs'),
