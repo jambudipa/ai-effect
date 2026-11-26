@@ -2,6 +2,7 @@ import { expect, it } from '@effect/vitest';
 import { Context, Deferred, Effect, Fiber, Schema, Stream } from 'effect';
 import { expectTypeOf } from 'vitest';
 import { jsonSchema } from '../src/core-schema.js';
+import { dynamicTool } from '../src/core-tools.js';
 import {
   openOperation,
   runRequest,
@@ -25,6 +26,18 @@ class Offset extends Context.Service<Offset, number>()(
 class Approval extends Context.Service<Approval, boolean>()(
   '@jambudipa/ai-effect/tests/ToolApproval',
 ) {}
+
+it('accepts a frozen dynamic tool definition without changing it', () => {
+  const definition = Object.freeze({
+    inputSchema: Schema.String,
+    description: 'Dynamic tool fixture',
+  });
+  const dynamic = dynamicTool(definition);
+  expect(dynamic.type).toBe('dynamic');
+  expect(dynamic.description).toBe(definition.description);
+  expect(dynamic.inputSchema).toBe(definition.inputSchema);
+  expect(Object.hasOwn(definition, 'type')).toBe(false);
+});
 
 it('preserves the SDK tool overloads with explicit context', () => {
   type ToolContext = { readonly offset: number };

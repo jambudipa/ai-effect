@@ -9,7 +9,6 @@ import {
 import {
   bindTools,
   rememberFunctionTool,
-  tool,
   type EffectToolOptions,
   type EffectTools,
   type ToolServices,
@@ -69,7 +68,7 @@ export const dynamicTool = <Failure, Services>(
   options: EffectToolOptions<unknown, unknown, Failure, Services>,
 ): EffectToolOptions<unknown, unknown, Failure, Services> & {
   readonly type: 'dynamic';
-} => Object.assign(tool(options), { type: 'dynamic' as const });
+} => ({ ...options, type: 'dynamic' });
 
 export const fingerprintTools = <Tools extends EffectTools>(tools: Tools) =>
   Effect.scoped(
