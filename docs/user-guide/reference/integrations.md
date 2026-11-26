@@ -25,6 +25,10 @@ exposes Effects such as `listTools`, `tools`, `callTool`, and `readResource`.
 The configuration determines whether it exposes managed MCP events. See
 [How to connect an MCP client](../how-to/connect-an-mcp-client.md).
 
+The pinned `DurableAgent` supports execution through `stream()`. Its
+`generate()` method fails with `AiSdkError` because the SDK leaves that method
+unimplemented.
+
 The [import paths](import-paths.md) list every harness host. The
 [SDK surface inventory](../../sdk-surface.json) records names and condition
 targets for each integration. Compatibility information for the Pi host is in
