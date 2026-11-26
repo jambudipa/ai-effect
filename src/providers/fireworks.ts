@@ -1,24 +1,22 @@
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { FireworksProviderSettings as SdkSettings } from '@ai-sdk/fireworks';
-import type { AdaptedConstructor } from '../internal/provider-adapter.js';
 import { FireworksImageModel as SdkFireworksImageModel } from '@ai-sdk/fireworks';
 import {
   createFireworks as sdkCreateFireworks,
   fireworks as sdkFireworks,
 } from '@ai-sdk/fireworks';
 import type { FireworksProvider as SdkProvider } from '@ai-sdk/fireworks';
-import {
-  adaptMethod,
-  adaptModelConstructor,
-  wrapProviderBase,
-} from '../internal/provider-adapter.js';
+import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import {
+  unwrapImageModel,
   wrapEmbeddingModel,
   wrapFixedImageModel,
   wrapImageModel,
 } from '../internal/provider-model.js';
+import { adaptWorkflowModelConstructor } from '../internal/workflow-model.js';
+import type { AdaptedWorkflowConstructor } from '../internal/workflow-model.js';
 
 export { VERSION } from '@ai-sdk/fireworks';
 export type {
@@ -81,13 +79,14 @@ export const createFireworks = adaptProviderFactory<
   wrapProvider(sdkCreateFireworks(settings)),
 );
 export const fireworks: FireworksProvider = wrapProvider(sdkFireworks);
-export const FireworksImageModel: AdaptedConstructor<
+export const FireworksImageModel: AdaptedWorkflowConstructor<
   typeof SdkFireworksImageModel,
   FireworksImageModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'FireworksImageModel',
   SdkFireworksImageModel,
   wrapFixedImageModel,
+  unwrapImageModel,
 );
 export type FireworksImageModel = ReturnType<
   typeof wrapFixedImageModel<SdkFireworksImageModel['maxImagesPerCall']>
