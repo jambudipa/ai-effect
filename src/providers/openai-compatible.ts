@@ -22,14 +22,23 @@ import {
   OpenAICompatibleImageModel as SdkImageModel,
 } from '@ai-sdk/openai-compatible';
 import type { OpenAICompatibleProviderSettings as SdkSettings } from '@ai-sdk/openai-compatible';
-import { wrapLanguageModel } from '../internal/language-model.js';
+import {
+  unwrapLanguageModel,
+  wrapLanguageModel,
+} from '../internal/language-model.js';
 import { wrapOpenAICompatibleProvider } from '../internal/provider-openai-compatible.js';
 import { runRequest } from '../internal/operation.js';
 import {
   requestMethod,
+  unwrapEmbeddingModel,
+  unwrapImageModel,
   wrapEmbeddingModel,
   wrapImageModel,
 } from '../internal/provider-model.js';
+import {
+  workflowModelHooks,
+  type AdaptedWorkflowHooks,
+} from '../internal/workflow-model.js';
 
 export type { OpenAICompatibleProvider } from '../internal/provider-openai-compatible.js';
 export { VERSION } from '@ai-sdk/openai-compatible';
@@ -127,11 +136,21 @@ const wrapChatModel = (model: SdkChatModel) =>
 export const OpenAICompatibleChatLanguageModel: CompatibleModelConstructor<
   typeof SdkChatModel,
   OpenAICompatibleChatLanguageModel
-> = adaptCompatibleModel(
-  'OpenAICompatibleChatLanguageModel',
-  SdkChatModel,
-  wrapChatModel,
-);
+> &
+  AdaptedWorkflowHooks<typeof SdkChatModel, OpenAICompatibleChatLanguageModel> =
+  Object.assign(
+    adaptCompatibleModel(
+      'OpenAICompatibleChatLanguageModel',
+      SdkChatModel,
+      wrapChatModel,
+    ),
+    workflowModelHooks(
+      'OpenAICompatibleChatLanguageModel',
+      SdkChatModel,
+      wrapChatModel,
+      unwrapLanguageModel,
+    ),
+  );
 export type OpenAICompatibleChatLanguageModel = ReturnType<
   typeof wrapChatModel
 >;
@@ -139,10 +158,22 @@ export type OpenAICompatibleChatLanguageModel = ReturnType<
 export const OpenAICompatibleCompletionLanguageModel: CompatibleModelConstructor<
   typeof SdkCompletionModel,
   OpenAICompatibleCompletionLanguageModel
-> = adaptCompatibleModel(
-  'OpenAICompatibleCompletionLanguageModel',
-  SdkCompletionModel,
-  wrapLanguageModel,
+> &
+  AdaptedWorkflowHooks<
+    typeof SdkCompletionModel,
+    OpenAICompatibleCompletionLanguageModel
+  > = Object.assign(
+  adaptCompatibleModel(
+    'OpenAICompatibleCompletionLanguageModel',
+    SdkCompletionModel,
+    wrapLanguageModel,
+  ),
+  workflowModelHooks(
+    'OpenAICompatibleCompletionLanguageModel',
+    SdkCompletionModel,
+    wrapLanguageModel,
+    unwrapLanguageModel,
+  ),
 );
 export type OpenAICompatibleCompletionLanguageModel = ReturnType<
   typeof wrapLanguageModel
@@ -151,10 +182,22 @@ export type OpenAICompatibleCompletionLanguageModel = ReturnType<
 export const OpenAICompatibleEmbeddingModel: CompatibleModelConstructor<
   typeof SdkEmbeddingModel,
   OpenAICompatibleEmbeddingModel
-> = adaptCompatibleModel(
-  'OpenAICompatibleEmbeddingModel',
-  SdkEmbeddingModel,
-  wrapEmbeddingModel,
+> &
+  AdaptedWorkflowHooks<
+    typeof SdkEmbeddingModel,
+    OpenAICompatibleEmbeddingModel
+  > = Object.assign(
+  adaptCompatibleModel(
+    'OpenAICompatibleEmbeddingModel',
+    SdkEmbeddingModel,
+    wrapEmbeddingModel,
+  ),
+  workflowModelHooks(
+    'OpenAICompatibleEmbeddingModel',
+    SdkEmbeddingModel,
+    wrapEmbeddingModel,
+    unwrapEmbeddingModel,
+  ),
 );
 export type OpenAICompatibleEmbeddingModel = ReturnType<
   typeof wrapEmbeddingModel
@@ -163,9 +206,19 @@ export type OpenAICompatibleEmbeddingModel = ReturnType<
 export const OpenAICompatibleImageModel: CompatibleModelConstructor<
   typeof SdkImageModel,
   OpenAICompatibleImageModel
-> = adaptCompatibleModel(
-  'OpenAICompatibleImageModel',
-  SdkImageModel,
-  wrapImageModel,
-);
+> &
+  AdaptedWorkflowHooks<typeof SdkImageModel, OpenAICompatibleImageModel> =
+  Object.assign(
+    adaptCompatibleModel(
+      'OpenAICompatibleImageModel',
+      SdkImageModel,
+      wrapImageModel,
+    ),
+    workflowModelHooks(
+      'OpenAICompatibleImageModel',
+      SdkImageModel,
+      wrapImageModel,
+      unwrapImageModel,
+    ),
+  );
 export type OpenAICompatibleImageModel = ReturnType<typeof wrapImageModel>;
