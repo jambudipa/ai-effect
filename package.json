@@ -1,6 +1,6 @@
 {
   "name": "@jambudipa/ai-effect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Effect v4 wrappers for the Vercel AI SDK.",
   "repository": {
     "type": "git",
