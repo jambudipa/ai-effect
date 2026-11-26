@@ -17,6 +17,7 @@ export type {
   TypeSafeAiFilePartProviderOptions,
 } from '@ai-sdk/typesafe-ai';
 
+/** Adapt native TypeSafe AI model factories and keep provider tool definitions available through Effect. */
 const wrapTypeSafeAi = (native: sdk.TypeSafeAiProvider) => ({
   ...wrapProviderBase('TypeSafeAi', native),
   decisionModel: adaptMethod(
@@ -31,14 +32,18 @@ const wrapTypeSafeAi = (native: sdk.TypeSafeAiProvider) => ({
   ),
 });
 
+/** Wrapped provider handle with Effect model factories and SDK tool metadata. */
 export type TypeSafeAiProvider = ReturnType<typeof wrapTypeSafeAi>;
+/** TypeSafe AI provider settings with any Effect services needed by the shared factory adapter. */
 export type TypeSafeAiProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<sdk.TypeSafeAiProviderSettings, 'apiKey', E, R>;
 
+/** Version reported by the native TypeSafe AI package. */
 export const VERSION = sdk.VERSION;
 
+/** Adapt native TypeSafe AI provider creation to the shared Effect provider boundary. */
 export const createTypeSafeAi = adaptProviderFactory<
   sdk.TypeSafeAiProviderSettings,
   'apiKey',
@@ -47,6 +52,7 @@ export const createTypeSafeAi = adaptProviderFactory<
   wrapTypeSafeAi(sdk.createTypeSafeAi(options)),
 );
 
+/** Resolve the SDK's default provider when the Effect runs. */
 export const typeSafeAi = runSync('TypeSafeAi.default', () =>
   wrapTypeSafeAi(sdk.typeSafeAi),
 );

@@ -18,18 +18,25 @@ export type {
   TerminalPartDisplayMode,
 } from '@ai-sdk/tui';
 
+/** Input supplied to a terminal-host agent during native stream execution. */
 interface AgentCall {
+  /** Current conversation history forwarded to the agent for this call. */
   readonly prompt: ModelMessage[];
+  /** Cancellation signal supplied by the terminal host for the active call. */
   readonly abortSignal?: AbortSignal;
+  /** Wrapped sandbox supplied only when the terminal host has one configured. */
   readonly experimental_sandbox?: SandboxSession;
 }
 
+/** Minimal Effect agent contract accepted by the native terminal host adapter. */
 export interface AgentTUIAgent<
   T extends EffectTools = {},
   E = never,
   R = never,
 > {
+  /** Tool set exposed to the terminal host after binding its execution services. */
   readonly tools: T;
+  /** Produce a scoped stream of model events for the terminal host to render. */
   readonly stream: (
     input: AgentCall,
   ) => Effect.Effect<
@@ -39,11 +46,13 @@ export interface AgentTUIAgent<
   >;
 }
 
+/** Preserve terminal rendering options and adapt only the agent, transport, and sandbox handles. */
 type NativeOptions = Omit<
   sdk.RunAgentTUIOptions,
   'agent' | 'transport' | 'sandbox'
 >;
 
+/** Select either a streaming Effect agent and optional sandbox or a registered chat transport. */
 export type RunAgentTUIOptions<
   T extends EffectTools = {},
   E = never,

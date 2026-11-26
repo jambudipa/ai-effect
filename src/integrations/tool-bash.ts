@@ -4,6 +4,7 @@ import { runRequest, sdkError } from '../internal/operation.js';
 import { type SandboxSession, unwrapSandbox } from './internal/sandbox.js';
 import { wrapTool } from './internal/sdk-tool.js';
 
+/** Supply a registered Effect sandbox in place of the native sandbox argument. */
 type Options = Omit<Parameters<typeof createNativeTool>[0], 'sandbox'> & {
   readonly sandbox: SandboxSession;
 };

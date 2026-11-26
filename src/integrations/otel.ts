@@ -26,6 +26,7 @@ export type EnrichSpan = (options: {
   runtimeContext: Record<string, unknown> | undefined;
 }) => Attributes | undefined;
 
+/** Native sampling contract used by the durable generator to select span recording and propagation. */
 type Sampler = {
   shouldSample(
     parentContext: Context,
@@ -41,6 +42,7 @@ type Sampler = {
   };
 };
 
+/** Resolve the native durable generator only for registered wrapper identities. */
 const generators = new WeakMap<
   OpenTelemetryIdGenerator,
   sdk.OpenTelemetryIdGenerator
@@ -48,6 +50,7 @@ const generators = new WeakMap<
 
 /** Access the durable telemetry identifier generator through Effect. */
 export class OpenTelemetryIdGenerator {
+  /** Construct a generator for durable telemetry and register it for integration setup. */
   static make(options?: { readonly sampler?: Sampler }) {
     return runSync('OpenTelemetryIdGenerator.make', () => {
       const native = new sdk.OpenTelemetryIdGenerator(options);
@@ -57,20 +60,24 @@ export class OpenTelemetryIdGenerator {
     });
   }
 
+  /** Keep native ID generation behind the tagged Effect boundary. */
   private constructor(private readonly native: sdk.OpenTelemetryIdGenerator) {}
 
+  /** Generate a fresh trace ID when the Effect runs. */
   get generateTraceId() {
     return runSync('OpenTelemetryIdGenerator.generateTraceId', () =>
       this.native.generateTraceId(),
     );
   }
 
+  /** Generate a fresh span ID when the Effect runs. */
   get generateSpanId() {
     return runSync('OpenTelemetryIdGenerator.generateSpanId', () =>
       this.native.generateSpanId(),
     );
   }
 
+  /** Apply the native generator's sampler to the supplied span context. */
   shouldSample(
     ...args: Parameters<sdk.OpenTelemetryIdGenerator['shouldSample']>
   ) {
@@ -79,6 +86,7 @@ export class OpenTelemetryIdGenerator {
     );
   }
 
+  /** Capture the native durable telemetry context associated with the current call. */
   captureContext(
     ...args: Parameters<sdk.OpenTelemetryIdGenerator['captureContext']>
   ) {
@@ -87,6 +95,7 @@ export class OpenTelemetryIdGenerator {
     );
   }
 
+  /** Start work with the supplied native trace and span IDs for the duration of the callback. */
   withIds<A>(
     ids: Parameters<sdk.OpenTelemetryIdGenerator['withIds']>[0],
     startSpan: () => A,
@@ -96,11 +105,13 @@ export class OpenTelemetryIdGenerator {
     );
   }
 
+  /** Return the native identifier generator's string representation. */
   toString() {
     return this.native.toString();
   }
 }
 
+/** Configure telemetry with an optional registered durable generator and synchronous span enrichment. */
 export type OpenTelemetryOptions = Omit<
   sdk.OpenTelemetryOptions,
   'durable' | 'agentSpanName' | 'enrichSpan'
@@ -116,6 +127,7 @@ export type OpenTelemetryOptions = Omit<
   readonly enrichSpan?: EnrichSpan;
 };
 
+/** Construct a modern telemetry integration and reject an unregistered durable generator. */
 export const OpenTelemetry = {
   make: (options: OpenTelemetryOptions = {}) =>
     Effect.gen(function* () {
@@ -139,10 +151,12 @@ export const OpenTelemetry = {
       });
     }),
 };
+/** Effect telemetry with all hooks supported by the modern native class available. */
 export type OpenTelemetry = Required<
   Pick<ReturnType<typeof wrapTelemetry>, keyof sdk.OpenTelemetry>
 >;
 
+/** Construct the native legacy telemetry integration through the Effect boundary. */
 export const LegacyOpenTelemetry = {
   make: (options?: ConstructorParameters<typeof sdk.LegacyOpenTelemetry>[0]) =>
     runSync('LegacyOpenTelemetry.make', () => {
@@ -154,10 +168,12 @@ export const LegacyOpenTelemetry = {
       return telemetry as LegacyOpenTelemetry;
     }),
 };
+/** Effect telemetry with every hook supported by the legacy class available. */
 export type LegacyOpenTelemetry = Required<
   Pick<ReturnType<typeof wrapTelemetry>, keyof sdk.LegacyOpenTelemetry>
 >;
 
+/** Format input messages for native OpenTelemetry attributes. */
 export const formatInputMessages = (
   ...args: Parameters<typeof sdk.formatInputMessages>
 ) =>
@@ -165,6 +181,7 @@ export const formatInputMessages = (
     sdk.formatInputMessages(...args),
   );
 
+/** Format model messages using the SDK's trace representation. */
 export const formatModelMessages = (
   ...args: Parameters<typeof sdk.formatModelMessages>
 ) =>
@@ -172,6 +189,7 @@ export const formatModelMessages = (
     sdk.formatModelMessages(...args),
   );
 
+/** Format structured output messages for telemetry recording. */
 export const formatObjectOutputMessages = (
   ...args: Parameters<typeof sdk.formatObjectOutputMessages>
 ) =>
@@ -179,6 +197,7 @@ export const formatObjectOutputMessages = (
     sdk.formatObjectOutputMessages(...args),
   );
 
+/** Format response content using the native telemetry content representation. */
 export const formatOutputContent = (
   ...args: Parameters<typeof sdk.formatOutputContent>
 ) =>
@@ -186,6 +205,7 @@ export const formatOutputContent = (
     sdk.formatOutputContent(...args),
   );
 
+/** Format response messages for native telemetry recording. */
 export const formatOutputMessages = (
   ...args: Parameters<typeof sdk.formatOutputMessages>
 ) =>
@@ -193,6 +213,7 @@ export const formatOutputMessages = (
     sdk.formatOutputMessages(...args),
   );
 
+/** Format system instructions using the SDK's native telemetry representation. */
 export const formatSystemInstructions = (
   ...args: Parameters<typeof sdk.formatSystemInstructions>
 ) =>

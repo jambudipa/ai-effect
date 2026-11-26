@@ -11,6 +11,7 @@ import {
   wrapSandboxProvider,
 } from './internal/sandbox.js';
 
+/** Bind native Vercel sandbox exports to the pinned adapter contract. */
 const sdk = native as unknown as typeof SDKContract;
 
 export type {
@@ -19,11 +20,15 @@ export type {
   VercelSandboxSettings,
 } from './internal/harness-contracts/sandbox-vercel.js';
 
+/** Remove the template field from each native settings variant before adapting it. */
 type WithoutTemplate<T> = T extends unknown ? Omit<T, 'template'> : never;
+/** Shared provider wrapper before requiring native session resumption support. */
 type SandboxProvider = ReturnType<typeof wrapSandboxProvider>;
+/** Vercel provider wrapper whose existing sessions can be resumed within a scope. */
 type ResumableSandboxProvider = SandboxProvider &
   Required<Pick<SandboxProvider, 'resumeSession'>>;
 
+/** Creation settings with an optional Effect bootstrap template for a native Vercel session. */
 export type VercelNetworkSandboxSessionCreateOptions<
   R = never,
   E = never,
@@ -51,6 +56,7 @@ export const VercelSandboxProvider = {
         ) as ResumableSandboxProvider,
     ),
 };
+/** Wrapped Vercel provider returned by the lazy factory, including session resumption. */
 export type VercelSandboxProvider = Effect.Success<
   ReturnType<typeof VercelSandboxProvider.make>
 >;

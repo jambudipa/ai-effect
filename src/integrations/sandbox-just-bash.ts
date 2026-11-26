@@ -11,6 +11,7 @@ import {
   wrapSandboxProvider,
 } from './internal/sandbox.js';
 
+/** Bind native Just Bash exports to the pinned sandbox adapter contract. */
 const sdk = native as unknown as typeof SDKContract;
 
 export type {
@@ -19,8 +20,10 @@ export type {
   JustBashSandboxSettings,
 } from './internal/harness-contracts/sandbox-just-bash.js';
 
+/** Remove the template field from each native settings variant before adapting it. */
 type WithoutTemplate<T> = T extends unknown ? Omit<T, 'template'> : never;
 
+/** Creation settings with an optional Effect bootstrap template for a Just Bash session. */
 export type JustBashNetworkSandboxSessionCreateOptions<
   R = never,
   E = never,
@@ -43,6 +46,7 @@ export const JustBashSandboxProvider = {
       wrapSandboxProvider(new sdk.JustBashSandboxProvider(settings)),
     ),
 };
+/** Wrapped Just Bash provider returned by the lazy factory, with scoped session lifecycle methods. */
 export type JustBashSandboxProvider = Effect.Success<
   ReturnType<typeof JustBashSandboxProvider.make>
 >;

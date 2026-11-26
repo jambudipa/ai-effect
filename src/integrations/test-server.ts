@@ -8,6 +8,7 @@ import { runRequest, runSync } from '../internal/operation.js';
 import { runValue } from './internal/operation.js';
 import { fromReadable } from './internal/stream.js';
 
+/** Map fixture controllers to native stream handles without extending fixture lifetimes. */
 const controllers = new WeakMap<
   TestResponseController,
   SdkTestResponseController
@@ -15,6 +16,7 @@ const controllers = new WeakMap<
 
 /** An Effect handle for a controlled HTTP response fixture. */
 export class TestResponseController {
+  /** Allocate a new controlled response stream for each execution of this Effect. */
   static readonly make = runSync('TestResponseController.make', () => {
     const native = new SdkTestResponseController();
     const wrapped = new TestResponseController(native);
@@ -22,8 +24,10 @@ export class TestResponseController {
     return wrapped;
   });
 
+  /** Keep the native controller private so callers write through the Effect boundary. */
   private constructor(private readonly native: SdkTestResponseController) {}
 
+  /** Read the native fixture stream as an Effect stream. */
   get stream() {
     return fromReadable(
       'TestResponseController.stream',
@@ -31,18 +35,21 @@ export class TestResponseController {
     );
   }
 
+  /** Deliver a string chunk to the active fixture response at a test-controlled point. */
   write(chunk: string) {
     return runRequest('TestResponseController.write', {}, () =>
       this.native.write(chunk),
     );
   }
 
+  /** Terminate the fixture response stream with the supplied error. */
   error(error: Error) {
     return runRequest('TestResponseController.error', {}, () =>
       this.native.error(error),
     );
   }
 
+  /** Finish the fixture response stream and signal end of input to readers. */
   get close() {
     return runRequest('TestResponseController.close', {}, () =>
       this.native.close(),
@@ -60,28 +67,36 @@ export type UrlResponse =
       controller: TestResponseController;
     });
 
+/** Choose a fixed response, a response sequence, or a function that receives the call number. */
 type ResponseParameter =
   | UrlResponse
   | Array<UrlResponse>
   | ((options: { callNumber: number }) => UrlResponse);
 
+/** Initial response definitions keyed by URL. A route can receive its first response later. */
 type Routes = Record<string, { response?: ResponseParameter }>;
 
+/** Read or replace the response definition for one configured URL. */
 export interface UrlHandler {
+  /** Read the current wrapper response, including an Effect controller when configured. */
   readonly response: Effect.Effect<ResponseParameter>;
+  /** Replace the response for later requests without replacing the route or starting a new server. */
   readonly setResponse: (response: ResponseParameter) => Effect.Effect<void>;
 }
 
+/** Preserve the fixture's URL keys for route access in type-checked tests. */
 export type UrlHandlers<URLS extends Routes> = {
   readonly [K in keyof URLS]: UrlHandler;
 };
 
+/** Resolve a controlled stream handle at the SDK boundary and preserve ordinary responses. */
 const toNativeResponse = (response: UrlResponse): SdkUrlResponse => {
   if (response?.type !== 'controlled-stream') return response;
   const controller = controllers.get(response.controller);
   return controller && { ...response, controller };
 };
 
+/** Convert controlled controllers in every response form, including values returned on request. */
 const toNativeResponseParameter = (response: ResponseParameter) => {
   if (typeof response === 'function') {
     return (options: { callNumber: number }) =>

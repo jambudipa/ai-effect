@@ -17,6 +17,7 @@ export type {
   JSONObject,
 } from './internal/harness-contracts/harness-claude-code.js';
 
+/** Configure the Claude Code adapter with scoped credential forwarding and channel observations. */
 export type ClaudeCodeHarnessSettings<
   R = never,
   E = never,
@@ -33,7 +34,9 @@ export type ClaudeCodeHarnessSettings<
   ) => Effect.Effect<void, E, R>;
 };
 
+/** Version reported by the native Claude Code adapter. */
 export const VERSION = nativeVersion;
+/** Construct a Claude Code harness, keeping optional debug and credential callbacks in the current scope. */
 export const createClaudeCode = <R = never, E = never>(
   settings?: ClaudeCodeHarnessSettings<R, E>,
 ) =>
@@ -63,6 +66,7 @@ export const createClaudeCode = <R = never, E = never>(
       ),
     );
   });
+/** Resolve the SDK's default Claude Code harness when the Effect runs. */
 export const claudeCode = runSync('ClaudeCode.default', () =>
   wrapHarness(nativeClaudeCode as unknown as typeof SDKContract.claudeCode),
 );

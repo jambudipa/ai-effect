@@ -16,6 +16,7 @@ import {
 } from './internal/harness.js';
 import { type SandboxSession, wrapSandbox } from './internal/sandbox.js';
 
+/** Use the pinned ACP SDK declarations at the native adapter boundary. */
 const sdk = native as unknown as typeof SDKContract;
 
 export type {
@@ -56,12 +57,15 @@ export type {
   ACPValueSource,
 } from './internal/harness-contracts/harness-acp.js';
 
+/** Preserve the native preparation callback's sandbox and cancellation argument shape. */
 type PrepareSandbox = NonNullable<
   SDKContract.ACPHarnessSettings['prepareSandbox']
 >;
+/** Preserve the native authentication-environment callback's arguments and awaited result. */
 type ResolveAuthentication = NonNullable<
   SDKContract.ACPHarnessSettings['resolveAuthenticationEnvironment']
 >;
+/** Expose native synchronous callbacks as Effects that must finish without suspension. */
 type SynchronousCallback<T, R, E> = T extends (
   ...args: infer Args
 ) => infer Result
@@ -79,27 +83,33 @@ export type ACPAskUserQuestionsSettings<
   R
 >;
 
+/** Provide ACP authentication files through an Effect that finishes synchronously. */
 export type ACPAuthenticationFiles<R = never, E = never> = SynchronousCallback<
   SDKContract.ACPAuthenticationFiles,
   R,
   E
 >;
+/** Resolve ACP credential brokering settings through an Effect that finishes synchronously. */
 export type ACPCredentialBrokering<R = never, E = never> = SynchronousCallback<
   SDKContract.ACPCredentialBrokering,
   R,
   E
 >;
+/** Resolve a native ACP tool call through an Effect that finishes synchronously. */
 export type ACPResolveHostToolCall<R = never, E = never> = SynchronousCallback<
   SDKContract.ACPResolveHostToolCall,
   R,
   E
 >;
 
+/** Optional settings for translating question requests and responses to the ACP protocol. */
 type AskQuestions<R, E> = ACPAskUserQuestionsSettings<R, E> | undefined;
+/** Specialize the native factory according to whether the host supplies question handling. */
 type NativeAskQuestions<Q> = Q extends undefined
   ? undefined
   : SDKContract.ACPAskUserQuestionsSettings;
 
+/** Adapter settings whose Effects must complete inside their synchronous native callbacks. */
 type SynchronousSettings<R, E> = {
   readonly authenticationFiles?: ACPAuthenticationFiles<R, E>;
   readonly credentialBrokering?: ACPCredentialBrokering<R, E>;
@@ -111,6 +121,7 @@ type SynchronousSettings<R, E> = {
   readonly resolveHostToolCall: ACPResolveHostToolCall<R, E>;
 };
 
+/** Configure ACP authentication, sandbox preparation, and optional Effect tools for a scoped adapter. */
 export type ACPHarnessSettings<
   T extends EffectTools = {},
   Q = unknown,
@@ -142,8 +153,10 @@ export type ACPHarnessSettings<
     ) => Effect.Effect<Awaited<ReturnType<ResolveAuthentication>>, E, R>;
   };
 
+/** Version reported by the pinned native ACP adapter. */
 export const VERSION = sdk.VERSION;
 
+/** Bind synchronous hooks with the captured services and interrupt any hook that attempts asynchronous work. */
 const createWithSettings = <
   T extends EffectTools = {},
   Q = undefined,
@@ -235,6 +248,7 @@ const createWithSettings = <
     );
   });
 
+/** Construct an ACP adapter and retain the question tool type when question handling is required. */
 export function createACP<T extends EffectTools = {}, R = never, E = never>(
   settings: ACPHarnessSettings<T, unknown, R, E> & {
     readonly askUserQuestions: ACPAskUserQuestionsSettings<R, E>;
@@ -242,6 +256,7 @@ export function createACP<T extends EffectTools = {}, R = never, E = never>(
 ): ReturnType<
   typeof createWithSettings<T, ACPAskUserQuestionsSettings<R, E>, R, E>
 >;
+/** Construct an ACP adapter with the supplied tools and optional question handling. */
 export function createACP<
   T extends EffectTools = {},
   Q = undefined,
@@ -263,6 +278,7 @@ export function createACP<
   return createWithSettings<T, Q, R, E>(settings);
 }
 
+/** ACP v1 configuration with Effect host callbacks following the same synchronous and scoped contracts as the adapter. */
 export type ACPV1Settings<R = never, E = never> = Omit<
   SDKContract.ACPV1Settings,
   | keyof SynchronousSettings<R, E>

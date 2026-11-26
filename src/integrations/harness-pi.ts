@@ -16,6 +16,7 @@ import type { WithEffectCallbacks } from './internal/callbacks.js';
 import { wrapHarness } from './internal/harness.js';
 import { type SandboxSession, wrapSandbox } from './internal/sandbox.js';
 
+/** Bind the native Pi adapter to its pinned extension and storage contracts. */
 const sdk = native as unknown as typeof SDKContract;
 
 export type {
@@ -28,6 +29,7 @@ export type {
   PiSandboxSkill,
 } from './internal/harness-contracts/harness-pi.js';
 
+/** Append, read, or optionally batch session entries through Effect callbacks. */
 export type PiSessionStorage<E = never, R = never> = WithEffectCallbacks<
   SDKContract.PiSessionStorage,
   'append' | 'appendMany' | 'read',
@@ -35,17 +37,23 @@ export type PiSessionStorage<E = never, R = never> = WithEffectCallbacks<
   R
 >;
 
+/** Context passed to an Effect extension factory during setup of a Pi session. */
 export interface PiHarnessExtensionSession {
+  /** Use the wrapped sandbox when an extension needs session file or process operations. */
   readonly sandboxSession: SandboxSession;
+  /** Working directory reported by the SDK for this Pi extension session. */
   readonly sessionWorkDir: SDKContract.PiHarnessExtensionSession['sessionWorkDir'];
+  /** Read the native session instructions lazily while retaining the SDK's tagged failure. */
   readonly instructions: Effect.Effect<string | undefined, AiSdkError>;
 }
 
+/** Register an extension with the native Pi API and a wrapped session in the owning Effect scope. */
 export type PiHarnessExtensionFactory<E = never, R = never> = (
   pi: ExtensionAPI,
   session: PiHarnessExtensionSession,
 ) => Effect.Effect<void, E, R>;
 
+/** Configure Pi with optional Effect storage and native or Effect extension factories. */
 export type PiHarnessSettings<E = never, R = never> = Omit<
   SDKContract.PiHarnessSettings,
   'sessionStorage' | 'extensionFactories'
@@ -56,17 +64,21 @@ export type PiHarnessSettings<E = never, R = never> = Omit<
   >;
 };
 
+/** Wrapped Pi harness with the keys of its native built-in tools preserved. */
 type PiHarness = ReturnType<
   typeof wrapHarness<ReturnType<typeof sdk.createPi>['builtinTools']>
 >;
 
+/** Version reported by the pinned native Pi adapter. */
 export const VERSION = sdk.VERSION;
+/** Construct Pi without a callback scope when no storage or extension factory is supplied. */
 export function createPi(
   settings?: PiHarnessSettings & {
     readonly sessionStorage?: never;
     readonly extensionFactories?: never;
   },
 ): Effect.Effect<PiHarness, AiSdkError>;
+/** Construct Pi with a scope that owns the supplied storage and extension callbacks. */
 export function createPi<E = never, R = never>(
   settings?: PiHarnessSettings<E, R>,
 ): Effect.Effect<PiHarness, AiSdkError, Scope | R>;
@@ -134,4 +146,5 @@ export function createPi<E = never, R = never>(
     );
   });
 }
+/** Resolve the SDK's default Pi harness when the Effect runs. */
 export const pi = runSync('Pi.default', () => wrapHarness(sdk.pi));

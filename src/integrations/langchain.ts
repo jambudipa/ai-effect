@@ -43,23 +43,31 @@ export interface StreamCallbacks<
   R = never,
   E = never,
 > extends BaseCallbacks<R, E> {
+  /** Observe final graph state, which can be absent on streams that emit no state. */
   readonly onFinish?: (state: TState | undefined) => Effect.Effect<void, E, R>;
+  /** Observe SDK stream failure as a tagged error in the reader's scope. */
   readonly onError?: (error: AiSdkError) => Effect.Effect<void, E, R>;
+  /** Observe native stream cancellation using the reader's captured context. */
   readonly onAbort?: () => Effect.Effect<void, E, R>;
 }
 
+/** Configure lifecycle callbacks and which terminal markers the UI stream emits. */
 export interface ToUIMessageStreamOptions<
   TState = unknown,
   R = never,
   E = never,
 > extends StreamCallbacks<TState, R, E> {
+  /** Allow the native adapter to emit or omit the UI start marker. */
   readonly sendStart?: boolean;
+  /** Allow the native adapter to emit or omit the UI finish marker. */
   readonly sendFinish?: boolean;
 }
 
+/** Convert SDK UI messages to LangChain base messages through the asynchronous native converter. */
 export const toBaseMessages = (messages: UIMessage[]) =>
   runRequest('LangChain.toBaseMessages', {}, () => sdkToBaseMessages(messages));
 
+/** Convert model messages to the native LangChain message representation without starting a request. */
 export const convertModelMessages = (messages: ModelMessage[]) =>
   runSync('LangChain.convertModelMessages', () =>
     sdkConvertModelMessages(messages),
@@ -124,6 +132,7 @@ export const toUIMessageStream = <
 };
 
 // This constructor facade produces a transport consumable by the host adapters.
+/** Construct a wrapped chat transport against a configured LangSmith deployment. */
 export const LangSmithDeploymentTransport = {
   make: <M extends UIMessage = UIMessage>(
     options: LangSmithDeploymentTransportOptions,
@@ -133,5 +142,6 @@ export const LangSmithDeploymentTransport = {
     ),
 };
 
+/** Effect chat transport produced by the LangSmith deployment factory. */
 export type LangSmithDeploymentTransport<M extends UIMessage = UIMessage> =
   Effect.Success<ReturnType<typeof LangSmithDeploymentTransport.make<M>>>;

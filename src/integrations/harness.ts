@@ -8,6 +8,7 @@ import { wrapError } from './internal/error.js';
 import { wrapSchema } from './internal/schema.js';
 import { wrapTool, wrapTools } from './internal/sdk-tool.js';
 
+/** Use the pinned native harness contract for bridge schemas, tools, and error branding. */
 const sdk = native as unknown as typeof SDKContract;
 
 export type {
@@ -83,13 +84,16 @@ export type {
   SandboxTemplate as HarnessV1SandboxTemplate,
 } from './internal/sandbox.js';
 
+/** Standard tool names copied from the SDK so callers cannot change the native list. */
 export const HARNESS_V1_BUILTIN_TOOL_NAMES: readonly SDKContract.HarnessV1BuiltinToolName[] =
   [...sdk.HARNESS_V1_BUILTIN_TOOL_NAMES];
+/** Built-in tool definitions with Effect schemas, callbacks, and execution. */
 export const HARNESS_V1_BUILTIN_TOOLS = wrapTools(
   'Harness.builtinTools',
   sdk.HARNESS_V1_BUILTIN_TOOLS,
 );
 
+/** Preserve the native and common tool names plus the tool-use classification on the wrapped tool. */
 export type HarnessV1BuiltinTool<
   Input = unknown,
   Output = unknown,
@@ -99,11 +103,14 @@ export type HarnessV1BuiltinTool<
     'nativeName' | 'commonName' | 'toolUseKind'
   >;
 
+/** Standard question tool definition from the built-in registry. */
 export type HarnessV1QuestionsTool =
   (typeof HARNESS_V1_BUILTIN_TOOLS)['askUserQuestions'];
 
+/** Derive the required input shape from the SDK's standard definition for a tool name. */
 type StandardInput<N extends SDKContract.HarnessV1BuiltinToolName> =
   InferToolInput<(typeof sdk.HARNESS_V1_BUILTIN_TOOLS)[N]>;
+/** Accept a custom input shape only when it can receive every input to the standard tool. */
 type CommonToolResult<N extends SDKContract.HarnessV1BuiltinToolName, A> =
   StandardInput<N> extends A
     ? HarnessV1BuiltinTool<A>
@@ -133,74 +140,93 @@ export const commonTool = <N extends SDKContract.HarnessV1BuiltinToolName, A>(
     ) as CommonToolResult<N, A>;
   });
 
+/** Construct or recognize a tagged failure for an unsupported harness capability. */
 export const HarnessCapabilityUnsupportedError = wrapError(
   'Harness.HarnessCapabilityUnsupportedError',
   sdk.HarnessCapabilityUnsupportedError,
 );
+/** Error channel used for unsupported native harness capabilities. */
 export type HarnessCapabilityUnsupportedError = AiSdkError;
 
+/** Construct or recognize a tagged error originating from the native harness error class. */
 export const HarnessError = wrapError('Harness.HarnessError', sdk.HarnessError);
+/** Tagged error type used when a native harness operation fails. */
 export type HarnessError = AiSdkError;
 
+/** Construct or recognize a tagged error for a session without accessible history. */
 export const HarnessHistoryUnavailableError = wrapError(
   'Harness.HarnessHistoryUnavailableError',
   sdk.HarnessHistoryUnavailableError,
 );
+/** Tagged error channel used when native session history is unavailable. */
 export type HarnessHistoryUnavailableError = AiSdkError;
 
+/** Construct or recognize a tagged error originating from sandbox authentication. */
 export const HarnessSandboxAuthenticationError = wrapError(
   'Harness.HarnessSandboxAuthenticationError',
   sdk.HarnessSandboxAuthenticationError,
 );
+/** Tagged error channel used for native sandbox authentication failure. */
 export type HarnessSandboxAuthenticationError = AiSdkError;
 
+/** Validate a user message submitted to an active turn through the experimental inbound protocol. */
 export const experimental_harnessV1BridgeUserMessageInboundSchema = wrapSchema(
   'Harness.experimental_harnessV1BridgeUserMessageInboundSchema',
   sdk.experimental_harnessV1BridgeUserMessageInboundSchema,
 );
 
+/** Validate the bridge acknowledgment or rejection for an experimental user message. */
 export const experimental_harnessV1BridgeUserMessageResponseSchema = wrapSchema(
   'Harness.experimental_harnessV1BridgeUserMessageResponseSchema',
   sdk.experimental_harnessV1BridgeUserMessageResponseSchema,
 );
 
+/** Ask the SDK which configured tool-filtering rule denied a built-in tool. */
 export const getHarnessV1BuiltinToolFilteringDenialReason = (
   ...args: Parameters<typeof sdk.getHarnessV1BuiltinToolFilteringDenialReason>
 ) => sdk.getHarnessV1BuiltinToolFilteringDenialReason(...args);
 
+/** Compute the native path for data associated with one harness session. */
 export const harnessSessionDataDirectoryPath = (
   ...args: Parameters<typeof sdk.harnessSessionDataDirectoryPath>
 ) => sdk.harnessSessionDataDirectoryPath(...args);
 
+/** Compute the native harness state directory path from its SDK arguments. */
 export const harnessStateDirectoryPath = (
   ...args: Parameters<typeof sdk.harnessStateDirectoryPath>
 ) => sdk.harnessStateDirectoryPath(...args);
 
+/** Validate a host instruction to abort the active bridge turn. */
 export const harnessV1BridgeAbortInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeAbortInboundSchema',
   sdk.harnessV1BridgeAbortInboundSchema,
 );
 
+/** Validate the rules for selecting which native built-in tools are available. */
 export const harnessV1BridgeBuiltinToolFilteringSchema = wrapSchema(
   'Harness.harnessV1BridgeBuiltinToolFilteringSchema',
   sdk.harnessV1BridgeBuiltinToolFilteringSchema,
 );
 
+/** Validate a diagnostic frame emitted by the bridge for debugging. */
 export const harnessV1BridgeDebugEventSchema = wrapSchema(
   'Harness.harnessV1BridgeDebugEventSchema',
   sdk.harnessV1BridgeDebugEventSchema,
 );
 
+/** Validate a host instruction to destroy the bridge session. */
 export const harnessV1BridgeDestroyInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeDestroyInboundSchema',
   sdk.harnessV1BridgeDestroyInboundSchema,
 );
 
+/** Validate the initial hello frame for a bridge connection. */
 export const harnessV1BridgeHelloSchema = wrapSchema(
   'Harness.harnessV1BridgeHelloSchema',
   sdk.harnessV1BridgeHelloSchema,
 );
 
+/** Preserve the native order of command schemas for validating host-to-bridge input. */
 export const harnessV1BridgeInboundCommandSchemas = [
   wrapSchema(
     'Harness.harnessV1BridgeInboundCommandSchemas',
@@ -232,184 +258,221 @@ export const harnessV1BridgeInboundCommandSchemas = [
   ),
 ] as const;
 
+/** Validate messages emitted from the bridge before a client consumes them. */
 export const harnessV1BridgeOutboundMessageSchema = wrapSchema(
   'Harness.harnessV1BridgeOutboundMessageSchema',
   sdk.harnessV1BridgeOutboundMessageSchema,
 );
 
+/** Validate the permission mode sent in bridge configuration. */
 export const harnessV1BridgePermissionModeSchema = wrapSchema(
   'Harness.harnessV1BridgePermissionModeSchema',
   sdk.harnessV1BridgePermissionModeSchema,
 );
 
+/** Validate the frame that reports bridge readiness. */
 export const harnessV1BridgeReadySchema = wrapSchema(
   'Harness.harnessV1BridgeReadySchema',
   sdk.harnessV1BridgeReadySchema,
 );
 
+/** Validate a requested response format before a bridge starts the model call. */
 export const harnessV1BridgeResponseFormatSchema = wrapSchema(
   'Harness.harnessV1BridgeResponseFormatSchema',
   sdk.harnessV1BridgeResponseFormatSchema,
 );
 
+/** Validate a host instruction to resume a previously suspended turn. */
 export const harnessV1BridgeResumeInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeResumeInboundSchema',
   sdk.harnessV1BridgeResumeInboundSchema,
 );
 
+/** Validate sandbox log frames produced by the bridge process. */
 export const harnessV1BridgeSandboxLogSchema = wrapSchema(
   'Harness.harnessV1BridgeSandboxLogSchema',
   sdk.harnessV1BridgeSandboxLogSchema,
 );
 
+/** Validate fields common to all host instructions that start a turn. */
 export const harnessV1BridgeStartBaseSchema = wrapSchema(
   'Harness.harnessV1BridgeStartBaseSchema',
   sdk.harnessV1BridgeStartBaseSchema,
 );
 
+/** Validate a host instruction to stop the active bridge operation. */
 export const harnessV1BridgeStopInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeStopInboundSchema',
   sdk.harnessV1BridgeStopInboundSchema,
 );
 
+/** Validate the native stop frame independently of its inbound command wrapper. */
 export const harnessV1BridgeStopSchema = wrapSchema(
   'Harness.harnessV1BridgeStopSchema',
   sdk.harnessV1BridgeStopSchema,
 );
 
+/** Validate the native thread description used in bridge communication. */
 export const harnessV1BridgeThreadSchema = wrapSchema(
   'Harness.harnessV1BridgeThreadSchema',
   sdk.harnessV1BridgeThreadSchema,
 );
 
+/** Validate a host response to a pending tool approval request. */
 export const harnessV1BridgeToolApprovalResponseInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeToolApprovalResponseInboundSchema',
   sdk.harnessV1BridgeToolApprovalResponseInboundSchema,
 );
 
+/** Validate a host tool result before returning it to the bridge turn. */
 export const harnessV1BridgeToolResultInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeToolResultInboundSchema',
   sdk.harnessV1BridgeToolResultInboundSchema,
 );
 
+/** Validate the wire representation of a tool offered to the bridge. */
 export const harnessV1BridgeToolWireSchema = wrapSchema(
   'Harness.harnessV1BridgeToolWireSchema',
   sdk.harnessV1BridgeToolWireSchema,
 );
 
+/** Validate the stable schema export for inbound user message frames. */
 export const harnessV1BridgeUserMessageInboundSchema = wrapSchema(
   'Harness.harnessV1BridgeUserMessageInboundSchema',
   sdk.harnessV1BridgeUserMessageInboundSchema,
 );
 
+/** Validate harness diagnostics settings at the adapter boundary. */
 export const harnessV1DebugConfigSchema = wrapSchema(
   'Harness.harnessV1DebugConfigSchema',
   sdk.harnessV1DebugConfigSchema,
 );
 
+/** Validate a supported level for harness diagnostic output. */
 export const harnessV1DebugLevelSchema = wrapSchema(
   'Harness.harnessV1DebugLevelSchema',
   sdk.harnessV1DebugLevelSchema,
 );
 
+/** Convert a native bridge frame into the SDK's harness diagnostic representation. */
 export const harnessV1DiagnosticFromBridgeFrame = (
   ...args: Parameters<typeof sdk.harnessV1DiagnosticFromBridgeFrame>
 ) => sdk.harnessV1DiagnosticFromBridgeFrame(...args);
 
+/** Validate a failure part in an active harness stream. */
 export const harnessV1ErrorPartSchema = wrapSchema(
   'Harness.harnessV1ErrorPartSchema',
   sdk.harnessV1ErrorPartSchema,
 );
 
+/** Validate a harness stream update that reports file changes. */
 export const harnessV1FileChangePartSchema = wrapSchema(
   'Harness.harnessV1FileChangePartSchema',
   sdk.harnessV1FileChangePartSchema,
 );
 
+/** Validate the terminal finish part of a harness stream. */
 export const harnessV1FinishPartSchema = wrapSchema(
   'Harness.harnessV1FinishPartSchema',
   sdk.harnessV1FinishPartSchema,
 );
 
+/** Validate the part that reports completion of one step within a turn. */
 export const harnessV1FinishStepPartSchema = wrapSchema(
   'Harness.harnessV1FinishStepPartSchema',
   sdk.harnessV1FinishStepPartSchema,
 );
 
+/** Validate the question tool's native input before use. */
 export const harnessV1QuestionsToolInputSchema = wrapSchema(
   'Harness.harnessV1QuestionsToolInputSchema',
   sdk.harnessV1QuestionsToolInputSchema,
 );
 
+/** Validate the native response format for answers to the question tool. */
 export const harnessV1QuestionsToolOutputSchema = wrapSchema(
   'Harness.harnessV1QuestionsToolOutputSchema',
   sdk.harnessV1QuestionsToolOutputSchema,
 );
 
+/** Validate a stream part that preserves provider-specific raw data. */
 export const harnessV1RawPartSchema = wrapSchema(
   'Harness.harnessV1RawPartSchema',
   sdk.harnessV1RawPartSchema,
 );
 
+/** Validate the incremental update for an active reasoning segment. */
 export const harnessV1ReasoningDeltaPartSchema = wrapSchema(
   'Harness.harnessV1ReasoningDeltaPartSchema',
   sdk.harnessV1ReasoningDeltaPartSchema,
 );
 
+/** Validate the closing boundary of a reasoning segment in the stream. */
 export const harnessV1ReasoningEndPartSchema = wrapSchema(
   'Harness.harnessV1ReasoningEndPartSchema',
   sdk.harnessV1ReasoningEndPartSchema,
 );
 
+/** Validate the opening boundary of a reasoning segment in the stream. */
 export const harnessV1ReasoningStartPartSchema = wrapSchema(
   'Harness.harnessV1ReasoningStartPartSchema',
   sdk.harnessV1ReasoningStartPartSchema,
 );
 
+/** Validate a harness stream part against the full native event union. */
 export const harnessV1StreamPartSchema = wrapSchema(
   'Harness.harnessV1StreamPartSchema',
   sdk.harnessV1StreamPartSchema,
 );
 
+/** Validate the initial marker for a harness stream. */
 export const harnessV1StreamStartPartSchema = wrapSchema(
   'Harness.harnessV1StreamStartPartSchema',
   sdk.harnessV1StreamStartPartSchema,
 );
 
+/** Validate the incremental update for an active text segment. */
 export const harnessV1TextDeltaPartSchema = wrapSchema(
   'Harness.harnessV1TextDeltaPartSchema',
   sdk.harnessV1TextDeltaPartSchema,
 );
 
+/** Validate the closing boundary of a text segment in the stream. */
 export const harnessV1TextEndPartSchema = wrapSchema(
   'Harness.harnessV1TextEndPartSchema',
   sdk.harnessV1TextEndPartSchema,
 );
 
+/** Validate the opening boundary of a text segment in the stream. */
 export const harnessV1TextStartPartSchema = wrapSchema(
   'Harness.harnessV1TextStartPartSchema',
   sdk.harnessV1TextStartPartSchema,
 );
 
+/** Validate the stream part asking the host to approve a pending tool call. */
 export const harnessV1ToolApprovalRequestPartSchema = wrapSchema(
   'Harness.harnessV1ToolApprovalRequestPartSchema',
   sdk.harnessV1ToolApprovalRequestPartSchema,
 );
 
+/** Validate a tool invocation in the harness stream. */
 export const harnessV1ToolCallPartSchema = wrapSchema(
   'Harness.harnessV1ToolCallPartSchema',
   sdk.harnessV1ToolCallPartSchema,
 );
 
+/** Validate an execution result for a tool invocation in the harness stream. */
 export const harnessV1ToolResultPartSchema = wrapSchema(
   'Harness.harnessV1ToolResultPartSchema',
   sdk.harnessV1ToolResultPartSchema,
 );
 
+/** Check whether the native tool selection permits the supplied built-in tool. */
 export const isHarnessV1BuiltinToolIncluded = (
   ...args: Parameters<typeof sdk.isHarnessV1BuiltinToolIncluded>
 ) => sdk.isHarnessV1BuiltinToolIncluded(...args);
 
+/** Callback shape retained for SDK settings that formerly supplied bridge tokens. */
 export type HarnessV1MintBridgeTokenCallback = (sandboxId: string) => string;
 
 export type {
@@ -418,10 +481,12 @@ export type {
   HarnessV1SandboxSessionResumeOptions,
 } from './internal/harness-contracts/harness.js';
 
+/** Effect sandbox provider with native identity and scoped session acquisition. */
 export type HarnessV1SandboxProvider = ReturnType<
   typeof import('./internal/sandbox.js').wrapSandboxProvider
 >;
 
+/** Extend provider-specific settings with an optional session ID, prepared template, and cancellation signal. */
 export type HarnessV1SandboxSessionCreateOptions<
   T extends object,
   R = never,
