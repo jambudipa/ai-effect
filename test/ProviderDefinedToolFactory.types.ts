@@ -57,5 +57,5 @@ export const providerDefinedToolFactoryProof = Effect.gen(function* () {
   >();
 
   // @ts-expect-error The declared output is a number.
-  factory<number>({ label: 'wrong', execute: () => Effect.succeed('wrong') });
+  yield* factory<number>({ label: 'bad', execute: () => Effect.succeed('x') });
 });
