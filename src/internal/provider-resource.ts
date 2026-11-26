@@ -8,8 +8,11 @@ import { Effect } from 'effect';
 import { runRequest } from './operation.js';
 import { readMethod, requestMethod } from './provider-model.js';
 
+/** Keep native file APIs private while their public handles remain in use. */
 const nativeFiles = new WeakMap<object, FilesV4>();
+/** Keep native skill APIs private while their public handles remain in use. */
 const nativeSkills = new WeakMap<object, SkillsV4>();
+/** Expose file operations and keep optional methods absent when the provider lacks them. */
 export const wrapFiles = (files: FilesV4) => {
   const getFileMetadata = files.getFileMetadata?.bind(files);
   const downloadFile = files.downloadFile?.bind(files);
@@ -45,6 +48,7 @@ export const wrapFiles = (files: FilesV4) => {
   return wrapped;
 };
 
+/** Expose skill upload through Effect and register the corresponding native API. */
 export const wrapSkills = (skills: SkillsV4) => {
   const wrapped = {
     specificationVersion: skills.specificationVersion,
@@ -56,14 +60,20 @@ export const wrapSkills = (skills: SkillsV4) => {
   return wrapped;
 };
 
+/** Use a registered file API for direct provider file operations and SDK adapters. */
 export type FilesV4Handle = ReturnType<typeof wrapFiles>;
+/** Use a registered skill API for SDK skill uploads. */
 export type SkillsV4Handle = ReturnType<typeof wrapSkills>;
 
+/** Recover a previously registered native provider file API. */
 export const unwrapFiles = (files: FilesV4Handle) => nativeFiles.get(files);
+/** Recover a previously registered native provider skill API. */
 export const unwrapSkills = (skills: SkillsV4Handle) =>
   nativeSkills.get(skills);
 
+/** Track the native batch APIs used by registered public handles. */
 const nativeBatches = new WeakMap<object, Experimental_BatchV4>();
+/** Adapt provider batch operations and preserve capability-specific model IDs. */
 export const wrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
   batch: Experimental_BatchV4<ModelIds>,
 ) => {
@@ -100,10 +110,12 @@ export const wrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
   return wrapped;
 };
 
+/** Use a registered batch API while retaining its provider-specific model IDs. */
 export type BatchV4<
   ModelIds extends Experimental_BatchV4ModelIds = Experimental_BatchV4ModelIds,
 > = ReturnType<typeof wrapBatch<ModelIds>>;
 
+/** Recover the native batch API for a previously registered handle. */
 export const unwrapBatch = <ModelIds extends Experimental_BatchV4ModelIds>(
   batch: object,
 ): Experimental_BatchV4<ModelIds> | undefined =>
