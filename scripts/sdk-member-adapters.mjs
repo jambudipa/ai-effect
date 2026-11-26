@@ -6,20 +6,24 @@ import {
   resultProjection,
 } from './sdk-member-projections.mjs';
 
+/** Recognize SDK schema slots that can project to either adapter schema representation. */
 const schemaProperties = new Set([
   'inputSchema',
   'outputSchema',
   'contextSchema',
   'lifecycleStateSchema',
 ]);
+/** Allow three native getters to project to plain values on wrapped handles. */
 const dataGetters = new Set(['provider', 'modelId', 'maxImagesPerCall']);
 
+/** Recognize promised operations in any branch of a signature's result. */
 function hasPromise(checker, type) {
   return type.isUnion()
     ? type.types.some((member) => hasPromise(checker, member))
     : Boolean(checker.getPromisedTypeOfPromise(type));
 }
 
+/** Allow data getters to become primitive values across all union branches. */
 function isPrimitiveType(type) {
   if (type.isUnion()) return type.types.every(isPrimitiveType);
   return Boolean(
@@ -30,6 +34,7 @@ function isPrimitiveType(type) {
   );
 }
 
+/** Identify the result type and route step for a Promise or Effect. */
 function payloadOf(checker, type) {
   const promised = checker.getPromisedTypeOfPromise(type);
   if (promised) return { type: promised, step: 'await' };
@@ -42,6 +47,7 @@ function payloadOf(checker, type) {
   if (output) return { type: output, step: 'yield' };
 }
 
+/** Enumerate the receiver and its awaited or yielded payloads without revisiting types. */
 function* receivers(checker, root, visited = new Set()) {
   if (visited.has(root.type)) return;
   visited.add(root.type);
@@ -62,6 +68,7 @@ function* receivers(checker, root, visited = new Set()) {
   }
 }
 
+/** Follow public member paths through resolved values and preserve optionality. */
 function* publicMembers(checker, root, path, symbolKey) {
   if (!path.length) {
     yield* receivers(checker, root);
@@ -94,6 +101,7 @@ function* publicMembers(checker, root, path, symbolKey) {
   }
 }
 
+/** Find constructor and call result routes, including `make` and lazy Effects. */
 function* returnReceivers(checker, value, kind, allowLazyConstructor) {
   for (const root of receivers(checker, value)) {
     const calls = root.type.getCallSignatures();
@@ -129,12 +137,14 @@ function* returnReceivers(checker, value, kind, allowLazyConstructor) {
   }
 }
 
+/** Inspect union branches separately when they expose different adapter forms. */
 function* alternatives(type) {
   if (type.isUnion()) {
     for (const member of type.types) yield* alternatives(member);
   } else yield type;
 }
 
+/** Match public candidates only on receiver types with an expected brand. */
 function* memberCandidates(checker, roots, member) {
   for (const root of roots) {
     const receiversToCheck = member.receiverBrand
@@ -159,6 +169,7 @@ function* memberCandidates(checker, roots, member) {
   }
 }
 
+/** Verify that the wrapper returns the generic first input unchanged or extends it. */
 function retainedInput(checker, roots, path) {
   for (const root of roots) {
     if (!root.input) continue;
@@ -176,6 +187,7 @@ function retainedInput(checker, roots, path) {
   return null;
 }
 
+/** Match a native member against the wrapper's call counts, brands, and Effect shape. */
 function findAdapter(checker, roots, member) {
   if (member.retainedInput) return retainedInput(checker, roots, member.path);
   for (const actual of memberCandidates(checker, roots, member)) {
@@ -334,6 +346,7 @@ export function describeMemberAdapters(
   };
 }
 
+/** Try the direct callable result route before consulting an explicit projection. */
 function matchingResult(checker, roots, root, upstreamPath, exported) {
   const expected = {
     ...root,

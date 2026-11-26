@@ -4,14 +4,19 @@ import path from 'node:path';
 import { format, resolveConfig } from 'prettier';
 import ts from 'typescript';
 
+/** Require the nested host version whose declarations the projection supports. */
 const version = '2.14.5';
+/** Find the exact declarations missing from the published just-bash archive. */
 const recoveryDir = new URL(
   './sdk-contract-sources/just-bash/',
   import.meta.url,
 );
+/** Use recovered declarations for the two known omissions in the published archive. */
 const recoveredFiles = new Set(['security/types.d.ts', 'transform/types.d.ts']);
+/** Retain the upstream text and license comments in the projected declarations. */
 const printer = ts.createPrinter();
 
+/** Copy the sandbox's reachable types and remove private class fields that would block structural compatibility. */
 export async function generateJustBashContract(
   wrapperRequire,
   outputDirectory,

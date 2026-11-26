@@ -4,6 +4,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
+/** Read the installed consumer path and optional upstream entry filters. */
 const { values } = parseArgs({
   options: {
     fixture: { type: 'string' },
@@ -14,10 +15,13 @@ assert.ok(
   values.fixture,
   'Pass --fixture with the external consumer directory',
 );
+/** Resolve the fixture before launching independent runtime probes. */
 const fixture = await realpath(values.fixture);
+/** Use the pinned condition map and name inventory as the comparison baseline. */
 const baseline = JSON.parse(
   await readFile(new URL('../docs/sdk-surface.json', import.meta.url), 'utf8'),
 );
+/** Reject unknown explicit entries before spawning a runtime probe. */
 const paths = values.entry
   ? values.entry.map((entry) => {
       const path = baseline.paths.find(({ upstream }) => upstream === entry);
@@ -26,6 +30,7 @@ const paths = values.entry
     })
   : baseline.paths;
 
+/** Choose the first runtime leaf whose conditions apply to the current Node process. */
 function selectedTarget(branch, conditions) {
   if (typeof branch === 'string') return branch;
   for (const [condition, value] of Object.entries(branch ?? {})) {
@@ -38,6 +43,7 @@ function selectedTarget(branch, conditions) {
 
 // Run each assertion inside Node with the consumer directory as its base URL.
 // The inline program lives here so the consumer's files only import the wrapper.
+/** Run assertions inside the consumer so Node uses its installed dependency graph. */
 const probe = String.raw`
 import { readFileSync } from 'node:fs';
 import { createRequire, findPackageJSON } from 'node:module';
@@ -148,12 +154,15 @@ for (const item of cases) {
 console.log(JSON.stringify({ checked, failures, hostFailures }));
 `;
 
+/** Resolve symlinks before comparing the runtime's package path. */
 const root = await realpath(
   resolve(fixture, 'node_modules/@jambudipa/ai-effect'),
 );
+/** Use the installed package's export map as the runtime contract under test. */
 const manifest = JSON.parse(
   await readFile(resolve(root, 'package.json'), 'utf8'),
 );
+/** Test default import and require routes and each supported host condition. */
 const contexts = {
   'node-import': { mode: 'import' },
   'node-require': { mode: 'require' },
@@ -162,6 +171,7 @@ const contexts = {
   'react-server': { mode: 'import', flag: 'react-server' },
 };
 
+/** Collect module resolution, execution, and host failures across all routes. */
 const failures = [];
 for (const [context, { mode, flag }] of Object.entries(contexts)) {
   const cases = [];

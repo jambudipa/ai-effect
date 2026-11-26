@@ -10,10 +10,14 @@ import ts from 'typescript';
 import { openArchives } from './sdk-archives.mjs';
 import { describeSignatures } from './sdk-declaration-graph.mjs';
 
+/** Resolve archive inventory and output paths independently of the shell directory. */
 const project = fileURLToPath(new URL('..', import.meta.url));
+/** Use exact upstream versions and integrity hashes from the repository inventory. */
 const inventoryPath = join(project, '_bmad-output/sdk-upstream-inventory.json');
+/** Write or compare the public export baseline at this path. */
 const surfacePath = join(project, 'docs/sdk-surface.json');
 
+/** Represent Node and bundler export resolution with explicit condition sets. */
 const contexts = {
   'node-import': ['node', 'node-addons', 'import'],
   'node-require': ['node', 'node-addons', 'require', 'module-sync'],
@@ -23,6 +27,7 @@ const contexts = {
   'react-server': ['node', 'import', 'react-server'],
 };
 
+/** Flatten a conditional export map while preserving its order and condition ancestry. */
 function targetLeaves(branch, conditions = []) {
   if (typeof branch === 'string') return [{ conditions, target: branch }];
   assert.ok(
@@ -34,6 +39,7 @@ function targetLeaves(branch, conditions = []) {
   );
 }
 
+/** Return the first leaf whose ancestor conditions all match. */
 function select(leaves, conditions) {
   return leaves.find((leaf) =>
     leaf.conditions.every(
@@ -42,10 +48,12 @@ function select(leaves, conditions) {
   );
 }
 
+/** Recognize ESM, CommonJS, and extension-neutral TypeScript declarations. */
 function isDeclaration(target) {
   return /\.d\.[cm]?ts$/u.test(target);
 }
 
+/** Validate the archive's public paths and reject unreviewed implicit exports. */
 function describePaths({ pin, root, manifest }) {
   if (!manifest.exports) {
     assert.ok(
@@ -115,6 +123,7 @@ function describePaths({ pin, root, manifest }) {
   });
 }
 
+/** Accept names written as identifiers or string literals and reject unfamiliar syntax. */
 function nameOf(node) {
   assert.ok(
     node && (ts.isIdentifier(node) || ts.isStringLiteral(node)),
@@ -123,6 +132,7 @@ function nameOf(node) {
   return node.text;
 }
 
+/** Read explicit ESM exports and require review when the SDK adds a star export. */
 function esmNames(source) {
   const names = new Set();
   for (const statement of source.statements) {
@@ -168,6 +178,7 @@ function esmNames(source) {
   return [...names].sort();
 }
 
+/** Read CommonJS named export markers without executing the SDK module. */
 function cjsNames(source) {
   const names = new Set();
   for (const statement of source.statements) {
@@ -201,6 +212,7 @@ function cjsNames(source) {
   return [...names].sort();
 }
 
+/** Inspect TypeScript exports, callable signatures, and normalized declaration hashes. */
 function describeDeclarations(files) {
   const options = {
     module: ts.ModuleKind.NodeNext,
@@ -315,6 +327,7 @@ function describeDeclarations(files) {
   );
 }
 
+/** Inspect each distinct leaf once and verify the installed declarations match the archive. */
 async function describeTargets(paths) {
   const declarations = new Map();
   const names = new Map();
@@ -378,6 +391,7 @@ async function describeTargets(paths) {
   }));
 }
 
+/** Build a deterministic public surface report from verified SDK archives. */
 async function collect(inventory, archiveDirectory, cache) {
   const archives = await openArchives(
     inventory.packages,
@@ -427,6 +441,7 @@ async function collect(inventory, archiveDirectory, cache) {
   };
 }
 
+/** Fail on path, export, declaration, or condition drift from the committed baseline. */
 function compareBaseline(actual, expected) {
   const expectedPaths = new Map(
     expected.paths.map((path) => [path.upstream, path]),
@@ -484,10 +499,13 @@ function compareBaseline(actual, expected) {
   );
 }
 
+/** Use explicit flags to write the baseline or select a reusable archive cache. */
 const { values } = parseArgs({
   options: { write: { type: 'boolean' }, cache: { type: 'string' } },
 });
+/** Read the pin metadata that determines which archives to verify. */
 const inventory = JSON.parse(await readFile(inventoryPath, 'utf8'));
+/** Extract archives outside the source tree and remove them in the cleanup path. */
 const scratch = await mkdtemp(join(tmpdir(), 'ai-effect-sdk-surface-'));
 try {
   const baseline = await collect(

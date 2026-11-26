@@ -1,17 +1,21 @@
+/** Map native MCP transport callbacks to scoped subscription fields. */
 const transportEvents = {
   onclose: 'onClose',
   onerror: 'onError',
   onmessage: 'onMessage',
 };
+/** Restrict callback projection to the MCP transports that implement the shared event boundary. */
 const transports = new Set([
   '@ai-sdk/mcp Experimental_WebMCPTransport',
   '@ai-sdk/mcp/mcp-stdio Experimental_StdioMCPTransport',
   '@ai-sdk/mcp/mcp-stdio StdioMCPTransport',
 ]);
+/** Record the hooks each middleware implements in the pinned SDK. */
 const middleware = new Map([
   ['@ai-sdk/devtools devToolsMiddleware', ['wrapGenerate', 'wrapStream']],
   ['@ai-sdk/policy-opa opaCapabilityMiddleware', ['transformParams']],
 ]);
+/** List the hooks that the middleware interface permits implementations to omit. */
 const middlewareSlots = [
   'overrideProvider',
   'overrideModelId',
@@ -20,6 +24,7 @@ const middlewareSlots = [
   'wrapGenerate',
   'wrapStream',
 ];
+/** Recognize provider-executed tools whose local descriptor has no execution callback. */
 const providerExecutedTools = new Set([
   '@ai-sdk/groq browserSearch',
   ...[
@@ -32,6 +37,7 @@ const providerExecutedTools = new Set([
     'xSearch',
   ].map((name) => `@ai-sdk/xai ${name}`),
 ]);
+/** Limit overload equivalence to gateway and OpenAI realtime factories. */
 const realtimeFactories = new Set([
   'ai createGateway',
   'ai gateway',
@@ -41,6 +47,7 @@ const realtimeFactories = new Set([
   '@ai-sdk/openai createOpenAI',
   '@ai-sdk/openai openai',
 ]);
+/** Identify builtin tools whose pinned default descriptor exposes an output schema. */
 const builtinDefaults = new Map([
   [
     '@ai-sdk/harness-claude-code claudeCode',
@@ -58,6 +65,7 @@ const builtinDefaults = new Map([
 ]);
 // These slots are inherited by the descriptor type. The pinned defaults
 // configure schemas and string descriptions only.
+/** Recognize operations that appear in the builtin descriptor type but have no default implementation. */
 const absentBuiltinOperations = new Set([
   'contextSchema',
   'description',
@@ -69,6 +77,7 @@ const absentBuiltinOperations = new Set([
   'toModelOutput',
   'inputExamples',
 ]);
+/** Record absent optional slots by pinned operation so the report can distinguish omissions from regressions. */
 const absentSlots = new Map([
   ...[...middleware].map(([operation, implemented]) => [
     operation,
@@ -105,6 +114,7 @@ const absentSlots = new Map([
   ].map((tool) => [tool, ['description', 'needsApproval']]),
 ]);
 
+/** Map individual native members to the equivalent scoped or applied wrapper operation. */
 export function memberProjection(upstream, exported, member) {
   const operation = `${upstream} ${exported}`;
   if (member.path.length !== 1) return;
@@ -142,6 +152,7 @@ export function memberProjection(upstream, exported, member) {
   }
 }
 
+/** Map returned callables to Option, Stream, or scoped Effect adapters where the representation changes. */
 export function resultProjection(upstream, exported, result) {
   if (
     upstream === '@ai-sdk/policy-opa' &&
@@ -176,6 +187,7 @@ export function resultProjection(upstream, exported, result) {
   }
 }
 
+/** Recognize absent native slots only where the pinned operation or descriptor proves their absence. */
 export function nativeMemberUnavailable(upstream, exported, member) {
   const operation = `${upstream} ${exported}`;
   const [group, tool, slot] = member.path;

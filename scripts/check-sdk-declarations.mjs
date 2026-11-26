@@ -11,6 +11,7 @@ import {
   findSdkOperations,
 } from './sdk-declaration-graph.mjs';
 
+/** Select an installed fixture, with optional entry, condition, and operation filters. */
 const { values } = parseArgs({
   options: {
     fixture: { type: 'string' },
@@ -23,15 +24,21 @@ assert.ok(
   values.fixture,
   'Pass --fixture with the external consumer directory',
 );
+/** Resolve the consumer directory from the caller's working directory. */
 const fixture = resolve(values.fixture);
+/** Read the package that the external consumer installed. */
 const packageRoot = join(fixture, 'node_modules/@jambudipa/ai-effect');
+/** Use the archive's export map to verify the compiler's selected branch. */
 const manifest = JSON.parse(
   await readFile(join(packageRoot, 'package.json'), 'utf8'),
 );
+/** Compare declarations with the pinned SDK surface stored in the repository. */
 const baseline = JSON.parse(
   await readFile(new URL('../docs/sdk-surface.json', import.meta.url), 'utf8'),
 );
+/** Recognize the public upstream paths allowed in the wrapper's type graph. */
 const publicSdkPaths = new Set(baseline.paths.map(({ upstream }) => upstream));
+/** Keep the full surface by default and reject an unknown explicit entry. */
 const paths = values.entry
   ? values.entry.map((entry) => {
       const path = baseline.paths.find(({ upstream }) => upstream === entry);
@@ -40,6 +47,7 @@ const paths = values.entry
     })
   : baseline.paths;
 
+/** Model the Node and bundler type-resolution routes tested in the packed package. */
 const contexts = {
   'node-import': { mode: ts.ModuleKind.ESNext },
   'node-require': { mode: ts.ModuleKind.CommonJS },
@@ -49,6 +57,7 @@ const contexts = {
   'react-server': { mode: ts.ModuleKind.ESNext, flags: ['react-server'] },
 };
 
+/** Select the first matching export leaf in the manifest's condition order. */
 function declarationTarget(branch, conditions) {
   if (typeof branch === 'string') return branch;
   for (const [condition, value] of Object.entries(branch ?? {})) {
@@ -59,6 +68,7 @@ function declarationTarget(branch, conditions) {
   return undefined;
 }
 
+/** Verify actual compiler resolution against the expected packed declaration file. */
 function resolveDeclarations(context, options, mode) {
   const host = ts.createCompilerHost(options);
   const conditions = [
@@ -106,6 +116,7 @@ function resolveDeclarations(context, options, mode) {
   return { files, host };
 }
 
+/** Check the selected route with strict declaration diagnostics and inspect adapter types. */
 function inspect(context, { mode, bundler, flags }) {
   const options = {
     module: bundler ? ts.ModuleKind.Preserve : ts.ModuleKind.NodeNext,
@@ -220,7 +231,9 @@ function inspect(context, { mode, bundler, flags }) {
   return failures.map((failure) => `${context}: ${failure}`);
 }
 
+/** Default to every resolver route unless the caller limits the check. */
 const selectedContexts = values.context ?? Object.keys(contexts);
+/** Collect failures across routes so one bad entry does not hide the others. */
 const failures = [];
 for (const context of selectedContexts) {
   assert.ok(Object.hasOwn(contexts, context), `Unknown context ${context}`);

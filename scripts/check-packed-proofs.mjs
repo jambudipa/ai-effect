@@ -15,15 +15,21 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { installConsumer, readConsumerLock } from './consumer-install.mjs';
 
+/** Resolve the tracked fixtures and package metadata relative to this script. */
 const root = fileURLToPath(new URL('..', import.meta.url));
+/** Accept the path to the exact npm archive under test. */
 const archive = process.argv[2];
 if (!archive) throw new Error('Pass the path to the built npm tarball.');
+/** Limit the consumer to the core dependency set when the host tests are unnecessary. */
 const coreOnly = process.argv.includes('--core-only');
+/** Reuse a consumer directory only after its lockfile passes the archive check. */
 const existing = process.env.AI_EFFECT_FIXTURE_DIR;
+/** Keep freshly installed fixtures separate from the repository's dependency tree. */
 const fixture = existing
   ? resolve(existing)
   : mkdtempSync(join(tmpdir(), 'ai-effect-packed-'));
 
+/** Run a check in the installed fixture and raise on a timeout or nonzero exit. */
 function run(cwd, cmd, args, capture = false) {
   const result = spawnSync(cmd, args, {
     cwd,
@@ -36,6 +42,7 @@ function run(cwd, cmd, args, capture = false) {
   return result.stdout;
 }
 
+/** Measure regular files recursively without counting symbolic link targets. */
 function fileBytes(path) {
   return readdirSync(path, { withFileTypes: true }).reduce((total, file) => {
     const child = join(path, file.name);

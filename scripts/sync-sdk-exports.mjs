@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 
+/** Select a complete check or generate exports for the requested source set. */
 const { values } = parseArgs({
   options: { check: { type: 'boolean' }, existing: { type: 'boolean' } },
 });
@@ -11,12 +12,17 @@ assert.ok(
   'The complete gate requires all source entries',
 );
 
+/** Resolve the manifest and inventory relative to the script location. */
 const root = new URL('..', import.meta.url);
+/** Target the wrapper manifest without relying on the shell's working directory. */
 const manifestUrl = new URL('package.json', root);
+/** Preserve the wrapper's own package metadata while regenerating SDK exports. */
 const manifest = JSON.parse(await readFile(manifestUrl, 'utf8'));
+/** Read upstream path and condition data from the verified inventory. */
 const baseline = JSON.parse(
   await readFile(new URL('docs/sdk-surface.json', root), 'utf8'),
 );
+/** Route UI host adapters to the frameworks source tree. */
 const frameworks = new Set([
   'angular',
   'react',
@@ -25,6 +31,7 @@ const frameworks = new Set([
   'svelte',
   'vue',
 ]);
+/** Route named integration packages to the integrations source tree. */
 const integrations = new Set([
   'code-mode',
   'devtools',
@@ -49,6 +56,7 @@ const integrations = new Set([
   'workflow-harness',
 ]);
 
+/** Map each public SDK path to its authored wrapper source entry. */
 function sourceEntry(path) {
   const name = path.wrapper.slice(2);
   const [packageName] = name.split('/');
@@ -64,6 +72,7 @@ function sourceEntry(path) {
   return `providers/${name}`;
 }
 
+/** Produce the declaration and runtime leaves for one ES module entry. */
 function esm(entry) {
   return {
     types: `./dist/${entry}.d.ts`,
@@ -72,6 +81,7 @@ function esm(entry) {
   };
 }
 
+/** Emit a conditional wrapper leaf for each supported upstream import route. */
 function conditions(path, entry) {
   const names = new Set(path.leaves.flatMap(({ conditions }) => conditions));
   if (names.has('react-server')) {
@@ -94,7 +104,9 @@ function conditions(path, entry) {
   return esm(entry);
 }
 
+/** Preserve the wrapper-specific root entry before adding the SDK paths. */
 const exports = { '.': manifest.exports['.'] };
+/** Collect missing sources so a full check fails before it can write an incomplete export map. */
 const missing = [];
 for (const path of baseline.paths) {
   const entry = sourceEntry(path);

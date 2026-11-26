@@ -12,8 +12,10 @@ import {
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 
+/** Run the tar extractor as a subprocess with a Promise result. */
 const run = promisify(execFile);
 
+/** Treat an absent cache entry as a miss and propagate other filesystem errors. */
 async function readCachedArchive(path) {
   try {
     return await readFile(path);
@@ -23,6 +25,7 @@ async function readCachedArchive(path) {
   }
 }
 
+/** Reject cached or downloaded bytes that differ from the npm integrity pin. */
 function verifyArchive(bytes, { name, version, integrity }) {
   const digest = createHash('sha512').update(bytes).digest('base64');
   assert.equal(
@@ -32,6 +35,7 @@ function verifyArchive(bytes, { name, version, integrity }) {
   );
 }
 
+/** Use a digest-keyed cache and publish a verified download with an atomic rename. */
 async function fetchArchive(pin, cache) {
   const digest = Buffer.from(
     pin.integrity.slice('sha512-'.length),
@@ -60,6 +64,7 @@ async function fetchArchive(pin, cache) {
   return bytes;
 }
 
+/** Open pinned npm archives in groups of eight and verify identity after extraction. */
 export async function openArchives(pins, directory, cache) {
   await mkdir(cache, { recursive: true });
   const archives = [];

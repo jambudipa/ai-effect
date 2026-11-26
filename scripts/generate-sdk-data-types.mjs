@@ -7,22 +7,28 @@ import { format } from 'prettier';
 import ts from 'typescript';
 import { findSdkOperations } from './sdk-declaration-graph.mjs';
 
+/** Select write mode or verify that generated data exports are current. */
 const { values } = parseArgs({ options: { check: { type: 'boolean' } } });
+/** Anchor manifest and generated paths in the repository containing this script. */
 const project = fileURLToPath(new URL('..', import.meta.url));
+/** Use pinned declarations to identify stable public type-only exports. */
 const baseline = JSON.parse(
   await readFile(join(project, 'docs/sdk-surface.json'), 'utf8'),
 );
+/** Restrict generation to core, test, and provider protocol paths that share data types. */
 const entries = baseline.paths.filter(({ upstream }) =>
   /^(?:ai(?:\/test)?|@ai-sdk\/(?:provider|provider-utils(?:\/[\w-]+)?))$/u.test(
     upstream,
   ),
 );
 
+/** Map SDK paths to the corresponding internal filenames when the wrapper name differs. */
 const outputs = new Map([
   ['ai', 'core'],
   ['ai/test', 'testing'],
   ['@ai-sdk/provider', 'provider'],
 ]);
+/** Keep types whose callback or Effect conventions change in the authored adapter. */
 const adaptations = new Map([
   [
     'ai',
@@ -39,6 +45,7 @@ const adaptations = new Map([
   ],
 ]);
 
+/** Resolve pinned declaration graphs using Node ESM semantics and the local type environment. */
 const options = {
   module: ts.ModuleKind.NodeNext,
   target: ts.ScriptTarget.ES2022,
@@ -47,6 +54,7 @@ const options = {
   types: ['node'],
 };
 
+/** Read the selected ESM declaration path from each exact installed SDK package. */
 const files = entries.map(({ upstream, resolvers }) => {
   const packageName = upstream.match(/^(@[^/]+\/[^/]+|[^/]+)/u)[0];
   return join(
@@ -56,9 +64,12 @@ const files = entries.map(({ upstream, resolvers }) => {
     resolvers['node-import'].types,
   );
 });
+/** Load one type graph so aliases and operations resolve consistently across entries. */
 const program = ts.createProgram(files, options);
+/** Classify exported types with the same checker used to inspect SDK operations. */
 const checker = program.getTypeChecker();
 
+/** Select public types with no runtime value or nested operation and emit them in stable order. */
 function dataNames(file, entry) {
   const source = program.getSourceFile(file);
   assert.ok(source, `Missing pinned SDK declarations for ${entry}`);
@@ -82,6 +93,7 @@ function dataNames(file, entry) {
     .sort();
 }
 
+/** Report the total number of type exports checked across entry points. */
 let total = 0;
 for (const [index, { upstream }] of entries.entries()) {
   const names = dataNames(files[index], upstream);

@@ -1,17 +1,22 @@
 import ts from 'typescript';
 
+/** Recognize the last dependency boundary in nested installations. */
 const dependencyDirectory = '/node_modules/';
+/** Treat declarations shipped inside the wrapper as a separate origin. */
 const wrapperDirectory = '@jambudipa/ai-effect/';
 
+/** Normalize separators before comparing compiler source paths across platforms. */
 function sourcePath(declaration) {
   return declaration.getSourceFile().fileName.replaceAll('\\', '/');
 }
 
+/** Identify the innermost installed dependency that owns a declaration. */
 function dependencyPath(path) {
   const start = path.lastIndexOf(dependencyDirectory);
   return start < 0 ? '' : path.slice(start + dependencyDirectory.length);
 }
 
+/** Include copied upstream contracts and exclude host-owned just-bash shapes. */
 function hasSdkOrigin(declaration) {
   const path = sourcePath(declaration);
   if (path.includes('/harness-contracts/just-bash/')) return false;
@@ -27,6 +32,7 @@ function hasSdkOrigin(declaration) {
   );
 }
 
+/** Recognize the installed wrapper's declarations except host-owned just-bash types. */
 function hasWrapperOrigin(declaration) {
   const path = sourcePath(declaration);
   return (
@@ -35,6 +41,7 @@ function hasWrapperOrigin(declaration) {
   );
 }
 
+/** Preserve type-only export semantics even when the aliased symbol has a value. */
 function isTypeOnly(symbol) {
   return symbol.declarations?.some(
     (node) =>
@@ -43,6 +50,7 @@ function isTypeOnly(symbol) {
   );
 }
 
+/** Traverse both alias arguments and the compiler's resolved reference arguments. */
 function typeArguments(checker, type) {
   const args = type.aliasTypeArguments ?? [];
   if (
@@ -64,6 +72,7 @@ export function exportedValueType(checker, exported) {
   return checker.getTypeOfSymbol(symbol);
 }
 
+/** Record call and construct signature counts and detect a lone zero-argument constructor. */
 export function describeSignatures(checker, exported) {
   const type = exportedValueType(checker, exported);
   const constructors = type?.getConstructSignatures() ?? [];
@@ -75,6 +84,7 @@ export function describeSignatures(checker, exported) {
   };
 }
 
+/** Recognize the two supported factory projections for a native constructor. */
 export function describeConstructorAdapter(checker, exported) {
   const type = exportedValueType(checker, exported);
   const factory = type?.getProperty('make');
@@ -86,8 +96,10 @@ export function describeConstructorAdapter(checker, exported) {
   };
 }
 
+/** Locate the deserializer input even when the compiler assigns the symbol a numeric suffix. */
 const workflowDeserializeInput =
   /^[^.]+\.__@WORKFLOW_DESERIALIZE@\d+\(input\)(?=$|\.)/u;
+/** Allow caller-owned callbacks only along the listed paths of a restored workflow config. */
 const workflowConfigurationCallbacks = new Set([
   'config._internal.currentDate',
   'config.convertUsage',
@@ -105,12 +117,14 @@ const workflowConfigurationCallbacks = new Set([
   'config.webSocket',
 ]);
 
+/** Identify callback paths relative to the deserializer's input parameter. */
 function isWorkflowCallback(path, input) {
   return (
     input && workflowConfigurationCallbacks.has(path.slice(input[0].length + 1))
   );
 }
 
+/** Walk public type graphs for native SDK calls and distinguish caller-owned workflow callbacks. */
 export function findSdkOperations(
   checker,
   publicSymbols,

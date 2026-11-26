@@ -1,5 +1,6 @@
 import ts from 'typescript';
 
+/** Project a two-argument Zod union onto the older type shape while keeping the discriminator literal. */
 export function zodDiscriminatorEdit(node, source) {
   if (
     !ts.isTypeReferenceNode(node) ||

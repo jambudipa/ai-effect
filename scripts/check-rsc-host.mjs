@@ -6,15 +6,21 @@ import { join, resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { installConsumer, readConsumerLock } from './consumer-install.mjs';
 
+/** Accept the archive to install in the independent Next.js application. */
 const tarball = process.argv[2];
 if (!tarball) throw new Error('Pass the built npm tarball.');
+/** Use the caller's fixture directory only when its lockfile matches the archive. */
 const existing = process.env.AI_EFFECT_FIXTURE_DIR;
+/** Keep the Next.js build and installed hosts away from the repository dependencies. */
 const fixture = existing
   ? resolve(existing)
   : mkdtempSync(join(tmpdir(), 'ai-effect-rsc-'));
+/** Start the Next.js binary installed by the fixture's own dependency graph. */
 const next = join(fixture, 'node_modules/next/dist/bin/next');
+/** Make the fixture independent of the Next.js telemetry service. */
 const env = { ...process.env, NEXT_TELEMETRY_DISABLED: '1' };
 
+/** Run a bounded build from the fixture directory and propagate child errors. */
 function run(command, args) {
   const result = spawnSync(command, args, {
     cwd: fixture,
@@ -27,6 +33,7 @@ function run(command, args) {
     throw new Error(`${command} ${args.join(' ')} failed.`);
 }
 
+/** Wait up to 30 seconds for the loopback server or fail when the process exits. */
 async function responseFrom(port, child) {
   const limit = Date.now() + 30_000;
   while (Date.now() < limit && child.exitCode === null) {
@@ -41,6 +48,7 @@ async function responseFrom(port, child) {
   throw new Error('The Next.js fixture did not respond.');
 }
 
+/** Retain the server process so the cleanup can stop it after success or failure. */
 let child;
 try {
   cpSync(new URL('../test/fixtures/rsc-host', import.meta.url), fixture, {

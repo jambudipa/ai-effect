@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
+/** Read the tarball's manifest and compute the npm integrity record from its raw bytes. */
 function packedDependency(archive) {
   const path = resolve(archive);
   const manifest = JSON.parse(
@@ -16,6 +17,7 @@ function packedDependency(archive) {
   return { manifest, resolved: `file:${path}`, integrity };
 }
 
+/** Verify that the installed consumer resolves the exact wrapper archive and pinned SDK dependencies. */
 export function readConsumerLock(fixture, archive) {
   const { manifest, integrity } = packedDependency(archive);
   const lock = JSON.parse(
@@ -61,6 +63,7 @@ export function readConsumerLock(fixture, archive) {
   return lock;
 }
 
+/** Create an isolated lockfile-backed consumer, install it without lifecycle scripts, and verify the result. */
 export function installConsumer(fixture, archive, dependencies) {
   const { manifest, resolved, integrity } = packedDependency(archive);
   const root = {

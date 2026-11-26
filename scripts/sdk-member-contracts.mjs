@@ -1,14 +1,19 @@
 import ts from 'typescript';
 
+/** Exclude private and protected TypeScript declarations from the public contract. */
 const hidden = ts.ModifierFlags.Private | ts.ModifierFlags.Protected;
+/** Enter only type forms that can expose inspectable object members. */
 const traversableFlags =
   ts.TypeFlags.Object | ts.TypeFlags.Intersection | ts.TypeFlags.TypeParameter;
+/** Locate the last package boundary in installed declaration paths. */
 const packages = '/node_modules/';
 
+/** Normalize singleton and union types to the same branch iteration shape. */
 function alternatives(type) {
   return type.isUnion() ? type.types : [type];
 }
 
+/** Unwrap promised results only when a branch exposes a `then` member. */
 function awaited(checker, type) {
   if (!alternatives(type).some((branch) => branch.getProperty('then'))) {
     return type;
@@ -16,6 +21,7 @@ function awaited(checker, type) {
   return checker.getAwaitedType(type) ?? type;
 }
 
+/** Reject modifiers and JavaScript private names that are inaccessible to consumers. */
 function publicDeclaration(node) {
   return (
     !(ts.getCombinedModifierFlags(node) & hidden) &&
@@ -23,6 +29,7 @@ function publicDeclaration(node) {
   );
 }
 
+/** Count signatures without a declaration and filter inaccessible declared signatures. */
 function publicSignatures(signatures) {
   return signatures.filter((signature) => {
     const declaration = signature.getDeclaration();
@@ -30,6 +37,7 @@ function publicSignatures(signatures) {
   });
 }
 
+/** Use the highest overload count across branches and identify a single argument-free call. */
 function signatureCounts(type) {
   let calls = 0;
   let constructors = 0;
@@ -52,6 +60,7 @@ function signatureCounts(type) {
   };
 }
 
+/** Recover the source spelling of a computed symbol member. */
 function memberName(member, declarations) {
   if (!member.name.startsWith('__@')) return member.name;
   const computed = declarations.find(
@@ -60,6 +69,7 @@ function memberName(member, declarations) {
   return computed?.name.getText();
 }
 
+/** Check whether a class or interface obtains the member from its ancestors. */
 function inherits(type, declarations) {
   const owners = type.getSymbol()?.getDeclarations() ?? [];
   const declared = owners.some(
@@ -72,6 +82,7 @@ function inherits(type, declarations) {
   );
 }
 
+/** Attribute a declaration to its installed package or the TypeScript standard library. */
 function declarationOwner(node) {
   const source = node.getSourceFile();
   if (source.hasNoDefaultLib) return 'typescript-lib';
@@ -86,10 +97,12 @@ function declarationOwner(node) {
   return name.startsWith('@') ? `${name}/${scoped}` : name;
 }
 
+/** Form a stable union of the packages that contribute a member. */
 function combineOwners(previous, next) {
   return [...new Set([...previous, ...next])].sort();
 }
 
+/** Keep recursive inspection within the wrapper and SDK to avoid expanding host libraries. */
 function canRecurse(type) {
   const declarations = type.getSymbol()?.getDeclarations() ?? [];
   return declarations.every((node) => {
@@ -103,6 +116,7 @@ function canRecurse(type) {
   });
 }
 
+/** Merge evidence across union branches and mark members missing from some branches optional. */
 function mergeAlternatives(branches) {
   const result = new Map();
   for (const branch of branches) {
