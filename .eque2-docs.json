@@ -1,0 +1,12 @@
+{
+  "diataxis": {
+    "commit": "76d15143addba58c57306d8681225e45c6b4a3d8",
+    "root": "docs/user-guide"
+  },
+  "inline": {
+    "commit": "76d15143addba58c57306d8681225e45c6b4a3d8"
+  },
+  "agent": {
+    "commit": "76d15143addba58c57306d8681225e45c6b4a3d8"
+  }
+}
