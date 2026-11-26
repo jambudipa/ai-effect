@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -17,6 +18,7 @@ import { installConsumer, readConsumerLock } from './consumer-install.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const archive = process.argv[2];
 if (!archive) throw new Error('Pass the path to the built npm tarball.');
+const coreOnly = process.argv.includes('--core-only');
 const existing = process.env.AI_EFFECT_FIXTURE_DIR;
 const fixture = existing
   ? resolve(existing)
@@ -58,10 +60,12 @@ try {
   ];
   const dependencies = {
     effect: metadata.devDependencies.effect,
-    ...Object.fromEntries(
-      hostPackages.map((name) => [name, metadata.devDependencies[name]]),
-    ),
-    ...(process.env.AI_EFFECT_ZOD ? { zod: process.env.AI_EFFECT_ZOD } : {}),
+    ...(!coreOnly && {
+      ...Object.fromEntries(
+        hostPackages.map((name) => [name, metadata.devDependencies[name]]),
+      ),
+      ...(process.env.AI_EFFECT_ZOD ? { zod: process.env.AI_EFFECT_ZOD } : {}),
+    }),
   };
   const { durationMs = null, lock } = existing
     ? { lock: readConsumerLock(fixture, archive) }
@@ -85,6 +89,12 @@ try {
       .map(([path, entry]) => [path, entry.version]),
   );
   const scope = join(fixture, 'node_modules');
+  if (coreOnly) {
+    assert.deepEqual(Object.keys(lock.packages[''].dependencies).sort(), [
+      '@jambudipa/ai-effect',
+      'effect',
+    ]);
+  }
   console.log(
     JSON.stringify(
       {
@@ -100,25 +110,28 @@ try {
       2,
     ),
   );
-  const tsc = join(scope, 'typescript/bin/tsc');
-  const vite = join(scope, 'vite/bin/vite.js');
-  run(fixture, process.execPath, [tsc, '-p', 'tsconfig.json']);
-  run(fixture, process.execPath, ['.compiled/core.mjs']);
-  run(fixture, process.execPath, ['legacy.cjs']);
-  run(fixture, process.execPath, [
-    join(scope, 'vitest/vitest.mjs'),
-    'run',
-    '--config',
-    'legacy.vitest.config.mjs',
-  ]);
-  if (!existsSync(vite))
-    throw new Error('Vite did not install for the Svelte fixture.');
-  run(fixture, process.execPath, [vite, 'build']);
-  run(fixture, process.execPath, ['--conditions=svelte', 'run-host.mjs']);
-  const browserBytes = gzipSync(
-    readFileSync(join(fixture, 'dist/host.js')),
-  ).length;
-  console.log(JSON.stringify({ browserBytes }));
+  run(fixture, process.execPath, ['core-isolation.mjs']);
+  if (!coreOnly) {
+    const tsc = join(scope, 'typescript/bin/tsc');
+    const vite = join(scope, 'vite/bin/vite.js');
+    run(fixture, process.execPath, [tsc, '-p', 'tsconfig.json']);
+    run(fixture, process.execPath, ['.compiled/core.mjs']);
+    run(fixture, process.execPath, ['legacy.cjs']);
+    run(fixture, process.execPath, [
+      join(scope, 'vitest/vitest.mjs'),
+      'run',
+      '--config',
+      'legacy.vitest.config.mjs',
+    ]);
+    if (!existsSync(vite))
+      throw new Error('Vite did not install for the Svelte fixture.');
+    run(fixture, process.execPath, [vite, 'build']);
+    run(fixture, process.execPath, ['--conditions=svelte', 'run-host.mjs']);
+    const browserBytes = gzipSync(
+      readFileSync(join(fixture, 'dist/host.js')),
+    ).length;
+    console.log(JSON.stringify({ browserBytes }));
+  }
 } finally {
   if (existing || process.env.AI_EFFECT_KEEP_FIXTURE) console.log(fixture);
   else rmSync(fixture, { recursive: true, force: true });
