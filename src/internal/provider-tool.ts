@@ -6,9 +6,12 @@ import type {
   Tool,
 } from '@ai-sdk/provider-utils';
 import { Effect, type Stream } from 'effect';
-import { wrapSandbox } from '../integrations/internal/sandbox.js';
+import {
+  unwrapSandbox,
+  wrapSandbox,
+} from '../integrations/internal/sandbox.js';
 import type { SandboxSession } from '../integrations/internal/sandbox.js';
-import { runSync, sdkError } from './operation.js';
+import { runRequest, runSync, sdkError } from './operation.js';
 import type { openOperation } from './operation.js';
 import { streamTool } from './tool-stream.js';
 
@@ -291,6 +294,7 @@ export const adaptProviderTool =
   <Args extends unknown[], Result extends NativeProviderTool>(
     operation: string,
     factory: (...args: Args) => Result,
+    exposesBashDefault = false,
   ): AdaptedTool<Args, Result> =>
   <Provided extends AdaptArguments<Args, unknown>>(...args: Provided) =>
     runSync(operation, (): AdaptedDescriptor<Args, Result, Provided> => {
@@ -312,6 +316,9 @@ export const adaptProviderTool =
           ? { supportsDeferredResults }
           : {}),
         ...retainedCallbacks(preview, args),
+        ...(exposesBashDefault
+          ? bashDefaults(operation, preview, args[0])
+          : {}),
       };
       providerTools.set(handle, (owner) =>
         factory(
@@ -332,36 +339,101 @@ type DefaultBashOutput = Pick<
   'exitCode' | 'stdout' | 'stderr'
 >;
 type BashCallbacks<Output, R> = AdaptOptions<
-  Pick<Tool<BashInput, Output, {}>, Exclude<CallbackName, 'execute'>>,
+  Pick<
+    Tool<BashInput, Output, {}>,
+    'needsApproval' | 'onInputStart' | 'onInputDelta' | 'onInputAvailable'
+  >,
   R
+> & {
+  readonly toModelOutput?: (options: {
+    toolCallId: string;
+    input: BashInput;
+    output: NoInfer<Output>;
+  }) => Effect.Effect<BashModelOutput, unknown, R>;
+};
+type BashModelOutput = Awaited<
+  ReturnType<NonNullable<Tool<BashInput, unknown, {}>['toModelOutput']>>
 >;
 type AdaptSandboxArguments<Args extends unknown[]> = {
   [Key in keyof Args]: AdaptSandboxArgument<Args[Key]>;
 };
-type BashExecution<R, Output> = (
-  ...args: AdaptSandboxArguments<BashExecutionArgs>
-) => Effect.Effect<Output | AsyncIterable<Output>, unknown, R>;
 type BashExecutionArgs = Parameters<
   NonNullable<Tool<BashInput, unknown, {}>['execute']>
 >;
 
+type BashExecution<Result> = (
+  ...args: AdaptSandboxArguments<BashExecutionArgs>
+) => Result;
+type BashDefaultExecution = BashExecution<
+  Effect.Effect<DefaultBashOutput, import('./operation.js').AiSdkError>
+>;
+
+const bashDefaults = (
+  operation: string,
+  preview: NativeProviderTool,
+  options: unknown,
+): { readonly execute?: BashDefaultExecution } => {
+  const selected =
+    options && typeof options === 'object' && 'execute' in options
+      ? options.execute
+      : void 0;
+  const native = preview.execute;
+  if (selected !== void 0 || !native) return {};
+  return {
+    execute: (input, { experimental_sandbox, ...options }) =>
+      runRequest(`${operation}.execute`, options, (abortSignal) => {
+        const sandbox =
+          experimental_sandbox && unwrapSandbox(experimental_sandbox);
+        // Both pinned native Bash defaults return a promise.
+        return native(input, {
+          ...options,
+          abortSignal,
+          ...(sandbox ? { experimental_sandbox: sandbox } : {}),
+        }) as PromiseLike<DefaultBashOutput>;
+      }),
+  };
+};
+
+type BashHandle<Output, R> = ProviderToolHandle<BashInput, Output, R> &
+  BashCallbacks<Output, R>;
+
 interface AdaptedBashTool {
+  <Output, E, ExecutionServices, R = never>(
+    options: {
+      execute: BashExecution<Stream.Stream<Output, E, ExecutionServices>>;
+    } & BashCallbacks<Output, R>,
+  ): Effect.Effect<
+    BashHandle<Output, ExecutionServices | R> & {
+      readonly execute: BashExecution<
+        Stream.Stream<Output, E, ExecutionServices>
+      >;
+    },
+    import('./operation.js').AiSdkError
+  >;
+  <Output, E, ExecutionServices, R = never>(
+    options: {
+      execute: BashExecution<Effect.Effect<Output, E, ExecutionServices>>;
+    } & BashCallbacks<Output, R>,
+  ): Effect.Effect<
+    BashHandle<Output, ExecutionServices | R> & {
+      readonly execute: BashExecution<
+        Effect.Effect<Output, E, ExecutionServices>
+      >;
+    },
+    import('./operation.js').AiSdkError
+  >;
   <R = never>(
     options?: BashCallbacks<DefaultBashOutput, R> & { execute?: undefined },
   ): Effect.Effect<
-    ProviderToolHandle<BashInput, DefaultBashOutput, R>,
+    BashHandle<DefaultBashOutput, R> & {
+      readonly execute: BashDefaultExecution;
+    },
     import('./operation.js').AiSdkError
   >;
   <Output = never, R = never>(
     options: BashCallbacks<Output, R> & { execute: null },
   ): Effect.Effect<
-    ProviderToolHandle<BashInput, Output, R>,
-    import('./operation.js').AiSdkError
-  >;
-  <Output, R = never>(
-    options: BashCallbacks<Output, R> & { execute: BashExecution<R, Output> },
-  ): Effect.Effect<
-    ProviderToolHandle<BashInput, Output, R>,
+    BashHandle<Output, R> & { readonly execute?: never },
     import('./operation.js').AiSdkError
   >;
 }
@@ -387,6 +459,10 @@ export const wrapProviderTools = <Tools extends ToolFactories>(
   Object.fromEntries(
     Object.entries(tools).map(([key, factory]) => [
       key,
-      adaptProviderTool(`${name}.${key}`, factory),
+      adaptProviderTool(
+        `${name}.${key}`,
+        factory,
+        key === 'bash_20241022' || key === 'bash_20250124',
+      ),
     ]),
   ) as AdaptedTools<Tools>;
