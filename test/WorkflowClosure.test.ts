@@ -30,22 +30,33 @@ describe('legacy workflow integration boundaries', () => {
   it.effect('preserves a Swarm agent, system context, and step callback', () =>
     Effect.gen(function* () {
       let stepText = '';
+      const system = (context: string) => `Use ${context}`;
       const model: SwarmLanguageModel<RunLabel> = {
         ...modelMetadata,
         supportsUrl: () => true,
-        doGenerate: () =>
-          Effect.map(RunLabel, (label) => ({
-            text: label,
-            finishReason: 'stop' as const,
-            usage: { promptTokens: 1, completionTokens: 1 },
-            rawCall,
-          })),
+        doGenerate: ({ prompt }) =>
+          Effect.map(RunLabel, (label) => {
+            expect(prompt).toContainEqual({
+              role: 'system',
+              content: 'Use label',
+            });
+            return {
+              text: label,
+              finishReason: 'stop' as const,
+              usage: { promptTokens: 1, completionTokens: 1 },
+              rawCall,
+            };
+          }),
         doStream: () => Effect.succeed({ stream: Stream.empty, rawCall }),
       };
       const agent = yield* Agent.make<string, RunLabel>({
         name: 'fixture',
-        system: (context) => `Use ${context}`,
+        system,
       });
+      expect(agent.system).toBe(system);
+      expect(typeof agent.system === 'function' && agent.system('direct')).toBe(
+        'Use direct',
+      );
       const result = yield* runSwarm({
         agent,
         model,
