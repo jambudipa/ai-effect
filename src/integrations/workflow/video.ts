@@ -11,6 +11,7 @@ import {
 
 export type { WorkflowGenerateVideoResult } from '@ai-sdk/workflow/video';
 
+/** Select a workflow model ID or a video model created by an ai-effect provider. */
 export type WorkflowGenerateVideoOptions = Omit<NativeOptions, 'model'> & {
   readonly model: Extract<NativeOptions['model'], string> | VideoModelV4;
 };

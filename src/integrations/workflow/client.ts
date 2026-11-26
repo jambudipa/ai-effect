@@ -14,6 +14,7 @@ export type {
   SendMessagesOptions,
 } from '@ai-sdk/workflow/client';
 
+/** These native callbacks run through the captured Effect operation context. */
 const callbacks = [
   'onChatSendMessage',
   'onChatEnd',
@@ -21,6 +22,7 @@ const callbacks = [
   'prepareReconnectToStreamRequest',
 ] as const;
 
+/** Workflow request options with Effect callbacks for request preparation and completion. */
 export type WorkflowChatTransportOptions<
   M extends UIMessage = UIMessage,
   E = never,
@@ -55,5 +57,6 @@ export const WorkflowChatTransport = {
     }),
 };
 
+/** Effect chat transport handle returned by `make` after it captures the callback scope. */
 export type WorkflowChatTransport<M extends UIMessage = UIMessage> =
   Effect.Success<ReturnType<typeof WorkflowChatTransport.make<M>>>;
