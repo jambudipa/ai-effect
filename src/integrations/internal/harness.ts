@@ -23,10 +23,12 @@ import { type SandboxSession, unwrapSandbox } from './sandbox.js';
 import { wrapSchema } from './schema.js';
 import { wrapTools } from './sdk-tool.js';
 
+/** Harness diagnostics configuration with a synchronous reporting hook. */
 export type HarnessV1Observability = Omit<NativeObservability, 'report'> & {
   readonly report?: (event: HarnessV1Diagnostic) => void;
 };
 
+/** Supply a registered sandbox session for native harness startup or resumption. */
 export type HarnessV1StartOptions = Omit<
   NativeStartOptions,
   'sandboxSession' | 'observability'
@@ -35,20 +37,24 @@ export type HarnessV1StartOptions = Omit<
   readonly observability?: HarnessV1Observability;
 };
 
+/** Consume a native turn event in the caller's Effect context. The adapter drains events in order. */
 type EffectEmit<E, R> = {
   readonly emit: (event: HarnessV1StreamPart) => Effect.Effect<void, E, R>;
 };
+/** Begin a prompt turn with a sequential Effect event consumer. */
 export type HarnessV1PromptTurnOptions<E = never, R = never> = Omit<
   NativePromptOptions,
   'emit'
 > &
   EffectEmit<E, R>;
+/** Continue a suspended turn with a new sequential Effect event consumer. */
 export type HarnessV1ContinueTurnOptions<E = never, R = never> = Omit<
   NativeContinueTurnOptions,
   'emit'
 > &
   EffectEmit<E, R>;
 
+/** Connect the SDK's synchronous event callback to a scoped queue drained by the supplied Effect. */
 const bindTurn =
   <O extends { abortSignal?: AbortSignal }>(
     name: string,
@@ -123,10 +129,12 @@ const bindTurn =
       };
     });
 
+/** Complete a turn only after the SDK finishes and the event consumer drains its queue. */
 export type HarnessV1PromptControl<E = never> = Effect.Success<
   ReturnType<ReturnType<typeof bindTurn<NativePromptOptions>>>
 > & { readonly done: Effect.Effect<void, AiSdkError | E> };
 
+/** Keep the native session and release finalizer coordinated through one atomic closure flag. */
 const wrapSession = (native: NativeSession, closed: Ref.Ref<boolean>) => {
   const readHistory = native.doReadHistory?.bind(native);
   const finish = <A>(name: string, end: () => PromiseLike<A>) =>
@@ -168,10 +176,13 @@ const wrapSession = (native: NativeSession, closed: Ref.Ref<boolean>) => {
   };
 };
 
+/** Scoped session handle. A successful detach, stop, or destroy closes the session. */
 export type HarnessV1Session = ReturnType<typeof wrapSession>;
 
+/** Keep each native harness reachable only through its registered wrapper identity. */
 const harnesses = new WeakMap<object, NativeHarness>();
 
+/** Preserve the adapter's exact tool keys and metadata across the harness wrapper. */
 type HarnessData<T extends Record<string, object>> = Omit<
   NativeHarness,
   'builtinTools'
@@ -179,6 +190,7 @@ type HarnessData<T extends Record<string, object>> = Omit<
   readonly builtinTools: T;
 };
 
+/** Wrap native harness capabilities and acquire scoped sessions that are destroyed unless explicitly closed first. */
 export const wrapHarness = <T extends Record<string, object>>(
   native: HarnessData<T>,
 ) => {
@@ -243,16 +255,20 @@ export const wrapHarness = <T extends Record<string, object>>(
   return harness;
 };
 
+/** Effect harness handle with provider capabilities and the adapter's built-in tool keys. */
 export type HarnessV1<T extends Record<string, object> = ToolSet> = ReturnType<
   typeof wrapHarness<T>
 >;
 
+/** Recover a registered harness for an SDK call that requires native identity. */
 export const unwrapHarness = (value: object) => harnesses.get(value);
 
+/** Resolve forwarded credentials within the caller's Effect callback context. */
 export type HarnessV1CredentialForwarding<R = never, E = never> = (
   options: Parameters<NativeCredentialForwarding>[0],
 ) => Effect.Effect<string, E, R>;
 
+/** Preserve adapter settings and run credential forwarding through the operation owner. */
 export type WithCredentialForwarding<Settings, R = never, E = never> = Omit<
   Settings,
   'credentialForwarding'
@@ -260,6 +276,7 @@ export type WithCredentialForwarding<Settings, R = never, E = never> = Omit<
   readonly credentialForwarding?: HarnessV1CredentialForwarding<R, E>;
 };
 
+/** Construct a native harness with scoped credential callbacks, then register its Effect wrapper. */
 export const makeWithCredentialForwarding = <
   Settings extends {
     readonly credentialForwarding?: NativeCredentialForwarding;

@@ -1,6 +1,7 @@
 import { Redacted } from 'effect';
 import { AiSdkError, runSync, sdkError } from '../../internal/operation.js';
 
+/** Preserve the SDK constructor's argument list and the corresponding native error class. */
 type NativeError<Args extends unknown[], E extends Error> = new (
   ...args: Args
 ) => E;

@@ -11,8 +11,10 @@ import type { Scope as EffectScope } from 'effect/Scope';
 import { runRequest } from '../../internal/operation.js';
 import { ownStream } from './stream.js';
 
+/** Allows caller cancellation to be combined with interruption of the Effect fiber. */
 export type WithAbort = { readonly abortSignal?: AbortSignal };
 
+/** Merge the caller's signal with fiber cancellation before invoking a native sandbox request. */
 export const invoke =
   <Args extends WithAbort, A>(
     operation: string,
@@ -23,6 +25,7 @@ export const invoke =
       native({ ...args, abortSignal }),
     );
 
+/** Attach resource cleanup to the acquisition scope. Log tagged SDK failures during release. */
 export const scopedResource = <A>(
   operation: string,
   options: WithAbort,
@@ -40,8 +43,10 @@ export const scopedResource = <A>(
     { interruptible: true },
   );
 
+/** Track native process identity without retaining dead wrapper instances. */
 const processes = new WeakMap<object, NativeProcess>();
 
+/** Keep both native output streams scoped and expose standard input only for writable processes. */
 const wrapProcess = (native: NativeProcess | NativeWritableProcess) => {
   const process = {
     pid: native.pid,
@@ -55,11 +60,15 @@ const wrapProcess = (native: NativeProcess | NativeWritableProcess) => {
   return process;
 };
 
+/** Scoped process operations and byte streams shared by both spawn modes. */
 export type Process = ReturnType<typeof wrapProcess>;
+/** Add the native input stream for callers that request a writable process. */
 type WritableProcess = Process & { readonly stdin: WritableStream<Uint8Array> };
 
+/** Look up a native process only when it originated from this adapter. */
 export const unwrapProcess = (process: Process) => processes.get(process);
 
+/** Preserve the native spawn modes while registering process termination as scope cleanup. */
 const wrapSpawn = (native: NativeSandbox) => {
   function spawn(
     options: SpawnOptionsWithStdin,
@@ -96,7 +105,9 @@ const wrapSpawn = (native: NativeSandbox) => {
   return spawn;
 };
 
+/** Resolve restricted and network session wrappers to their respective native sessions. */
 const sessions = new WeakMap<SandboxSession, NativeSandbox>();
+/** Register the native counterpart of an already constructed sandbox wrapper. */
 export const registerSandbox = (
   sandbox: SandboxSession,
   native: NativeSandbox,
@@ -104,8 +115,10 @@ export const registerSandbox = (
   sessions.set(sandbox, native);
 };
 
+/** Return the native session for a registered handle. An unrelated object has no registration. */
 export const unwrapSandbox = (sandbox: SandboxSession) => sessions.get(sandbox);
 
+/** Adapt sandbox file and process operations while retaining the original scope and abort semantics. */
 export const wrapSandbox = (native: NativeSandbox) => {
   const sandbox = {
     description: native.description,
@@ -150,4 +163,5 @@ export const wrapSandbox = (native: NativeSandbox) => {
   return sandbox;
 };
 
+/** Wrapped file and process operations available on both basic and network sandbox sessions. */
 export type SandboxSession = ReturnType<typeof wrapSandbox>;

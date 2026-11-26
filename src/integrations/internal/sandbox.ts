@@ -27,6 +27,7 @@ export {
   wrapSandbox,
 } from './sandbox-base.js';
 
+/** Add native network capabilities to the basic session and register the combined handle. */
 export const wrapNetworkSandbox = (native: NativeNetworkSandbox) => {
   const getPortEndpoint = (
     options: Parameters<NativeNetworkSandbox['getPortEndpoint']>[0],
@@ -84,15 +85,19 @@ export const wrapNetworkSandbox = (native: NativeNetworkSandbox) => {
   return sandbox;
 };
 
+/** Effect session handle including network endpoints and explicit stop and destroy operations. */
 export type NetworkSandboxSession = ReturnType<typeof wrapNetworkSandbox>;
 
+/** Settings accepted by the SDK when creating a new session, after optionality is resolved. */
 type NativeProviderCreateOptions = NonNullable<
   Parameters<NativeProvider['createSession']>[0]
 >;
+/** Settings accepted when reconnecting to a session if the native provider supports resumption. */
 type NativeProviderResumeOptions = Parameters<
   NonNullable<NativeProvider['resumeSession']>
 >[0];
 
+/** Creation settings with an Effect bootstrap callback that receives the initial session and signal. */
 export type SandboxProviderCreateOptions<R = never, E = never> = Omit<
   NativeProviderCreateOptions,
   'onFirstCreate'
@@ -103,11 +108,14 @@ export type SandboxProviderCreateOptions<R = never, E = never> = Omit<
   ) => Effect.Effect<void, E, R>;
 };
 
+/** Keep native sandbox providers available to callers that require SDK identity. */
 const providers = new WeakMap<object, NativeProvider>();
 
+/** Resolve a wrapped provider before passing it to a native harness or SDK operation. */
 export const unwrapSandboxProvider = (provider: object) =>
   providers.get(provider);
 
+/** Scope new sessions to destruction and resumed sessions to stopping, preserving native capability detection. */
 export const wrapSandboxProvider = (native: NativeProvider) => {
   const resumeSession = native.resumeSession?.bind(native);
   const provider = {
@@ -155,6 +163,7 @@ export const wrapSandboxProvider = (native: NativeProvider) => {
   return provider;
 };
 
+/** Named preparation routine for initializing a sandbox through Effect operations. */
 export type SandboxTemplate<R = never, E = never> = {
   readonly identity: string;
   readonly prepare: (
@@ -162,8 +171,10 @@ export type SandboxTemplate<R = never, E = never> = {
   ) => Effect.Effect<void, E, R>;
 };
 
+/** Operation context that owns the native template callback and captures its services. */
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
+/** Wrap the session before running preparation in the scope that supplied the template. */
 export const bindTemplate = <R, E>(
   template: SandboxTemplate<R, E>,
   owner: Owner<R>,

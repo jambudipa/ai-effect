@@ -12,11 +12,13 @@ import { unwrapOutput, wrapOutput } from '../../internal/output.js';
 import type { OutputSpecification } from '../../internal/output.js';
 import { runValue } from './operation.js';
 
+/** Lifecycle observations share a callback shape. Durable context and execution wrappers have separate contracts. */
 type Hooks = Exclude<
   keyof NativeTelemetry,
   'experimental_durable' | 'executeTool' | 'executeLanguageModelCall'
 >;
 
+/** Enumerate lifecycle hooks that can use the shared event adapter. */
 const hooks: ReadonlyArray<Hooks> = [
   'onStart',
   'onStepStart',
@@ -52,11 +54,14 @@ const hooks: ReadonlyArray<Hooks> = [
   'onError',
 ];
 
+/** Keep the native output specification aligned with the wrapper's accepted input type. */
 type NativeOutput<A, P, I> = Parameters<typeof wrapOutput<A, P, I>>[0];
+/** Substitute the Effect output specification while retaining schema-derived result types. */
 type WrappedOutput<T> =
   T extends NativeOutput<infer A, infer P, infer I>
     ? OutputSpecification<A, P, I>
     : T;
+/** Preserve whether the event carried one integration or a collection of integrations. */
 type WrappedIntegrations<T> =
   T extends ReadonlyArray<NativeTelemetry>
     ? { [K in keyof T]: EffectTelemetry }
@@ -64,6 +69,7 @@ type WrappedIntegrations<T> =
       ? EffectTelemetry
       : T;
 
+/** Replace SDK handles and errors where they cross the Effect telemetry boundary. */
 export type TelemetryEvent<T> = T extends object
   ? {
       [K in keyof T]: K extends 'output'
@@ -78,13 +84,17 @@ export type TelemetryEvent<T> = T extends object
     }
   : T;
 
+/** Keep event tool keys when a native tool set can be mapped to Effect handles. */
 type WrappedTools<T> = T extends NativeTools
   ? Pick<EffectTools, Extract<keyof T, string>>
   : T;
 
+/** Recover the original Effect tools for a native event with an unchanged tool set. */
 const nativeToolSets = new WeakMap<object, EffectTools>();
+/** Recover individual tools if the SDK assembled a new tool set from existing definitions. */
 const nativeToolHandles = new WeakMap<object, EffectTools[string]>();
 
+/** Retain tool identities at both set and member level before the SDK emits telemetry. */
 export function rememberTelemetryTools(
   native: object,
   tools: EffectTools,
@@ -97,6 +107,7 @@ export function rememberTelemetryTools(
   }
 }
 
+/** Recover recognizable tool handles without rewriting unrelated payload objects. */
 function wrapTelemetryTools(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const tools = nativeToolSets.get(value);
@@ -118,24 +129,31 @@ function wrapTelemetryTools(value: unknown) {
   return Object.fromEntries(entries);
 }
 
+/** Translate native hook arguments and preserve each hook's awaited success type. */
 type Hook<C> = C extends (...args: infer Args) => infer A
   ? (
       ...args: { [K in keyof Args]: TelemetryEvent<Args[K]> }
     ) => Effect.Effect<Awaited<A>, AiSdkError>
   : C;
 
+/** Native durable hook contract for capturing telemetry context during durable work. */
 type Durable = NonNullable<NativeTelemetry['experimental_durable']>;
+/** Native tool-execution metadata after extracting the callback that invokes the tool. */
 type NativeToolOptions = Omit<
   Parameters<NonNullable<NativeTelemetry['executeTool']>>[0],
   'execute'
 >;
+/** Native model-execution metadata after extracting the callback that invokes the model. */
 type NativeModelOptions = Omit<
   Parameters<NonNullable<NativeTelemetry['executeLanguageModelCall']>>[0],
   'execute'
 >;
+/** Effect-safe event fields supplied to a telemetry wrapper for tool execution. */
 type ToolOptions = TelemetryEvent<NativeToolOptions>;
+/** Effect-safe event fields supplied to a telemetry wrapper for model execution. */
 type ModelOptions = TelemetryEvent<NativeModelOptions>;
 
+/** Optional lifecycle, durable-context, and execution hooks exposed as Effect operations. */
 export type EffectTelemetry = {
   readonly [K in Hooks]?: Hook<NonNullable<NativeTelemetry[K]>>;
 } & {
@@ -150,12 +168,15 @@ export type EffectTelemetry = {
   ) => Effect.Effect<A, AiSdkError, R>;
 };
 
+/** Map Effect telemetry wrappers to the original SDK integrations accepted by native calls. */
 const telemetry = new WeakMap<EffectTelemetry, NativeTelemetry>();
 
 /** Adapt telemetry hooks while keeping the native integration private. */
 const wrappedTelemetry = new WeakMap<object, EffectTelemetry>();
+/** Preserve original event identity for round trips through native telemetry hooks. */
 const nativeEvents = new WeakMap<object, object>();
 
+/** Associate an SDK integration with its wrapper and return the original integration. */
 export const rememberTelemetry = (
   native: NativeTelemetry,
   wrapper: EffectTelemetry,
@@ -164,6 +185,7 @@ export const rememberTelemetry = (
   return native;
 };
 
+/** Wrap supported handles and redact native errors. Keep plain events unchanged when no adaptation is necessary. */
 export const wrapTelemetryEvent = <T>(
   event: T,
   operation = 'Telemetry.callback',
@@ -219,6 +241,7 @@ export const wrapTelemetryEvent = <T>(
   return publicEvent as TelemetryEvent<T>;
 };
 
+/** Return the original SDK event when available. Otherwise restore native handles for known event fields. */
 export const unwrapTelemetryEvent = <T>(event: TelemetryEvent<T>): T => {
   if (typeof event !== 'object' || !event) return event as T;
 
@@ -251,6 +274,7 @@ export const unwrapTelemetryEvent = <T>(event: TelemetryEvent<T>): T => {
   } as T;
 };
 
+/** Defer native telemetry hooks and keep execution callbacks bound to a local Effect scope. */
 export const wrapTelemetry = (
   name: string,
   native: NativeTelemetry,
@@ -335,5 +359,6 @@ export const wrapTelemetry = (
   return wrapper;
 };
 
+/** Resolve a telemetry wrapper registered by this adapter before sending it to the SDK. */
 export const unwrapTelemetry = (wrapper: EffectTelemetry) =>
   telemetry.get(wrapper);

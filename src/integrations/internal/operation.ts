@@ -6,6 +6,7 @@ import {
   sdkError,
 } from '../../internal/operation.js';
 
+/** Detect a native thenable before deciding whether the boundary needs asynchronous error handling. */
 const isPromiseLike = <A>(value: A | PromiseLike<A>): value is PromiseLike<A> =>
   Predicate.isObject(value) &&
   'then' in value &&

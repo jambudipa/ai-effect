@@ -8,6 +8,7 @@ import {
 } from '../../internal/language-model.js';
 import { runSync, sdkError } from '../../internal/operation.js';
 
+/** Apply native middleware lazily to a registered Effect language model, then wrap the resulting model. */
 export const wrapMiddleware = (
   operation: string,
   middleware: LanguageModelV4Middleware,

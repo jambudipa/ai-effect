@@ -11,6 +11,7 @@ import { runResult, runValue } from './operation.js';
 import { wrapSchema } from './schema.js';
 import { type SandboxSession, unwrapSandbox } from './sandbox-base.js';
 
+/** Use a registered Effect sandbox in place of the SDK sandbox argument during tool execution. */
 type ExecutionOptions<C> = Omit<
   ToolExecutionOptions<C>,
   'experimental_sandbox'
@@ -18,6 +19,7 @@ type ExecutionOptions<C> = Omit<
   experimental_sandbox?: SandboxSession;
 };
 
+/** Unwrap an optional sandbox only at the native callback boundary and forward the remaining options. */
 const toNativeOptions = <C>(
   options: ExecutionOptions<C>,
 ): ToolExecutionOptions<C> => {
@@ -26,11 +28,13 @@ const toNativeOptions = <C>(
   return { ...rest, ...(native && { experimental_sandbox: native }) };
 };
 
+/** Separate iterable tool output from a single result so cancellation and errors can follow the stream. */
 const isAsyncIterable = <A>(
   value: A | AsyncIterable<A>,
 ): value is AsyncIterable<A> =>
   typeof value === 'object' && !!value && Symbol.asyncIterator in value;
 
+/** Preserve SDK tool metadata while converting schema validation, hooks, and execution to Effect operations. */
 export const wrapTool = <Input, Output, C>(
   operation: string,
   source: Tool<Input, Output, C>,
@@ -136,7 +140,9 @@ export const wrapTool = <Input, Output, C>(
   };
 };
 
+/** Let tool-set records retain their concrete provider-specific object types. */
 type ToolShape = object;
+/** Preserve tool keys, input and output inference, and SDK tool identification metadata. */
 export type WrappedTools<T extends Record<string, ToolShape>> = {
   readonly [K in keyof T]: ReturnType<
     typeof wrapTool<
@@ -151,8 +157,10 @@ export type WrappedTools<T extends Record<string, ToolShape>> = {
     >;
 };
 
+/** Keep the original SDK tool set for integrations that must pass it back into a native request. */
 const toolSets = new WeakMap<object, ToolSet>();
 
+/** Create Effect tools with operation names qualified by the keys in their native tool set. */
 export const wrapTools = <T extends Record<string, ToolShape>>(
   operation: string,
   tools: T,
@@ -170,4 +178,5 @@ export const wrapTools = <T extends Record<string, ToolShape>>(
   return adapted;
 };
 
+/** Recover the exact native set for a registered Effect tool-set handle. */
 export const unwrapTools = (tools: object) => toolSets.get(tools);

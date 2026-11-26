@@ -9,16 +9,21 @@ import type {
   MCPTransport as NativeTransport,
 } from './mcp-contract.js';
 
+/** Exclusive client attachment with an explicit detach operation for early cleanup. */
 interface TransportLease {
+  /** Native facade that accepts calls only while the attachment owns the registered transport. */
   readonly transport: NativeTransport;
+  /** Close once and clear the attachment so ownership can pass to another client. */
   readonly detach: Effect.Effect<void>;
 }
 
+/** Lookup for scoped leases keyed by public Effect transport handles. */
 export const transports = new WeakMap<
   object,
   Effect.Effect<TransportLease, AiSdkError, Scope.Scope>
 >();
 
+/** Optional observers that receive one transport's events in delivery order. */
 export interface MCPTransportListeners<
   MessageR = never,
   MessageE = never,
@@ -27,13 +32,17 @@ export interface MCPTransportListeners<
   ErrorR = MessageR,
   ErrorE = MessageE,
 > {
+  /** Consume a parsed JSON-RPC notification or response without replacing the client's handler. */
   readonly onMessage?: (
     message: JSONRPCMessage,
   ) => Effect.Effect<void, MessageE, MessageR>;
+  /** Observe normal transport closure once per successful start. */
   readonly onClose?: () => Effect.Effect<void, CloseE, CloseR>;
+  /** Observe native transport errors tagged with the operation name. */
   readonly onError?: (error: AiSdkError) => Effect.Effect<void, ErrorE, ErrorR>;
 }
 
+/** Keep client ownership separate from Effect listeners and reject overlapping starts or attachments. */
 export const registerTransport = (
   key: object,
   native: NativeTransport,
