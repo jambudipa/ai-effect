@@ -3,6 +3,7 @@
 import * as sdk from '@ai-sdk/react';
 import type {
   DynamicToolUIPart,
+  Experimental_AbstractRealtimeSession,
   Experimental_RealtimeClientEvent,
   Experimental_RealtimeServerEvent,
   Experimental_RealtimeSessionOptions as NativeRealtimeOptions,
@@ -364,7 +365,7 @@ type Command<Args extends unknown[] = []> = (
 ) => Effect.Effect<void, AiSdkError>;
 
 type RealtimeConnectOptions = Parameters<
-  ReturnType<typeof sdk.experimental_useRealtime>['connect']
+  Experimental_AbstractRealtimeSession['connect']
 >[0];
 
 export type Experimental_UseRealtimeReturn = {
