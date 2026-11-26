@@ -1,7 +1,16 @@
 import { expect, it } from '@effect/vitest';
 import { Effect } from 'effect';
 import type { Experimental_DecisionModelV4CallOptions } from '../src/protocols/provider.js';
+import {
+  WORKFLOW_DESERIALIZE,
+  WORKFLOW_SERIALIZE,
+} from '../src/protocols/provider-utils.js';
 import { Experimental_DecisionLanguageModel } from '../src/protocols/provider-utils/experimental-decision.js';
+import {
+  DecisionLanguageModel,
+  Experimental_EvaluationLanguageModel,
+} from '../src/protocols/provider-utils/experimental-evaluation.js';
+import { Experimental_ExtractionLanguageModel } from '../src/protocols/provider-utils/experimental-extraction.js';
 import {
   Experimental_DecisionMockModelV4,
   MockLanguageModelV4,
@@ -54,5 +63,39 @@ it.effect(
       expect(model.doGenerateCalls).toHaveLength(0);
       expect((yield* evaluate).answers.verdict).toEqual(verdict);
       expect(model.doGenerateCalls).toHaveLength(1);
+
+      expect(DecisionLanguageModel).toBe(Experimental_EvaluationLanguageModel);
+      for (const make of [
+        Experimental_DecisionLanguageModel,
+        Experimental_EvaluationLanguageModel,
+      ]) {
+        const original = yield* make({ model, provider: 'decision.fixture' });
+        const data = yield* make[WORKFLOW_SERIALIZE](original);
+        expect(data).toEqual({ model, provider: 'decision.fixture' });
+        expect(data.model).toBe(model);
+        const restored = yield* make[WORKFLOW_DESERIALIZE](data);
+        expect((yield* restored.doDecide(options)).answers.verdict).toEqual(
+          verdict,
+        );
+      }
     }),
+);
+
+it.effect('retains extraction limits and the wrapped language model', () =>
+  Effect.gen(function* () {
+    const model = yield* MockLanguageModelV4();
+    const make = Experimental_ExtractionLanguageModel;
+    const original = yield* make({ model, provider: 'extract.fixture' });
+    const data = yield* make[WORKFLOW_SERIALIZE](original);
+    expect(data.model).toBe(model);
+    expect(data.maxFieldsPerCall).toBe(Infinity);
+
+    const restored = yield* make[WORKFLOW_DESERIALIZE]({
+      ...data,
+      maxFieldsPerCall: 5,
+    });
+    const saved = yield* make[WORKFLOW_SERIALIZE](restored);
+    expect(saved).toEqual({ ...data, maxFieldsPerCall: 5 });
+    expect(saved.model).toBe(model);
+  }),
 );
