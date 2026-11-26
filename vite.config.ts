@@ -2,22 +2,26 @@ import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
 import manifest from './package.json' with { type: 'json' };
 
+/** Flatten the conditional export tree so the build emits each runtime target. */
 function targets(branch: unknown): string[] {
   if (typeof branch === 'string') return [branch];
   if (!branch || typeof branch !== 'object') return [];
   return Object.values(branch).flatMap(targets);
 }
 
+/** Deduplicate runtime and declaration targets shared across export conditions. */
 const entryFiles = [
   ...new Set(Object.values(manifest.exports).flatMap(targets)),
 ];
 
+/** Keep Node modules and package dependencies outside the library bundle. */
 const externals = new Set([
   ...builtinModules,
   ...Object.keys(manifest.dependencies),
   ...Object.keys(manifest.peerDependencies),
 ]);
 
+/** Treat subpaths of external packages as external, including scoped package names. */
 function isExternal(id: string) {
   if (id.startsWith('node:')) return true;
   const segments = id.split('/');

@@ -1,6 +1,7 @@
 import parser from '@typescript-eslint/parser';
 import { effectLintConfig } from './eslint/effect-eslint-config.mjs';
 
+/** Apply the TypeScript parser and Effect rules to the authored source and tests. */
 const files = ['src/**/*.ts', 'test/**/*.ts'];
 
 export default [
