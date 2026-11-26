@@ -18,12 +18,15 @@ export type {
   HarnessToolModelOutputContent,
 } from '@ai-sdk/harness/bridge';
 
+/** Wrap SDK reports for capabilities the current bridge cannot provide. */
 export const HarnessBridgeCapabilityUnsupportedError = wrapError(
   'HarnessBridge.unsupported',
   sdk.HarnessBridgeCapabilityUnsupportedError,
 );
+/** Tagged SDK error channel used by bridge capability checks. */
 export type HarnessBridgeCapabilityUnsupportedError = AiSdkError;
 
+/** Run the SDK's write-protection check as a request effect. */
 export const isWriteProtectedPath = (
   ...args: Parameters<typeof sdk.isWriteProtectedPath>
 ) =>
@@ -31,6 +34,7 @@ export const isWriteProtectedPath = (
     sdk.isWriteProtectedPath(...args),
   );
 
+/** Convert SDK tool results to bridge model-output content without running the tool again. */
 export const convertHarnessToolModelOutput = (
   ...args: Parameters<typeof sdk.convertHarnessToolModelOutput>
 ) =>
@@ -38,6 +42,7 @@ export const convertHarnessToolModelOutput = (
     sdk.convertHarnessToolModelOutput(...args),
   );
 
+/** Defer message acceptance and rejection until the bridge callback executes the effects. */
 const wrapMessage = (message: sdk.Experimental_BridgeUserMessage) => ({
   messageId: message.messageId,
   text: message.text,
@@ -46,8 +51,10 @@ const wrapMessage = (message: sdk.Experimental_BridgeUserMessage) => ({
     runSync('BridgeUserMessage.reject', () => message.reject(reason)),
 });
 
+/** Queued user message with explicit Effect operations for accepting or rejecting delivery. */
 export type Experimental_BridgeUserMessage = ReturnType<typeof wrapMessage>;
 
+/** Expose queue iteration as a stream and keep queue close on the callback runtime. */
 const wrapQueue = (queue: sdk.Experimental_BridgeUserMessageQueue) => ({
   pendingCount: runSync(
     'BridgeUserMessages.pendingCount',
@@ -63,8 +70,10 @@ const wrapQueue = (queue: sdk.Experimental_BridgeUserMessageQueue) => ({
     runSync('BridgeUserMessages.close', () => queue.close(reason)),
 });
 
+/** Incoming turn messages with queue depth, delivery stream, and explicit closure. */
 export type Experimental_BridgeUserMessageQueue = ReturnType<typeof wrapQueue>;
 
+/** Keep tool approval and result requests tied to this turn's abort signal. */
 const wrapTurn = (turn: sdk.BridgeTurn) => ({
   firstTurn: turn.firstTurn,
   abortSignal: turn.abortSignal,
@@ -95,10 +104,13 @@ const wrapTurn = (turn: sdk.BridgeTurn) => ({
     runSync('BridgeTurn.emitError', () => turn.emitError(...args)),
 });
 
+/** Active bridge turn with event emission, tool requests, and the incoming user queue. */
 export type BridgeTurn = ReturnType<typeof wrapTurn>;
 
+/** Common discriminator for the bridge's adapter-specific start payload. */
 type Start = { readonly type: 'start' };
 
+/** Bridge settings with lifecycle callbacks that execute in the bridge's Effect context. */
 export type RunBridgeOptions<T extends Start, E = never, R = never> = Omit<
   sdk.RunBridgeOptions<T>,
   'onStart' | 'onStop' | 'onDestroy' | 'onListening' | 'onExit'
@@ -110,11 +122,13 @@ export type RunBridgeOptions<T extends Start, E = never, R = never> = Omit<
   readonly onExit?: () => Effect.Effect<void, E, R>;
 };
 
+/** Preserve the listening port while putting early bridge closure behind an Effect. */
 const wrapBridge = (native: sdk.BridgeHandle) => ({
   port: native.port,
   close: runRequest('HarnessBridge.close', {}, () => native.close()),
 });
 
+/** Listening bridge handle returned after the optional listening callback completes. */
 export type BridgeHandle = ReturnType<typeof wrapBridge>;
 
 /** Start a bridge owned by the calling Effect scope. */
