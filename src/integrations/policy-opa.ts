@@ -1,11 +1,12 @@
 import * as sdk from '@ai-sdk/policy-opa';
 import type {
+  SingleToolApprovalFunction,
   Tool,
   ToolApprovalConfiguration,
   ToolApprovalStatus,
   ToolSet,
 } from 'ai';
-import { Effect, Option } from 'effect';
+import { Effect, Option, type Scope } from 'effect';
 import {
   type AiSdkError,
   openOperation,
@@ -16,6 +17,7 @@ import {
 import type { LanguageModelV4CallOptions } from '../protocols/provider.js';
 import { wrapMiddleware } from './internal/middleware.js';
 import { runValue } from './internal/operation.js';
+import { type SandboxSession, wrapSandbox } from './internal/sandbox.js';
 import { unwrapTools, wrapTools } from './internal/sdk-tool.js';
 
 export type {
@@ -104,14 +106,41 @@ type ApprovalInput = Omit<NativeInput, 'tools'> & {
   readonly tools?: EffectToolSet;
 };
 
+const approvalTypeId = Symbol('@jambudipa/ai-effect/OPA/Approval');
+
 interface Approval {
+  readonly [approvalTypeId]: true;
   (options: ApprovalInput): Effect.Effect<ToolApprovalStatus, AiSdkError>;
   readonly evaluate: (
     options: ApprovalInput,
   ) => Effect.Effect<ToolApprovalStatus, AiSdkError>;
 }
 
-const approvals = new WeakMap<Approval, NativeApproval>();
+type NativeRuleOptions = Parameters<
+  SingleToolApprovalFunction<unknown, unknown, unknown>
+>[1];
+type ApprovalRuleOptions = Omit<NativeRuleOptions, 'experimental_sandbox'> & {
+  readonly experimental_sandbox?: SandboxSession;
+};
+
+type ApprovalValue<R, E> =
+  | ToolApprovalStatus
+  | PromiseLike<ToolApprovalStatus>
+  | Effect.Effect<ToolApprovalStatus, E, R>;
+type ApprovalSource<R, E> =
+  | ((input: ApprovalInput) => ApprovalValue<R, E>)
+  | Readonly<
+      Record<
+        string,
+        | ToolApprovalStatus
+        | ((
+            input: unknown,
+            options: ApprovalRuleOptions,
+          ) => ApprovalValue<R, E>)
+      >
+    >;
+
+const approvals = new WeakMap<object, NativeApproval>();
 
 const toNativeInput = (input: ApprovalInput): NativeInput => ({
   ...input,
@@ -119,11 +148,58 @@ const toNativeInput = (input: ApprovalInput): NativeInput => ({
     input.tools && (unwrapTools(input.tools) as CompatibleTools | undefined),
 });
 
+const bindApproval = <R, E, S = never>(
+  source: ApprovalSource<R, E>,
+  owner: Owner<R | S>,
+): NativeApproval => {
+  const native = approvals.get(source);
+  if (native) return native;
+  const run = (approval: () => ApprovalValue<R, E>) =>
+    owner.runCallback(
+      Effect.suspend<ToolApprovalStatus, AiSdkError | E, R>(() => {
+        const value = approval();
+        return Effect.isEffect(value)
+          ? value
+          : runValue('OPA.approval.callback', () => value);
+      }),
+    );
+  if (typeof source === 'function') {
+    return ({ tools, ...input }: NativeInput) =>
+      run(() =>
+        source({
+          ...input,
+          ...(tools && { tools: wrapTools('OPA.tools', tools) }),
+        }),
+      );
+  }
+  return Object.fromEntries(
+    Object.entries(source).map(([name, approval]) => [
+      name,
+      typeof approval === 'function'
+        ? (
+            input: unknown,
+            { experimental_sandbox, ...options }: NativeRuleOptions,
+          ) =>
+            run(() =>
+              approval(input, {
+                ...options,
+                ...(experimental_sandbox && {
+                  experimental_sandbox: wrapSandbox(experimental_sandbox),
+                }),
+              }),
+            )
+        : approval,
+    ]),
+  );
+};
+
 const wrapApproval = (native: NativeApproval): Approval => {
   const evaluate = (options: ApprovalInput) =>
     runValue('OPA.approval.evaluate', () => {
       const input = toNativeInput(options);
       if (typeof native === 'function') return native(input);
+      if (!Object.hasOwn(native, input.toolCall.toolName))
+        return 'not-applicable';
       const rule = native[input.toolCall.toolName];
       if (!rule) return 'not-applicable';
       return typeof rule === 'function'
@@ -137,7 +213,10 @@ const wrapApproval = (native: NativeApproval): Approval => {
           })
         : rule;
     });
-  const approval: Approval = Object.assign(evaluate, { evaluate });
+  const approval: Approval = Object.assign(evaluate, {
+    evaluate,
+    [approvalTypeId]: true as const,
+  });
   approvals.set(approval, native);
   return approval;
 };
@@ -191,22 +270,16 @@ type ShadowOptions<R, E> = {
   ) => Effect.Effect<void, E, R>;
 };
 
-export const shadow = <R = never, E = never>(
-  approval: Approval,
-  options?: ShadowOptions<R, E>,
+export const shadow = <R = never, E = never, S = R, F = E>(
+  approval: ApprovalSource<R, E>,
+  options?: ShadowOptions<S, F>,
 ) =>
   Effect.gen(function* () {
-    const native = approvals.get(approval);
-    if (!native) {
-      return yield* Effect.fail(
-        sdkError('OPA.shadow', 'Invalid approval configuration'),
-      );
-    }
-    const owner = yield* openOperation<R>();
+    const owner = yield* openOperation<R | S>();
     const { onDecision, ...rest } = options ?? {};
     return yield* runSync('OPA.shadow', () =>
       wrapApproval(
-        sdk.shadow<CompatibleTools, unknown>(native, {
+        sdk.shadow<CompatibleTools, unknown>(bindApproval(approval, owner), {
           ...rest,
           ...(onDecision && {
             onDecision: (event) => owner.runCallback(onDecision(event)),
@@ -221,25 +294,44 @@ export type WrappedMcpTools<T extends EffectToolSet = EffectToolSet> = {
   readonly toolApproval: Approval;
 };
 
-export const wrapMcpTools = <T extends EffectToolSet>(
+type WrapOptions = Parameters<typeof sdk.wrapMcpTools>[2];
+
+export function wrapMcpTools<T extends EffectToolSet>(
   tools: T,
   approval: Approval,
-  options?: Parameters<typeof sdk.wrapMcpTools>[2],
-) =>
-  Effect.gen(function* () {
-    const nativeApproval = approvals.get(approval);
-    const nativeTools = unwrapTools(tools);
-    if (!nativeApproval || !nativeTools) {
-      return yield* Effect.fail(
-        sdkError('OPA.wrapMcpTools', 'Invalid tools or approval configuration'),
-      );
-    }
-    return yield* runSync('OPA.wrapMcpTools', (): WrappedMcpTools<T> => {
-      const { toolApproval } = sdk.wrapMcpTools<CompatibleTools, unknown>(
-        nativeTools as CompatibleTools,
-        nativeApproval,
-        options,
-      );
-      return { tools, toolApproval: wrapApproval(toolApproval) };
+  options?: WrapOptions,
+): Effect.Effect<WrappedMcpTools<T>, AiSdkError>;
+export function wrapMcpTools<T extends EffectToolSet, R = never, E = never>(
+  tools: T,
+  approval: ApprovalSource<R, E>,
+  options?: WrapOptions,
+): Effect.Effect<WrappedMcpTools<T>, AiSdkError, Scope.Scope | R>;
+export function wrapMcpTools<T extends EffectToolSet, R = never, E = never>(
+  tools: T,
+  approval: ApprovalSource<R, E | AiSdkError>,
+  options?: WrapOptions,
+): Effect.Effect<WrappedMcpTools<T>, AiSdkError, Scope.Scope | R> {
+  const wrap = (nativeApproval: NativeApproval) =>
+    Effect.suspend(() => {
+      const nativeTools = unwrapTools(tools);
+      if (!nativeTools)
+        return sdkError('OPA.wrapMcpTools', 'Invalid tools configuration');
+      return runSync('OPA.wrapMcpTools', (): WrappedMcpTools<T> => {
+        const { toolApproval } = sdk.wrapMcpTools<CompatibleTools, unknown>(
+          nativeTools as CompatibleTools,
+          nativeApproval,
+          options,
+        );
+        return { tools, toolApproval: wrapApproval(toolApproval) };
+      });
     });
-  });
+  const native = approvals.get(approval);
+  if (native) return wrap(native);
+  // The diagnostic applies the unscoped approval overload to this callback branch.
+  // @effect-diagnostics-next-line effect/missingEffectContext:off
+  return Effect.flatMap(openOperation<R>(), (owner) =>
+    runSync('OPA.wrapMcpTools.approval', () =>
+      bindApproval(approval, owner),
+    ).pipe(Effect.flatMap(wrap)),
+  );
+}

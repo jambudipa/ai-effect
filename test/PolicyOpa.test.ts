@@ -15,6 +15,11 @@ class Decision extends Context.Service<Decision, string>()(
   '@jambudipa/ai-effect/test/PolicyOpa/Decision',
 ) {}
 
+class Observer extends Context.Service<
+  Observer,
+  Deferred.Deferred<PolicyDecisionEvent>
+>()('@jambudipa/ai-effect/test/PolicyOpa/Observer') {}
+
 const client: PolicyClient<Decision, never> = {
   evaluate: <_Input, Output>() =>
     Effect.map(Decision, (decision) => ({ decision }) as Output),
@@ -84,4 +89,56 @@ it.effect(
       expect(wrapped.toolApproval.evaluate).toBe(wrapped.toolApproval);
       expect(yield* wrapped.toolApproval(input('fallback'))).toBe('denied');
     }).pipe(Effect.provideService(Decision, 'not-applicable')),
+);
+
+it.effect('binds caller approvals and per-tool rules in the policy scope', () =>
+  Effect.gen(function* () {
+    const captured = yield* Deferred.make<PolicyDecisionEvent>();
+    const configured = yield* shadow(
+      ({ toolCall, tools }) =>
+        Effect.map(Decision, (reason) => {
+          expect(toolCall.toolName).toBe('local');
+          expect(tools?.local).toBeDefined();
+          return { type: 'denied', reason } as const;
+        }),
+      {
+        enforce: true,
+        onDecision: (event) =>
+          Effect.flatMap(Observer, (target) =>
+            Deferred.succeed(target, event),
+          ).pipe(Effect.asVoid),
+      },
+    ).pipe(Effect.provideService(Observer, captured));
+    expect(yield* configured(input('caller'))).toEqual({
+      type: 'denied',
+      reason: 'fixture',
+    });
+    expect(yield* Deferred.await(captured)).toMatchObject({
+      enforced: true,
+      toolCall: { toolCallId: 'caller' },
+    });
+
+    const promised = yield* shadow(
+      () => Effect.runPromise(Effect.succeed('approved' as const)),
+      { enforce: true },
+    );
+    expect(yield* promised(input('promise'))).toEqual({ type: 'approved' });
+
+    const mapped = yield* wrapMcpTools(
+      tools,
+      {
+        local: (value, { toolCallId }) =>
+          Effect.map(Decision, (reason) => {
+            expect(value).toEqual({});
+            expect(toolCallId).toBe('rule');
+            return { type: 'approved', reason } as const;
+          }),
+      },
+      { default: 'denied' },
+    );
+    expect(yield* mapped.toolApproval(input('rule'))).toEqual({
+      type: 'approved',
+      reason: 'fixture',
+    });
+  }).pipe(Effect.provideService(Decision, 'fixture')),
 );
