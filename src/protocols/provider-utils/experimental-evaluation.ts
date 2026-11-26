@@ -6,10 +6,15 @@ import {
 import { adaptWorkflowLanguageConstructor } from '../../internal/workflow-language-model.js';
 import type { WrappedWorkflowLanguageConstructor } from '../../internal/workflow-language-model.js';
 
+/** Effect model for evaluation requests through the native workflow-capable model. */
 export type Experimental_EvaluationLanguageModel = ReturnType<
   typeof wrapEvaluationModel
 >;
 
+/**
+ * Construct the native evaluation model lazily and expose its workflow serialization
+ * hooks.
+ */
 export const Experimental_EvaluationLanguageModel: WrappedWorkflowLanguageConstructor<
   typeof NativeModel,
   Experimental_EvaluationLanguageModel

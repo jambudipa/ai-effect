@@ -9,11 +9,17 @@ import {
 } from '../../internal/operation.js';
 import { ownReadable } from '../../internal/readable.js';
 
+/** Provide finite fixture values in the given order as an Effect stream. */
 export const convertArrayToAsyncIterable = <A>(values: A[]) =>
   Stream.fromIterable(values);
+/**
+ * Feed an ordered finite array through the same Effect stream contract as adapted web
+ * readers.
+ */
 export const convertArrayToReadableStream = <A>(values: A[]) =>
   Stream.fromIterable(values);
 
+/** Collect native or Effect fixture streams and classify native iterator failures. */
 export const convertAsyncIterableToArray = <A>(
   source: AsyncIterable<A> | Stream.Stream<A, AiSdkError>,
 ) =>
@@ -25,6 +31,10 @@ export const convertAsyncIterableToArray = <A>(
         ),
   );
 
+/**
+ * Collect a native or Effect reader and release the native reader with the collection
+ * scope.
+ */
 export const convertReadableStreamToArray = <A>(
   source: ReadableStream<A> | Stream.Stream<A, AiSdkError>,
 ) => {
@@ -40,6 +50,10 @@ export const convertReadableStreamToArray = <A>(
   return Effect.scoped(effect);
 };
 
+/**
+ * Read a fixture response through the SDK collector and manage ownership of a native
+ * response body.
+ */
 export const convertResponseStreamToArray = (response: Response) =>
   Effect.scoped(
     Effect.gen(function* () {
@@ -56,9 +70,13 @@ export const convertResponseStreamToArray = (response: Response) =>
     }),
   );
 
+/** Check the runtime Node major with the native version detector inside an Effect. */
 export const isNodeVersion = (version: number) =>
   runSync('isNodeVersion', () => sdk.isNodeVersion(version));
 
+/**
+ * Check a minimum Node version while preserving the SDK defaults for omitted components.
+ */
 export const isNodeVersionAtLeast = (
   major: number,
   minor?: number,
@@ -68,6 +86,7 @@ export const isNodeVersionAtLeast = (
     sdk.isNodeVersionAtLeast(major, minor, patch),
   );
 
+/** Create a deterministic fixture ID generator whose successive reads run in Effect. */
 export const mockId = (options?: Parameters<typeof sdk.mockId>[0]) =>
   runSync('mockId', () => sdk.mockId(options)).pipe(
     Effect.map(
