@@ -1,0 +1,19 @@
+# ai-effect
+
+> Use the Vercel AI SDK with Effect v4 in TypeScript applications.
+
+## Start here
+
+- [Project README](README.md): Package setup, text generation, and public imports.
+- [User guide](docs/user-guide/README.md): Entry points for lessons, tasks, and the API.
+- [First text result](docs/user-guide/tutorials/getting-started/first-text-result.md): Run a text request with a local fixture.
+
+## Guides and API
+
+- [How-to guides](docs/user-guide/how-to/README.md): Examples for providers, generation, tools, media, streaming, and testing.
+- [Reference](docs/user-guide/reference/README.md): Installation, import paths, and API contracts.
+- [Public declarations](docs/user-guide/reference/api/README.md): API signatures grouped by source folder.
+
+## Optional
+
+- [Scopes and cancellation](docs/user-guide/explanation/scopes-and-cancellation.md): How Effect scopes control native requests.
