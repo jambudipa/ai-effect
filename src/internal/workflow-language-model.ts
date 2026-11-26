@@ -9,14 +9,18 @@ import type { LanguageModelV4 } from './language-model.js';
 import { runSync, sdkError } from './operation.js';
 import type { AiSdkError } from './operation.js';
 
+/** Identify native workflow configuration and payloads that contain a language model. */
 interface SdkOptions {
+  /** Carry the native SDK model internally before it is replaced with a public handle. */
   model: SdkLanguageModel;
 }
 
+/** Replace the native model input with a registered version 4 language handle. */
 type WrappedOptions<Options extends SdkOptions> = Omit<Options, 'model'> & {
   readonly model: LanguageModelV4;
 };
 
+/** Describe a native workflow constructor and its hooks for persisting language-backed models. */
 interface SdkWorkflowClass<
   Options extends SdkOptions,
   Native,
@@ -24,10 +28,13 @@ interface SdkWorkflowClass<
   Input extends SdkOptions,
 > {
   new (options: Options): Native;
+  /** Extract the native payload before replacing its language model with the registered handle. */
   [WORKFLOW_SERIALIZE](model: Native): Payload;
+  /** Reconstruct the SDK model after its language dependency has been unwrapped. */
   [WORKFLOW_DESERIALIZE](input: Input): Native;
 }
 
+/** Expose an Effect constructor plus workflow serialization and deserialization with wrapped languages. */
 export type WrappedWorkflowLanguageConstructor<
   Constructor extends SdkWorkflowClass<never, unknown, SdkOptions, never>,
   Model,
@@ -48,6 +55,7 @@ export type WrappedWorkflowLanguageConstructor<
   ): Effect.Effect<Model, AiSdkError>;
 };
 
+/** Bind workflow language model inputs and retain the public dependency in serialized payloads. */
 export function adaptWorkflowLanguageConstructor<
   Options extends SdkOptions,
   Native,

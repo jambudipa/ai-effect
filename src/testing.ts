@@ -52,7 +52,7 @@ export const MockProviderV3 = mockProvider<
   }
 >('v3');
 
-/** Construct a registered v4 provider test double with configurable model lookups. */
+/** Construct a v4 provider test double with configurable model lookups. */
 export const MockProviderV4 = mockProvider<
   'v4',
   {
@@ -67,7 +67,7 @@ export const MockProviderV4 = mockProvider<
 
 /** Type a successfully created mock that uses version 3 provider capability names. */
 export type MockProviderV3 = Effect.Success<ReturnType<typeof MockProviderV3>>;
-/** Type a successfully registered mock provider with version 4 capability names. */
+/** Type a mock provider with version 4 capability names and Effect lookups. */
 export type MockProviderV4 = Effect.Success<ReturnType<typeof MockProviderV4>>;
 
 /** Configure version 4 language model results and callbacks in the test Effect context. */

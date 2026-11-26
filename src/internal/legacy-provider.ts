@@ -32,16 +32,20 @@ import {
   wrapVideoModel,
 } from './provider-model.js';
 
+/** Retain service requirements for provider adapters built against SDK protocol versions 2 and 3. */
 export type LegacyProvider<R> = ProviderV2<R> | ProviderV3<R>;
+/** Carry protocol version, provider name, and model ID into legacy model binding. */
 type LegacyIdentity = {
   readonly specificationVersion: 'v2' | 'v3';
   readonly provider: string;
   readonly modelId: string;
 };
+/** Resolve a model by its SDK ID through the provider's Effect context. */
 type Selector<Model, R = never> = (
   modelId: string,
 ) => Effect.Effect<Model, AiSdkError, R>;
 
+/** Retain optional experimental capabilities during a legacy-to-v4 provider upgrade. */
 type LegacyExtensions<R> = {
   readonly videoModel?: Selector<Experimental_VideoModelV3 | VideoModelV4, R>;
   readonly decisionModel?: Selector<DecisionModelV4, R>;
@@ -49,6 +53,7 @@ type LegacyExtensions<R> = {
   readonly extractionModel?: Selector<ExtractionModelV4, R>;
 };
 
+/** Expose version 4 lookup shapes while preserving optional resources and legacy extensions. */
 export type ProviderFacade = Omit<ProviderV4, 'files' | 'skills'> &
   Partial<Pick<ProviderV4, 'files' | 'skills'>> & {
     readonly videoModel?: Selector<VideoModelV4>;
@@ -56,6 +61,7 @@ export type ProviderFacade = Omit<ProviderV4, 'files' | 'skills'> &
     readonly evaluationModel?: Selector<ReturnType<typeof wrapEvaluationModel>>;
     readonly extractionModel?: Selector<ExtractionModelV4>;
   };
+/** Carry native middleware values already bound to the wrapping operation's context. */
 export type ProviderMiddleware = Pick<
   Parameters<typeof sdk.wrapProvider>[0],
   'imageModelMiddleware'
@@ -64,14 +70,18 @@ export type ProviderMiddleware = Pick<
     sdk.LanguageModelMiddleware | sdk.LanguageModelMiddleware[];
 };
 
+/** Identify provider facades without adding a native SDK provider to their public fields. */
 const facadeIdentity = Symbol('ai-effect/legacyProvider');
+/** Track the identity tokens created for legacy provider facades. */
 const facades = new WeakSet<object>();
 
+/** Recognize provider facades that have a token issued by this module. */
 export const isProviderFacade = (value: object): value is ProviderFacade => {
   const token = (value as { [facadeIdentity]?: object })[facadeIdentity];
   return Boolean(token && facades.has(token));
 };
 
+/** Attach a facade marker backed by a token registered in this module. */
 export const rememberProviderFacade = <Provider extends ProviderFacade>(
   provider: Provider,
 ): Provider => {
@@ -83,13 +93,16 @@ export const rememberProviderFacade = <Provider extends ProviderFacade>(
   });
 };
 
+/** Distinguish an explicit native version 3 provider during registry construction. */
 export const isLegacyProviderV3 = <R>(
   provider: LegacyProvider<R> | { readonly specificationVersion: 'v4' },
 ): provider is ProviderV3<R> =>
   'specificationVersion' in provider && provider.specificationVersion === 'v3';
 
+/** Expose the absence of a version 4 resource on the legacy provider surface. */
 const unavailableResource = (): undefined => {};
 
+/** Resolve a legacy model under the captured Effect context and label lookup errors. */
 const resolve =
   <Model, R>(
     operation: string,
@@ -107,6 +120,7 @@ const resolve =
         cause instanceof AiSdkError ? cause : sdkError(operation, cause),
     });
 
+/** Recover the legacy native model before adapting its protocol and public handle. */
 const adaptLegacy =
   <Native extends LegacyIdentity, R, Model>(
     name: string,
@@ -128,14 +142,21 @@ const adaptLegacy =
       }),
     );
 
+/** Carry the native model shape for a version 2 or 3 language model. */
 type LegacyLanguage = Exclude<sdk.LanguageModel, string> & LegacyIdentity;
+/** Carry the native model shape for a version 2 or 3 embedding model. */
 type LegacyEmbedding = Exclude<sdk.EmbeddingModel, string> & LegacyIdentity;
+/** Carry the native model shape for a version 2 or 3 image model. */
 type LegacyImage = Exclude<sdk.ImageModel, string> & LegacyIdentity;
+/** Carry the native model shape for a version 2 or 3 speech model. */
 type LegacySpeech = Exclude<sdk.SpeechModel, string> & LegacyIdentity;
+/** Carry the native model shape for a version 2 or 3 transcription model. */
 type LegacyTranscription = Exclude<sdk.TranscriptionModel, string> &
   LegacyIdentity;
+/** Carry the native model shape for a legacy reranking model. */
 type LegacyReranking = Exclude<sdk.RerankingModel, string> & LegacyIdentity;
 
+/** Bind optional legacy video, decision, and extraction methods to the version 4 facade. */
 const adaptExtensions = <R>(
   provider: LegacyProvider<R> & LegacyExtensions<R>,
   owner: Owner<R>,
@@ -221,6 +242,7 @@ const adaptExtensions = <R>(
   };
 };
 
+/** Wrap a legacy provider in a version 4 facade under a caller-owned context. */
 export const wrapLegacyProvider = <R>(
   provider: LegacyProvider<R>,
   owner: Owner<R>,
@@ -312,6 +334,7 @@ export const wrapLegacyProvider = <R>(
   return rememberProviderFacade(wrapped);
 };
 
+/** Apply language and image middleware to a facade without losing resource accessors. */
 export const applyProviderMiddleware = (
   provider: ProviderFacade,
   options: ProviderMiddleware,

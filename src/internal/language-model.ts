@@ -16,11 +16,14 @@ import { ownReadable } from './readable.js';
 /** An Effect handle to a v4 SDK language model. */
 export type LanguageModelV4 = ReturnType<typeof wrapLanguageModel>;
 
+/** Associate registered language model handles with their native version 4 instances. */
 const sdkModels = new WeakMap<LanguageModelV4, SdkLanguageModelV4>();
 
+/** Recover a registered SDK model when sending a wrapped handle to a native operation. */
 export const unwrapLanguageModel = (model: LanguageModelV4) =>
   sdkModels.get(model);
 
+/** Preserve the model's protocol identity and expose lazy generation and scoped streaming. */
 export const wrapLanguageModel = (model: SdkLanguageModelV4) => {
   const wrapped = {
     specificationVersion: model.specificationVersion,

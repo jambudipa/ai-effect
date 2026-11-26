@@ -1,6 +1,7 @@
 import { Effect } from 'effect';
 import { openOperation, runSync } from './operation.js';
 
+/** Turn a native test callback into an Effect while preserving its invocation arguments. */
 type OwnedOption<Value, Services> = Value extends (
   ...args: infer Arguments
 ) => infer Result
@@ -9,10 +10,12 @@ type OwnedOption<Value, Services> = Value extends (
     ? Effect.Effect<Result, unknown, Services>
     : Value;
 
+/** Preserve fixture response values and allow handler-generated results to use test services. */
 export type MockOptions<Native, Services> = {
   readonly [Key in keyof Native]: OwnedOption<Native[Key], Services>;
 };
 
+/** Bind only function-valued mock settings to the test operation's Effect context. */
 function bindOptions<Native extends object, Services>(
   options: MockOptions<Native, Services>,
   owner: Effect.Success<ReturnType<typeof openOperation<Services>>>,

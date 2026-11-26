@@ -8,12 +8,16 @@ import type { AiSdkError } from './operation.js';
 import { adaptModelConstructor } from './provider-adapter.js';
 import type { AdaptedConstructor } from './provider-adapter.js';
 
+/** Describe a native workflow-capable model class and its persistence hooks. */
 interface WorkflowModelClass<Args extends unknown[], Native, Payload, Input> {
   new (...args: Args): Native;
+  /** Extract a workflow payload from the original native model instance. */
   [WORKFLOW_SERIALIZE](model: Native): Payload;
+  /** Build a native model from its deserialized workflow configuration. */
   [WORKFLOW_DESERIALIZE](input: Input): Native;
 }
 
+/** Expose native workflow hooks as Effects over registered public model handles. */
 export type AdaptedWorkflowHooks<
   Constructor extends WorkflowModelClass<never[], unknown, unknown, never>,
   Model,
@@ -29,12 +33,14 @@ export type AdaptedWorkflowHooks<
   ): Effect.Effect<Model, AiSdkError>;
 };
 
+/** Preserve native constructor arguments and add Effect workflow persistence hooks. */
 export type AdaptedWorkflowConstructor<
   Constructor extends WorkflowModelClass<never[], unknown, unknown, never>,
   Model,
 > = AdaptedConstructor<Constructor, Model> &
   AdaptedWorkflowHooks<Constructor, Model>;
 
+/** Adapt workflow serialization and reject handles that do not wrap the expected native class. */
 export const workflowModelHooks = <
   Args extends unknown[],
   Native,
@@ -61,6 +67,7 @@ export const workflowModelHooks = <
     ),
 });
 
+/** Bind lazy native construction to the workflow serialization and deserialization adapters. */
 export const adaptWorkflowModelConstructor = <
   Args extends unknown[],
   Native,

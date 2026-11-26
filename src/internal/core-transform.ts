@@ -8,6 +8,7 @@ import type { Owner } from './experimental-callbacks.js';
 import { runRequest, sdkError, type AiSdkError } from './operation.js';
 import type { BoundTools, EffectTools } from './tool.js';
 
+/** Build an Effect text stream transform with typed tools and an operation stop action. */
 export type StreamTextTransform<
   Tools extends EffectTools,
   R = never,
@@ -18,9 +19,11 @@ export type StreamTextTransform<
   source: Stream.Stream<TextStreamPart<BoundTools<Tools>>, AiSdkError>,
 ) => Stream.Stream<TextStreamPart<BoundTools<Tools>>, unknown, R>;
 
+/** Accept registered text smoothing or a caller-supplied Effect transform. */
 export type TransformValue<Tools extends object, R> =
   SmoothStream | StreamTextTransform<Extract<Tools, EffectTools>, R>;
 
+/** Extract services that the returned stream needs when the transform runs. */
 export type TransformServices<Value> = Value extends (
   ...args: never[]
 ) => (...args: never[]) => Stream.Stream<unknown, unknown, infer R>
@@ -29,6 +32,7 @@ export type TransformServices<Value> = Value extends (
     ? TransformServices<Item>
     : never;
 
+/** Recover a native smoothing transform or capture context for the caller's Effect transform. */
 export function bindTransform<R>(
   value: TransformValue<EffectTools, R>,
   owner: Owner<R>,
