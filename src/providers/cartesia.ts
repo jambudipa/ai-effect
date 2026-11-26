@@ -22,9 +22,15 @@ import {
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import {
+  unwrapSpeechModel,
+  unwrapTranscriptionModel,
   wrapSpeechModel,
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
+import {
+  adaptWorkflowModelConstructor,
+  type AdaptedWorkflowConstructor,
+} from '../internal/workflow-model.js';
 
 export { VERSION } from '@ai-sdk/cartesia';
 export type {
@@ -82,22 +88,24 @@ export const CartesiaRealtimeModel: AdaptedConstructor<
   wrapRealtimeModel,
 );
 export type CartesiaRealtimeModel = ReturnType<typeof wrapRealtimeModel>;
-export const CartesiaSpeechModel: AdaptedConstructor<
+export const CartesiaSpeechModel: AdaptedWorkflowConstructor<
   typeof SdkCartesiaSpeechModel,
   CartesiaSpeechModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'CartesiaSpeechModel',
   SdkCartesiaSpeechModel,
   wrapSpeechModel,
+  unwrapSpeechModel,
 );
 export type CartesiaSpeechModel = ReturnType<typeof wrapSpeechModel>;
-export const CartesiaTranscriptionModel: AdaptedConstructor<
+export const CartesiaTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkCartesiaTranscriptionModel,
   CartesiaTranscriptionModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'CartesiaTranscriptionModel',
   SdkCartesiaTranscriptionModel,
   wrapTranscriptionModel,
+  unwrapTranscriptionModel,
 );
 export type CartesiaTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel

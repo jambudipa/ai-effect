@@ -1,7 +1,6 @@
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { DeepgramProviderSettings as SdkSettings } from '@ai-sdk/deepgram';
-import type { AdaptedConstructor } from '../internal/provider-adapter.js';
 import { DeepgramSpeechModel as SdkDeepgramSpeechModel } from '@ai-sdk/deepgram';
 import {
   createDeepgram as sdkCreateDeepgram,
@@ -10,15 +9,19 @@ import {
 import type { DeepgramProvider as SdkProvider } from '@ai-sdk/deepgram';
 import {
   adaptMethod,
-  adaptModelConstructor,
   adaptUnsupportedMethod,
   wrapLegacyTranscription,
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import {
+  unwrapSpeechModel,
   wrapSpeechModel,
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
+import {
+  adaptWorkflowModelConstructor,
+  type AdaptedWorkflowConstructor,
+} from '../internal/workflow-model.js';
 
 export { VERSION } from '@ai-sdk/deepgram';
 export type {
@@ -60,12 +63,13 @@ export const createDeepgram = adaptProviderFactory<
   wrapProvider(sdkCreateDeepgram(settings)),
 );
 export const deepgram: DeepgramProvider = wrapProvider(sdkDeepgram);
-export const DeepgramSpeechModel: AdaptedConstructor<
+export const DeepgramSpeechModel: AdaptedWorkflowConstructor<
   typeof SdkDeepgramSpeechModel,
   DeepgramSpeechModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'DeepgramSpeechModel',
   SdkDeepgramSpeechModel,
   wrapSpeechModel,
+  unwrapSpeechModel,
 );
 export type DeepgramSpeechModel = ReturnType<typeof wrapSpeechModel>;

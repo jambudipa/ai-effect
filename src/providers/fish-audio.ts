@@ -1,7 +1,6 @@
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { FishAudioProviderSettings as SdkSettings } from '@ai-sdk/fish-audio';
-import type { AdaptedConstructor } from '../internal/provider-adapter.js';
 import { FishAudioTranscriptionModel as SdkFishAudioTranscriptionModel } from '@ai-sdk/fish-audio';
 import { FishAudioSpeechModel as SdkFishAudioSpeechModel } from '@ai-sdk/fish-audio';
 import {
@@ -11,14 +10,19 @@ import {
 import type { FishAudioProvider as SdkProvider } from '@ai-sdk/fish-audio';
 import {
   adaptMethod,
-  adaptModelConstructor,
   wrapLegacySpeech,
   wrapProviderBase,
 } from '../internal/provider-adapter.js';
 import {
+  unwrapSpeechModel,
+  unwrapTranscriptionModel,
   wrapSpeechModel,
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
+import {
+  adaptWorkflowModelConstructor,
+  type AdaptedWorkflowConstructor,
+} from '../internal/workflow-model.js';
 
 export { VERSION } from '@ai-sdk/fish-audio';
 export type {
@@ -67,22 +71,24 @@ export const createFishAudio = adaptProviderFactory<
   wrapProvider(sdkCreateFishAudio(settings)),
 );
 export const fishAudio: FishAudioProvider = wrapProvider(sdkFishAudio);
-export const FishAudioSpeechModel: AdaptedConstructor<
+export const FishAudioSpeechModel: AdaptedWorkflowConstructor<
   typeof SdkFishAudioSpeechModel,
   FishAudioSpeechModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'FishAudioSpeechModel',
   SdkFishAudioSpeechModel,
   wrapSpeechModel,
+  unwrapSpeechModel,
 );
 export type FishAudioSpeechModel = ReturnType<typeof wrapSpeechModel>;
-export const FishAudioTranscriptionModel: AdaptedConstructor<
+export const FishAudioTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkFishAudioTranscriptionModel,
   FishAudioTranscriptionModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'FishAudioTranscriptionModel',
   SdkFishAudioTranscriptionModel,
   wrapTranscriptionModel,
+  unwrapTranscriptionModel,
 );
 export type FishAudioTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel
