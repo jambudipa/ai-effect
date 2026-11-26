@@ -92,7 +92,7 @@ type AdaptOptions<Options, R> = {
     : Options[Name];
 };
 
-type AdaptArguments<Args extends unknown[], R> = {
+export type AdaptArguments<Args extends unknown[], R> = {
   [Index in keyof Args]: AdaptOptions<Args[Index], R>;
 };
 
@@ -259,7 +259,7 @@ type DescriptorCallbacks<Args extends unknown[], Provided extends unknown[]> = {
   >;
 };
 
-type AdaptedDescriptor<
+export type AdaptedDescriptor<
   Args extends unknown[],
   Tool extends NativeProviderTool,
   Provided extends unknown[],
