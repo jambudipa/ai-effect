@@ -7,6 +7,11 @@ import {
   fireworks as sdkFireworks,
 } from '@ai-sdk/fireworks';
 import type { FireworksProvider as SdkProvider } from '@ai-sdk/fireworks';
+import {
+  WORKFLOW_DESERIALIZE,
+  WORKFLOW_SERIALIZE,
+} from '@ai-sdk/provider-utils';
+import { Context, Effect } from 'effect';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import {
@@ -79,13 +84,39 @@ export const createFireworks = adaptProviderFactory<
   wrapProvider(sdkCreateFireworks(settings)),
 );
 export const fireworks: FireworksProvider = wrapProvider(sdkFireworks);
+
+// Workflow calls these host hooks synchronously. Both Effects have no services.
+const runWorkflowHook = Effect.runSyncWith(Context.empty());
+
+class FireworksWorkflowCarrier {
+  static [WORKFLOW_SERIALIZE](model: FireworksImageModel) {
+    return runWorkflowHook(FireworksImageModel[WORKFLOW_SERIALIZE](model));
+  }
+
+  static [WORKFLOW_DESERIALIZE](
+    input: Parameters<
+      (typeof SdkFireworksImageModel)[typeof WORKFLOW_DESERIALIZE]
+    >[0],
+  ) {
+    return runWorkflowHook(FireworksImageModel[WORKFLOW_DESERIALIZE](input));
+  }
+}
+
+const wrapWorkflowImageModel = (model: SdkFireworksImageModel) => {
+  const wrapped = wrapFixedImageModel(model);
+  Object.defineProperty(wrapped, 'constructor', {
+    value: FireworksWorkflowCarrier,
+  });
+  return wrapped;
+};
+
 export const FireworksImageModel: AdaptedWorkflowConstructor<
   typeof SdkFireworksImageModel,
   FireworksImageModel
 > = adaptWorkflowModelConstructor(
   'FireworksImageModel',
   SdkFireworksImageModel,
-  wrapFixedImageModel,
+  wrapWorkflowImageModel,
   unwrapImageModel,
 );
 export type FireworksImageModel = ReturnType<

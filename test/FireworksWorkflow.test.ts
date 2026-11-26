@@ -24,6 +24,26 @@ it.effect('revives the Fireworks model from native Workflow data', () =>
       modelId,
       config: { ...config, headers: { 'x-fixture': 'retained' } },
     });
+    const carrier = original.constructor as typeof original.constructor & {
+      [WORKFLOW_SERIALIZE](model: typeof original): typeof data;
+      [WORKFLOW_DESERIALIZE](
+        input: Parameters<
+          (typeof FireworksImageModel)[typeof WORKFLOW_DESERIALIZE]
+        >[0],
+      ): typeof original;
+    };
+    expect(Object.keys(original)).not.toContain('constructor');
+    expect(carrier[WORKFLOW_SERIALIZE]).toBeTypeOf('function');
+    expect(carrier[WORKFLOW_DESERIALIZE]).toBeTypeOf('function');
+    expect(carrier[WORKFLOW_SERIALIZE](original)).toEqual(data);
+    expect(headers).toHaveBeenCalledTimes(2);
+    const hostRestored = carrier[WORKFLOW_DESERIALIZE]({
+      modelId: data.modelId,
+      config: { ...data.config, baseURL, provider },
+    });
+    expect(hostRestored.constructor).toBe(carrier);
+    expect(Effect.isEffect(hostRestored.maxImagesPerCall)).toBe(true);
+
     let configReads = 0;
     const saved = FireworksImageModel[WORKFLOW_DESERIALIZE]({
       modelId: data.modelId,
