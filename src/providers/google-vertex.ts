@@ -8,6 +8,11 @@ import {
   googleVertex as sdkGoogleVertex,
 } from '@ai-sdk/google-vertex';
 import type { GoogleVertexProvider as SdkProvider } from '@ai-sdk/google-vertex';
+import {
+  WORKFLOW_DESERIALIZE,
+  WORKFLOW_SERIALIZE,
+} from '@ai-sdk/provider-utils';
+import { Context, Effect } from 'effect';
 import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import { runSync } from '../internal/operation.js';
@@ -117,13 +122,45 @@ export const createGoogleVertex = adaptProviderFactory<
 export const createVertex = createGoogleVertex;
 export const googleVertex: GoogleVertexProvider = wrapProvider(sdkGoogleVertex);
 export const vertex: GoogleVertexProvider = googleVertex;
+
+// Workflow calls these host hooks synchronously. The Effects have no services.
+const runWorkflowHook = Effect.runSyncWith(Context.empty());
+
+class GoogleVertexTranscriptionWorkflowCarrier {
+  static [WORKFLOW_SERIALIZE](model: GoogleVertexGeminiTranscriptionModel) {
+    return runWorkflowHook(
+      GoogleVertexGeminiTranscriptionModel[WORKFLOW_SERIALIZE](model),
+    );
+  }
+
+  static [WORKFLOW_DESERIALIZE](
+    input: Parameters<
+      (typeof SdkGoogleVertexGeminiTranscriptionModel)[typeof WORKFLOW_DESERIALIZE]
+    >[0],
+  ) {
+    return runWorkflowHook(
+      GoogleVertexGeminiTranscriptionModel[WORKFLOW_DESERIALIZE](input),
+    );
+  }
+}
+
+const wrapWorkflowTranscriptionModel = (
+  model: SdkGoogleVertexGeminiTranscriptionModel,
+) => {
+  const wrapped = wrapTranscriptionModel(model);
+  Object.defineProperty(wrapped, 'constructor', {
+    value: GoogleVertexTranscriptionWorkflowCarrier,
+  });
+  return wrapped;
+};
+
 export const GoogleVertexGeminiTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkGoogleVertexGeminiTranscriptionModel,
   GoogleVertexGeminiTranscriptionModel
 > = adaptWorkflowModelConstructor(
   'GoogleVertexGeminiTranscriptionModel',
   SdkGoogleVertexGeminiTranscriptionModel,
-  wrapTranscriptionModel,
+  wrapWorkflowTranscriptionModel,
   unwrapTranscriptionModel,
 );
 export type GoogleVertexGeminiTranscriptionModel = ReturnType<
