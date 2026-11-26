@@ -4,6 +4,9 @@ Use the Vercel AI SDK from Effect v4. The package keeps the SDK's model,
 tool, and structured output types. It provides typed failures and cancels
 requests when their fibers or stream scopes close.
 
+See the [user guide](docs/user-guide/index.md) for tutorials, tasks, and API
+reference.
+
 ```sh
 npm install @jambudipa/ai-effect effect@^4.1.5
 ```
