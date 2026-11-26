@@ -38,6 +38,7 @@ import {
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import {
+  unwrapSpeechTranslationModel,
   wrapDecisionModel,
   wrapEmbeddingModel,
   wrapEvaluationModel,
@@ -47,6 +48,10 @@ import {
   wrapSpeechTranslationModel,
   wrapTranscriptionModel,
 } from '../internal/provider-model.js';
+import {
+  adaptWorkflowModelConstructor,
+  type AdaptedWorkflowConstructor,
+} from '../internal/workflow-model.js';
 import {
   wrapBatch,
   wrapFiles,
@@ -279,13 +284,14 @@ export const Experimental_OpenAIRealtimeModelLive: AdaptedConstructor<
 );
 export type Experimental_OpenAIRealtimeModelLive =
   TypedRealtimeModel<SdkExperimental_OpenAIRealtimeModelLive>;
-export const Experimental_OpenAISpeechTranslationModel: AdaptedConstructor<
+export const Experimental_OpenAISpeechTranslationModel: AdaptedWorkflowConstructor<
   typeof SdkExperimental_OpenAISpeechTranslationModel,
   Experimental_OpenAISpeechTranslationModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'Experimental_OpenAISpeechTranslationModel',
   NativeSpeechTranslationModel as unknown as typeof SdkExperimental_OpenAISpeechTranslationModel,
   wrapSpeechTranslationModel,
+  unwrapSpeechTranslationModel,
 );
 export type Experimental_OpenAISpeechTranslationModel = ReturnType<
   typeof wrapSpeechTranslationModel
