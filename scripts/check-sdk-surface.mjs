@@ -13,7 +13,7 @@ import { describeSignatures } from './sdk-declaration-graph.mjs';
 /** Resolve archive inventory and output paths independently of the shell directory. */
 const project = fileURLToPath(new URL('..', import.meta.url));
 /** Use exact upstream versions and integrity hashes from the repository inventory. */
-const inventoryPath = join(project, '_bmad-output/sdk-upstream-inventory.json');
+const inventoryPath = join(project, 'docs/sdk-upstream-inventory.json');
 /** Write or compare the public export baseline at this path. */
 const surfacePath = join(project, 'docs/sdk-surface.json');
 

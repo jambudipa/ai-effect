@@ -1,0 +1,2917 @@
+{
+  "scope": "https://registry.npmjs.org/-/org/ai-sdk/package",
+  "tag": "https://api.github.com/repos/vercel/ai/git/ref/tags/ai%407.0.181",
+  "revision": "d5d5dd0f2fbc6789d477b8624d9f944c72aa21da",
+  "collected": "2026-11-25T19:25:14.987Z",
+  "packages": [
+    {
+      "name": "ai",
+      "version": "7.0.181",
+      "source": "https://registry.npmjs.org/ai/7.0.181",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/ai"
+      },
+      "integrity": "sha512-b38KYt7tb/dZkujHZTlLWmhohj2bVbWsZQwAJ8Lt6O2hC8saFfIUEFl1U3RwS8tbQ3cL9nAUpeJiiwhsHuBT3w==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./test": {
+          "types": "./dist/test/index.d.ts",
+          "import": "./dist/test/index.js",
+          "default": "./dist/test/index.js"
+        },
+        "./internal": {
+          "types": "./dist/internal/index.d.ts",
+          "import": "./dist/internal/index.js",
+          "default": "./dist/internal/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./test"
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/alibaba",
+      "version": "2.0.93",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Falibaba/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/alibaba"
+      },
+      "integrity": "sha512-hZA4C8O7yKt4MWbC32ndrnpQGEJDoxGemSlWl+DB4TXiU2q0UIPi4tBV3ESaFCTUOmk+BQbxumOmqgjvFOtf6w==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/amazon-bedrock",
+      "version": "5.0.147",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Famazon-bedrock/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/amazon-bedrock"
+      },
+      "integrity": "sha512-qX9NwLunHDvMazDkIbWgmTOEm3dIHZx0Vqh/L1Gr8UFEwsKp3qN3M7N49rYfDbKFhqNv07DU8JaQnrIY0B7qSw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./mantle": {
+          "types": "./dist/mantle/index.d.ts",
+          "import": "./dist/mantle/index.js",
+          "require": "./dist/mantle/index.cjs"
+        },
+        "./anthropic": {
+          "types": "./dist/anthropic/index.d.ts",
+          "import": "./dist/anthropic/index.js",
+          "default": "./dist/anthropic/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./mantle",
+        "./anthropic"
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/angular",
+      "version": "3.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fangular/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/angular"
+      },
+      "integrity": "sha512-YPg06CFZHAqv8gxGF0y6LkaQS8CRRVtJCSABnHgoGwfeP+ZRGywhz5UNf4J/IvmksbPUuq3a1M7dUP7oypljxg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "@angular/core": ">=16.0.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/anthropic",
+      "version": "4.0.108",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fanthropic/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/anthropic"
+      },
+      "integrity": "sha512-v31c9j/7A0Z+CTeqgi6TGEWimBAh7a/tHQQCa0z0oIZP6UyGQN7GR3RqzGOVs+pGwwkXz5uSakbEK6Rht2m5pw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./internal": {
+          "types": "./dist/internal/index.d.ts",
+          "import": "./dist/internal/index.js",
+          "default": "./dist/internal/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/anthropic-aws",
+      "version": "2.0.101",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fanthropic-aws/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/anthropic-aws"
+      },
+      "integrity": "sha512-UpuAslbZ5HZ82lUGuiOgubZ6mMm9ER7eYyMiuhsdBNmtEH0qu8Rq1XK+KtTuGVwGTZq4fxONsJTqfBqRJcDKPA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/assemblyai",
+      "version": "3.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fassemblyai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/assemblyai"
+      },
+      "integrity": "sha512-q5dLvKl+ulTuR1zY8Z8FpvP00/zEHWSiPqae52luDGYXJ2qHETVbLlliPfqEdUb6kEVGhYdlzUCTu0xQvzGlOQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/azure",
+      "version": "4.0.131",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fazure/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/azure"
+      },
+      "integrity": "sha512-egjrbjQuR6ORakqjRybLSqOG2FiDpTo2skOBhBeu/HGc3Z42JZJwfvbedRDuofsSRvANeKCKLlMlrPEHcAx+zw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/baseten",
+      "version": "2.1.74",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fbaseten/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/baseten"
+      },
+      "integrity": "sha512-3rCyMmNSnSGBly3X9UKM9DZslK+qZ2+5ZsoDokp2/itYtvEQSRWz4j2HXDj3lwy14dphWTvcFuDIximDg+pqRQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/black-forest-labs",
+      "version": "2.0.87",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fblack-forest-labs/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/black-forest-labs"
+      },
+      "integrity": "sha512-Cjr/KaUVbA/D8D85nDjxdacZjWGfw0xnIG0S5H03sTbVKH9nfT+OB4jy2yI9I1UVHyBeSgHZAcLwoIkLT9uAKg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/bytedance",
+      "version": "2.0.88",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fbytedance/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/bytedance"
+      },
+      "integrity": "sha512-oWZAIJiGGdpOabDicltYModO8SLvYpFj+bB+h53+kbhkkg6Lc2hJP6eCYIqWYabq08Uc7gpPBXmSMK18T/8tzQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/cartesia",
+      "version": "3.0.78",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fcartesia/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/cartesia"
+      },
+      "integrity": "sha512-PvrQcD1KXsuV1XgbgYQv90QJNGS2YXJHq5/F8fcTmPmPCLcHYOU+YIYbOQbmGkQoBpPciuTMwf3OH0H8U2kN5g==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/cerebras",
+      "version": "3.0.95",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fcerebras/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/cerebras"
+      },
+      "integrity": "sha512-Stxws/u52HNSEY6hry864SXp/EV2BFdqKPio8lXeZwwnsT3rQiuHhQDp2f0bwvewofs/t8HuKSpQko98fHZ+EQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/code-mode",
+      "version": "1.0.138",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fcode-mode/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/code-mode"
+      },
+      "integrity": "sha512-O5aKAvi1tv5RC2OAC6R889+sw94J5EzgJOjdCnEQeliWBFCeHbtSH+7DlcqsWwzL77qQi4JHaerf2qzIwXkxVA==",
+      "engines": {
+        "node": ">=22.13.0"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "ai": "7.0.181"
+      }
+    },
+    {
+      "name": "@ai-sdk/codemod",
+      "version": "4.0.4",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fcodemod/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/codemod"
+      },
+      "integrity": "sha512-jLClDeLmQHFlU0munQKsYyTk3ELIYWLH1VLuiA92K9tn7vgTHELm+eAoUb/+aGS9+GIi3jMav4XwKsIRqbfAgA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "exports": {},
+      "publicPaths": [],
+      "bin": {
+        "codemod": "./dist/bin/codemod.js"
+      }
+    },
+    {
+      "name": "@ai-sdk/cohere",
+      "version": "4.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fcohere/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/cohere"
+      },
+      "integrity": "sha512-PLTEqnhzqTAVY1LY4lj9r84CZS2H3ixg/2ZmNMLjcXUnC1mg+oCn8Hwb+Yb8FTWmlzJL4WCjKW2tSdlypvgZWQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/deepgram",
+      "version": "3.1.55",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fdeepgram/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/deepgram"
+      },
+      "integrity": "sha512-bEhEnYD2S+Dpfi269+ziEC/NUvFVjGVMlQJMeEx19zq2aO3FtJLcW38WaVusfB+aXea85NIxIRUQgK/S+g3zvA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/deepinfra",
+      "version": "3.0.95",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fdeepinfra/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/deepinfra"
+      },
+      "integrity": "sha512-mBUrLeLsZzv6dB3KI7BhfVkywghhkjeUHD7jL+Jc0Jq4c+fKdnIM3IL6BXKBlQNGsaUEtkxWR9ElECuhBbgCyA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/deepseek",
+      "version": "3.0.89",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fdeepseek/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/deepseek"
+      },
+      "integrity": "sha512-Azf3Vie1Rc1bbM930qgoE1y8REQ31LU6AP5O9p7H1q2T/5pgTjXUM132h7j8HnMtdYOKkvMXogmZ2kULyqukfQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./internal": {
+          "types": "./dist/internal/index.d.ts",
+          "import": "./dist/internal/index.js",
+          "default": "./dist/internal/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/devtools",
+      "version": "1.0.85",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fdevtools/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/devtools"
+      },
+      "integrity": "sha512-ifftFToMX4lGOdhdpuNAMlXaUfrLqNY+I2eHVid1JGL0yOMC4EJI5hjvfGgtjc+3dh7kn0f/GQvR24q722R2NQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        }
+      },
+      "publicPaths": [
+        "."
+      ],
+      "bin": {
+        "devtools": "./bin/cli.js"
+      }
+    },
+    {
+      "name": "@ai-sdk/durable-agent",
+      "version": "0.0.1",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fdurable-agent/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git"
+      },
+      "integrity": "sha512-MxnnO2af1swAQ/GPzng58ULVvlwRivAOZLAz30/Bddrq9lH/7JeUIkTM+bLAGm3vzKHtKWe7lPGMX4E/HKKxsg==",
+      "engines": {
+        "node": ">=18"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.mjs",
+          "require": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/elevenlabs",
+      "version": "3.0.88",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Felevenlabs/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/elevenlabs"
+      },
+      "integrity": "sha512-VO5Rt75liY4nDQgVx1ydjuCu2+x5y6lalCRPh+kbsx4BvSsxZ4bgINWrttfAj8UHHHluRwuydXneXnWlOelTJw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/fal",
+      "version": "3.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ffal/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/fal"
+      },
+      "integrity": "sha512-4yl4zmWNvE2w95POBaeE0Ks2PAT32K02D4yVdyqbwXN8S0S0AjR9HAgE6cP6LqRISP0m9Jy4Oxd9wIw/djOZFA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/fireworks",
+      "version": "3.0.98",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ffireworks/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/fireworks"
+      },
+      "integrity": "sha512-bLifjEJWi8+Om5j0iO7TbFCMvvvoANULpU9hKnHh5AOM7+hxhkv3K6z5QlkcAoZs9T4xa0Znh9hgjlAG0ADnfw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/fish-audio",
+      "version": "3.0.61",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ffish-audio/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/fish-audio"
+      },
+      "integrity": "sha512-EYLav8YgVY2hr/OH8pcbbHSV7MSStNxVm3XxnWiZgiardI0U5Lpkz61RaknWi+fBj8mHavy9XHBx+H1Uuf39vQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/gateway",
+      "version": "4.0.154",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fgateway/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/gateway"
+      },
+      "integrity": "sha512-7noB6L/iZ55MRey35rrcbB/J+rAeyRafhJP6G/+/CkOSHxrcdFeMEbtvdIuXTr5S+AAMMQpka+xnD4zVwn04Sw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/gladia",
+      "version": "3.0.84",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fgladia/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/gladia"
+      },
+      "integrity": "sha512-mKyvQap6W2sdiNWW6hdmlx5a+sGNQGUFt/pSLFmd6EZuhKJau2jM4MOP0//Ffpzbj0RsWN0FVAJajbE0OAy8Cw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/gmicloud",
+      "version": "3.0.66",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fgmicloud/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/gmicloud"
+      },
+      "integrity": "sha512-eQUlKZwQo3hTylNtiH0gViephr5rrkTXEDkoofpFtFmMa5k/qHIJpexQQbk6ybqDCt9QqYn8E0YSQc5snxApUg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/google",
+      "version": "4.0.126",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fgoogle/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/google"
+      },
+      "integrity": "sha512-muybSGMmcxBRK9D2YiVHUp8ftykkiHugkiVuvKoEc8taouGNRijtAYq53L2CEyVpUXV5lr5/QHKlWzQ4e09kQA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./internal": {
+          "types": "./dist/internal/index.d.ts",
+          "import": "./dist/internal/index.js",
+          "default": "./dist/internal/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/google-vertex",
+      "version": "5.0.146",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fgoogle-vertex/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/google-vertex"
+      },
+      "integrity": "sha512-swjwPtxWZOwp4zH5iLgnFVf9fyIZaFHlMjg/oJ7KyfmGvDB+gkumylifH1P21rB8T9UuSsMo02yTTWFwshBQVQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./xai": {
+          "types": "./dist/xai/index.d.ts",
+          "import": "./dist/xai/index.js",
+          "default": "./dist/xai/index.js"
+        },
+        "./edge": {
+          "types": "./dist/edge/index.d.ts",
+          "import": "./dist/edge/index.js",
+          "default": "./dist/edge/index.js"
+        },
+        "./maas": {
+          "types": "./dist/maas/index.d.ts",
+          "import": "./dist/maas/index.js",
+          "default": "./dist/maas/index.js"
+        },
+        "./xai/edge": {
+          "types": "./dist/xai/edge/index.d.ts",
+          "import": "./dist/xai/edge/index.js",
+          "default": "./dist/xai/edge/index.js"
+        },
+        "./anthropic": {
+          "types": "./dist/anthropic/index.d.ts",
+          "import": "./dist/anthropic/index.js",
+          "default": "./dist/anthropic/index.js"
+        },
+        "./maas/edge": {
+          "types": "./dist/maas/edge/index.d.ts",
+          "import": "./dist/maas/edge/index.js",
+          "default": "./dist/maas/edge/index.js"
+        },
+        "./package.json": "./package.json",
+        "./anthropic/edge": {
+          "types": "./dist/anthropic/edge/index.d.ts",
+          "import": "./dist/anthropic/edge/index.js",
+          "default": "./dist/anthropic/edge/index.js"
+        }
+      },
+      "publicPaths": [
+        ".",
+        "./xai",
+        "./edge",
+        "./maas",
+        "./xai/edge",
+        "./anthropic",
+        "./maas/edge",
+        "./anthropic/edge"
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/groq",
+      "version": "4.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fgroq/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/groq"
+      },
+      "integrity": "sha512-LnpwDj6ea+pjwqQbWuI2Jx1V9TK8t9hbRZ/IfiAW7aVlaeUZaul87Cs0XFwqMYTFVlYO7zFMuSCnTcdtLjgrrg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness",
+      "version": "1.0.193",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness"
+      },
+      "integrity": "sha512-UPtevAMlMGHhLpBiNcn6WgwCHyDgIlxJN2KfxEobMu/rNRvxnkgbH9DF6j5ity0kkgy+VZX+10KwE0TYiPTU1g==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./agent": {
+          "types": "./dist/agent/index.d.ts",
+          "import": "./dist/agent/index.js",
+          "default": "./dist/agent/index.js"
+        },
+        "./utils": {
+          "types": "./dist/utils/index.d.ts",
+          "import": "./dist/utils/index.js",
+          "default": "./dist/utils/index.js"
+        },
+        "./bridge": {
+          "types": "./dist/bridge/index.d.ts",
+          "import": "./dist/bridge/index.js",
+          "default": "./dist/bridge/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./agent",
+        "./utils",
+        "./bridge"
+      ],
+      "peerDependencies": {
+        "ws": "^8.21.0",
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-acp",
+      "version": "1.0.133",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-acp/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-acp"
+      },
+      "integrity": "sha512-5Sy21agRw3nKMprwOC1LHbiNcC3KB55+HmZBUA3LoQP8j/qX6KMxSHBIodggKeuBZOXyETUjxJoL8MuwlozoUw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-claude-code",
+      "version": "1.0.197",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-claude-code/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-claude-code"
+      },
+      "integrity": "sha512-2fuvgG9VPYiVe81xic8vPvpUdNdO1rjUHmk6+0ACaiO2OaXS8vtvK0ZPacv3VI3PBJYRPTyZRcPrubXkw/xFIQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-cline",
+      "version": "1.0.121",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-cline/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-cline"
+      },
+      "integrity": "sha512-gYroFIvwnGcBFc7PlKWSVheW1jJljo6mA0G4jwLhUmi/Lf/TSE7AVKnJqyZDq/O904puAZa8CuiU5DQCXyFPvA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-codex",
+      "version": "1.0.195",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-codex/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-codex"
+      },
+      "integrity": "sha512-uwwg8GnTuxX5Yjgu/fwOJkq+G0MxwTZtbFysWk0Y/wBVH2lqjzij9gMzsw8mSUdwiNmvXl4OCHwBtAJpg/B7Dg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-cursor",
+      "version": "1.0.108",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-cursor/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-cursor"
+      },
+      "integrity": "sha512-b6td/Rne8Ke5OJHiOvp6Us72XQPkmAxSb2p6DijY4xeDM5sIem1nZBMgsmJEW0vbyRNFiHX4QQ84dEywhRJi6A==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-deepagents",
+      "version": "1.0.193",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-deepagents/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-deepagents"
+      },
+      "integrity": "sha512-fHkQikW8MeRTE7wYLP+H3pRgHs9O5mjZfh1LYJfYdTQgwQNviqTm8wS1ohrjFImRHLNKYXj4a6da++r9Ukv5EA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-fx",
+      "version": "1.0.110",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-fx/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-fx"
+      },
+      "integrity": "sha512-SCXUYL0yM4d9zWWVXu1JRd1oHhh7Eu1zoJQmfqRprTktiAyn+IX7tIYsjTICIwAYfRUfu7RSnSLKe5is0bMSFw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-github-copilot",
+      "version": "1.0.90",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-github-copilot/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-github-copilot"
+      },
+      "integrity": "sha512-cT4OqkRWj1EX8mOrhmz0dR7D3OoWOJp7pJ6O2w45lQUB8/L2h4SCC9zh/k5DOAH3lUnyPuPGn7BhuzxlgHT74g==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-grok-build",
+      "version": "1.0.132",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-grok-build/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-grok-build"
+      },
+      "integrity": "sha512-RCmAsDU7YshKPSLep4jTscKRPxQOSP/OjeLbVtV5ynoDW0NWEj7yDG+QOKGlNvO9egTi/iOk2npzR8lD80GJeQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-opencode",
+      "version": "1.0.196",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-opencode/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-opencode"
+      },
+      "integrity": "sha512-7MaSHUsVnPQMekNMPnoLxYB1vxsZ+Yo/fXvoB0ERMOpeEU8mBAmiReayJE0SD8m27aHgGq2p4crCARZIWtLjKQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/harness-pi",
+      "version": "1.0.196",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fharness-pi/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/harness-pi"
+      },
+      "integrity": "sha512-bg3aXjTJd7q7kh2FPWat3I5sg/KRC4ZtMjKhaOuGhQLE4V+NTTqynrndB5RcJ8KpKHwd0yElqHK9isYX78vnKA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/heygen",
+      "version": "3.0.27",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fheygen/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/heygen"
+      },
+      "integrity": "sha512-en3vzmCBwnPy56sAIWJMCH9P9ehiW74SLGO3ACkkLI0xQpQJPOG0sVzA7g4O9Q++noJ/Q8YMh0hjsVoJmK051Q==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/huggingface",
+      "version": "2.0.95",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fhuggingface/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/huggingface"
+      },
+      "integrity": "sha512-K3Rqx6R0sgiKqxp2q+3jONlM0ZMnLcfzNuF4k7vjQDeN2Y2kyi7Xgz07h4EMNyTu/51MI/+5SJFwJc5tsAUSRw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4"
+      }
+    },
+    {
+      "name": "@ai-sdk/hume",
+      "version": "3.0.83",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fhume/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/hume"
+      },
+      "integrity": "sha512-pPikCMeKEDmU8CGj472wWXvuWtoHGCnnTYVSfayw/aZvPRbUfDWwfpvJgfjtFpHsix+RvgIsKwgtRxkiPX84ig==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/inception",
+      "version": "0.0.0",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Finception/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git"
+      },
+      "integrity": "sha512-2gpf5wekRSuhh/ZFPttRhfqVvVBWfeTkawwJJM5LwnFgOx0dX1zYLHWKVjGGViMscZdulAPwREFSZHkIJ07mQw==",
+      "entry": "./index.js",
+      "exports": {
+        ".": "./index.js"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/klingai",
+      "version": "4.0.87",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fklingai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/klingai"
+      },
+      "integrity": "sha512-zyEMbckjgtMtcnyEh6hXaFOLFPvdNPzgwi5YQ3Sq5l1i5GWBscJCj4PQ2Zj4REatgyHPqwCgegWYBuHRCKbTcA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/langchain",
+      "version": "3.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Flangchain/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/langchain"
+      },
+      "integrity": "sha512-26jIauJ6YMbawDTRZs2DAh68+R8nXDuvHwZNXsjZ2E2G2mmWOGxnFaOJsroVMmYWZP01S7Yu0VqNY+dPzK7Gbw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "@langchain/core": ">=1.0.0",
+        "@langchain/langgraph": ">=0.2.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/liquid",
+      "version": "3.0.1",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fliquid/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/liquid"
+      },
+      "integrity": "sha512-I159VsTv+tQnbo84Hyg0ThhFdt0z8KxIUMAZUTxtlxGhNvwThW24T3GVKiPNHxegiFSBMrE7T2oFXjB2TLC1Iw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/llamaindex",
+      "version": "3.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fllamaindex/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/llamaindex"
+      },
+      "integrity": "sha512-XG2E6imE9VQONyWIX23YCSe96Gpl12XO7WAd6A1a+5ES2j8tvxRM5ZM1xYjlhiC7JoQzSRLKrj0g0qI3ce8JZA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/lmnt",
+      "version": "3.0.36",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Flmnt/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/lmnt"
+      },
+      "integrity": "sha512-t4DPPzvuoUZu4lPGIhn13W6gAoz01551BKlkdYgNLcd+XcEL3h0bjZ+jxm1Ic/NGaJvkjegXO4YCllfMgyNVPg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "deprecated": "LMNT has shut down, so @ai-sdk/lmnt no longer works. Migrate to a supported provider: https://ai-sdk.dev/providers",
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/luma",
+      "version": "3.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fluma/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/luma"
+      },
+      "integrity": "sha512-xCVzdwGCm+aE0V3m2lXwgcTd+uy9gsWj8M86esqgw8oii4PKM8D3/unsLnjNH+UhqOyuR9+yR8GdRbV1AS3clg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/mcp",
+      "version": "2.0.104",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fmcp/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/mcp"
+      },
+      "integrity": "sha512-reus9flS8Te+ttV5aCx2k54jAm+CfBrJfB+hxLKvGCw2Xiv9Y47iE9E7yFGtN5OB0XL1eOPgRY0upMusjxUPKg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./mcp-stdio": {
+          "types": "./dist/mcp-stdio/index.d.ts",
+          "import": "./dist/mcp-stdio/index.js",
+          "default": "./dist/mcp-stdio/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./mcp-stdio"
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/minimax",
+      "version": "3.0.85",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fminimax/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/minimax"
+      },
+      "integrity": "sha512-04xExlfhm6+B6zpJ1LdH0LiYafW9G8Jtpqgu2xlO533L7tZPdB7UgqLXaCCJfhdkJwjmrsBCK/BeMyb42/dqQw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/mistral",
+      "version": "4.0.89",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fmistral/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/mistral"
+      },
+      "integrity": "sha512-NLpVs/+2Gx3NdVIVqDOfck8oCV8d2LJUWxATdDKCYK9XDhHpoA/EeGWxoDj13rUrrN3h1rtFRh9QysAr0dix2g==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8",
+        "livekit-client": "^2.23.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/moonshotai",
+      "version": "3.0.95",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fmoonshotai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/moonshotai"
+      },
+      "integrity": "sha512-ZknTwXFeQ1E9IYrBAW3FWidsOD/toxpiFuJ4tnvH83SURDCNXz8guffnzNJFDVHl7yKmXR7QQFm08Yoz6/yk8w==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/open-responses",
+      "version": "2.0.89",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fopen-responses/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/open-responses"
+      },
+      "integrity": "sha512-JZrRcaN0vjPn0DE/ud2nielvTVhBptqtp6fWqY+AUW34Fr3UdrDgUzRyx/rDCbGlejmpROxOmBuUGANv8HiIVA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/openai",
+      "version": "4.0.123",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fopenai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/openai"
+      },
+      "integrity": "sha512-6BazIkzKXr48DtdYKIBfYnyg5ecW77fkIZGJNC/wvVBx7LsELMXgvvWW2C0/kAjh+441g6osdDANpKQ4LKZxaw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./internal": {
+          "types": "./dist/internal/index.d.ts",
+          "import": "./dist/internal/index.js",
+          "default": "./dist/internal/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/openai-compatible",
+      "version": "3.0.94",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fopenai-compatible/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/openai-compatible"
+      },
+      "integrity": "sha512-UY2AE3/QT110AMpiBoBOBXlUJJG8NAL61y8yID6X8dPe9RjRy9QPfW9XdrifEnTOEM5MdEJP+A4Mf+NTJ93g4A==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./internal": {
+          "types": "./dist/internal/index.d.ts",
+          "import": "./dist/internal/index.js",
+          "default": "./dist/internal/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/otel",
+      "version": "1.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fotel/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/otel"
+      },
+      "integrity": "sha512-XlqL6dNHf7AFFFrYqgtd8iPWcm1oEUio3yjR1Klq6lyD7ksI3CeU2f45WyiTBdfM+xiy5X6HVRJelv+arovs0w==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/parallel",
+      "version": "3.0.11",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fparallel/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/parallel"
+      },
+      "integrity": "sha512-1N+I2NTAirquT7N6ZANeXp+oU+Tqm7v1nD6tYRZXdQsI6Ly3GP51/M7Yf4qKTuiSgEhTtuB2TSdcPbl9b9lCzw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/perplexity",
+      "version": "5.0.37",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fperplexity/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/perplexity"
+      },
+      "integrity": "sha512-RnaMfC/dB0P1WGr5qrFDkH1m2IaopkMpybTIsWAULt4Axb8zS8RAz70WilutmahqpvmDOv0kknwK9AO6aFqczA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/policy-opa",
+      "version": "1.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fpolicy-opa/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/policy-opa"
+      },
+      "integrity": "sha512-k0Nef79hg/dqM3nzk7JJYM0q0X5MKQHONcrvT3sLwhfqW4ArKi+sysc7/anjSH9SsrcVJWfhKSxRApX6MpeJgg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "ai": "7.0.181",
+        "@open-policy-agent/opa": "^1.0.0",
+        "@open-policy-agent/opa-wasm": "^1.0.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/prodia",
+      "version": "2.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fprodia/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/prodia"
+      },
+      "integrity": "sha512-e+yPTIy0Tzt2MI8KGBacgEifpOsOaiy+lU+Nzi7V9m4fTE8seE5RoaL1VIE/PlwbXpnHGQoMGsUPTjlqt8LEbg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/provider",
+      "version": "4.0.39",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fprovider/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/provider"
+      },
+      "integrity": "sha512-jRvAhvW23+TeMGVCME2WGejP/TjzyDg7TplUep3t8HcEYnC2/8zqhCy9RRrjjVs1ljcygABZ8pQ21MbCRdF01w==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/provider-utils",
+      "version": "5.0.83",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fprovider-utils/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/provider-utils"
+      },
+      "integrity": "sha512-5lInsmNnh64eKi2L3fQjPy5VnV2y69lwyGnZ3vfz82Tlkgy8pWsvYueUrSJGxi8gXOM67jB9tN7LtDjjEFsNLQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./test": {
+          "types": "./dist/test/index.d.ts",
+          "import": "./dist/test/index.js",
+          "default": "./dist/test/index.js"
+        },
+        "./package.json": "./package.json",
+        "./experimental-decision": {
+          "types": "./dist/experimental-decision/index.d.ts",
+          "import": "./dist/experimental-decision/index.js",
+          "default": "./dist/experimental-decision/index.js"
+        },
+        "./experimental-evaluation": {
+          "types": "./dist/experimental-evaluation/index.d.ts",
+          "import": "./dist/experimental-evaluation/index.js",
+          "default": "./dist/experimental-evaluation/index.js"
+        },
+        "./experimental-extraction": {
+          "types": "./dist/experimental-extraction/index.d.ts",
+          "import": "./dist/experimental-extraction/index.js",
+          "default": "./dist/experimental-extraction/index.js"
+        }
+      },
+      "publicPaths": [
+        ".",
+        "./test",
+        "./experimental-decision",
+        "./experimental-evaluation",
+        "./experimental-extraction"
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/quiverai",
+      "version": "2.0.85",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fquiverai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/quiverai"
+      },
+      "integrity": "sha512-poH8IibWeATpWanUtrio/rPs8m6LwGtj7cUK4YFM1hnop7bcah5ytX8Cl7H8mlKQN3HETrnYWFe1SOFSluBtTA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/react",
+      "version": "4.0.186",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Freact/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/react"
+      },
+      "integrity": "sha512-AACbn8gCiB3WMJXWV245+W/3dRDwUptnQHmYfEroy+TqaSI5MFAn1lw7tOfCeF2UlHUgKsbGvsYkPBI7tz8gGg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "react": "^18 || ~19.0.1 || ~19.1.2 || ^19.2.1"
+      }
+    },
+    {
+      "name": "@ai-sdk/replicate",
+      "version": "3.0.86",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Freplicate/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/replicate"
+      },
+      "integrity": "sha512-T3SFqJwtgGrqdAwwe4R0OAUJdUT6v4NA6u3sWTKCJVXpd+GKa1ByFVD5RrauL5amGbfnHiSS8Y9L7DbD/7a90g==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/revai",
+      "version": "3.0.83",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Frevai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/revai"
+      },
+      "integrity": "sha512-RWVH1ruZkcvF+TLb/H9B2fTxud/SUJo3xFBfevW/F2kWVLhPI2VQeTLdeVlNU8VCF48xXylvr2NzKGRFjS5uuQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/rsc",
+      "version": "3.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Frsc/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/rsc"
+      },
+      "integrity": "sha512-U6M5iM94QgjfHBQg9TjKuiTG39RGuo9KaSeQ1CoqNwfIt2nfYDH2SG8VIZiAxSeCmvUjKIKjEhkgFT5NPLkHug==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/rsc-client.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/rsc-client.js",
+          "default": "./dist/rsc-client.js",
+          "react-server": "./dist/rsc-server.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8",
+        "react": "^18 || ~19.0.1 || ~19.1.2 || ^19.2.1"
+      }
+    },
+    {
+      "name": "@ai-sdk/sandbox-just-bash",
+      "version": "1.0.193",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fsandbox-just-bash/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/sandbox-just-bash"
+      },
+      "integrity": "sha512-DFiQbJ4QfscqplMz0mPMiwSgos9jGCxdcbKlBQ643lhzSHxCzBwGZKZoHrBsjnAtxQ4qz2OiiUCv+X095KpPgw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/sandbox-vercel",
+      "version": "1.0.193",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fsandbox-vercel/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/sandbox-vercel"
+      },
+      "integrity": "sha512-wtlli71L6o1jOHk8tyoNohFvipNwRwg75KlzME2bIgIYNE2EoOXqUtNlKusF60eWKo1zme8DBZAdUDUnu8+oiQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/scaledown",
+      "version": "3.0.3",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fscaledown/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/scaledown"
+      },
+      "integrity": "sha512-xDvmKX4rHSF3gg8SQbZrAvsvO6xE9hCEtelBNJkEiV6uw6Kbj7nW9sH6lTVZhGPUgQ3hgPkoa7h+nvQ93qFu6g==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/solid",
+      "version": "1.2.13",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fsolid/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git"
+      },
+      "integrity": "sha512-dTght6k+y5LU8UH6To8QAUy1LbuYFX3VgtImRl224OuX7FGoq0y7ppG3IzV656nGp0NP8QWzQ+lR8UhgISWrVA==",
+      "engines": {
+        "node": ">=18"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.mjs",
+          "require": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "solid-js": "^1.7.7"
+      }
+    },
+    {
+      "name": "@ai-sdk/spacexai",
+      "version": "0.0.0",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fspacexai/latest",
+      "integrity": "sha512-D+AAtOrZvMVDdYTg+r5+xN4q5E3pBsFswcl+xov6xQPpq/aVnY+05eUyaDEyj4uaipyj4KrzKM9BkxdQHlbFyA==",
+      "exports": {},
+      "publicPaths": []
+    },
+    {
+      "name": "@ai-sdk/specification",
+      "version": "0.0.0",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fspecification/latest",
+      "integrity": "sha512-MeM5ePRB/+A+KsssgqwgDfYQGueDELWFkmy732LIKc/37b2J/G/Lrl3FujLLY3vnRzU3SAD/jVu0ZTye4s39RA==",
+      "exports": {},
+      "publicPaths": []
+    },
+    {
+      "name": "@ai-sdk/svelte",
+      "version": "5.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fsvelte/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/svelte"
+      },
+      "integrity": "sha512-9t7KwML1HJ8JoJfNC6hXQd7yYUw+Rpu9bsEwhY6PnO3FNQMWP5jBzgGQfy4EZhdjPbIcy3kLC5qjmdYotDe9cA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.d.ts",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "svelte": "./dist/index.js"
+        }
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "svelte": "^5.31.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/swarm",
+      "version": "0.1.39",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fswarm/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git"
+      },
+      "integrity": "sha512-WO0bHlDuAF4dhl221YzBZdtMaMp487UOg80M6HwNtiVWRse1qHUYmHN3S7WuowGuZOTso0PNpGjAjQ2HXR2naA==",
+      "engines": {
+        "node": ">=18"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.mjs",
+          "require": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/tencent",
+      "version": "3.0.5",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftencent/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/tencent"
+      },
+      "integrity": "sha512-tHpv7s0BWNm0IFGECgPtrenfp9HsZqG9cb5iPr2V0U0gw2PZemNv+zwYYuLlW/RlAR6+35vaQesQCXjefWWx5Q==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/test-server",
+      "version": "2.0.4",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftest-server/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/test-server"
+      },
+      "integrity": "sha512-0oRXGN3vs6KMCMqp73hoVNYdfa8bLrPsc7FHE0KN9An6Kl3+XHymHdwEzAIuMYkxQsiACoahIMP+LSxl1KE9Tg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./with-vitest": {
+          "types": "./dist/with-vitest.d.ts",
+          "import": "./dist/with-vitest.js",
+          "default": "./dist/with-vitest.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./with-vitest"
+      ]
+    },
+    {
+      "name": "@ai-sdk/togetherai",
+      "version": "3.0.96",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftogetherai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/togetherai"
+      },
+      "integrity": "sha512-ztwoHuR56pR6fnjmo7CGu3MMUa636IJnvzfIpWsRcygx9n11qXKnfWQz82yE3zxWQ5lirBmxrS6C/QCFonluFQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/tool-bash",
+      "version": "1.0.35",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftool-bash/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/tool-bash"
+      },
+      "integrity": "sha512-sUrhey2RXmXx9aVynteOXld1xeyW0XcTjWwAdAcRezaFfoRILHatNwkuKUiP6GBHbCUgfBaWWHZk609ru3dUUA==",
+      "engines": {
+        "node": ">=22.13.0"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "ai": "^7.0.181"
+      }
+    },
+    {
+      "name": "@ai-sdk/tool-web-fetch",
+      "version": "1.0.31",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftool-web-fetch/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/tool-web-fetch"
+      },
+      "integrity": "sha512-VDLztVXsvv61UesqBPXY04GDqtHZiTQe5ewnaGGcGFqDARJqdsjz2qyI4MJ8IEVdJS9+HW5OQvxur5BZ0M0ymg==",
+      "engines": {
+        "node": ">=22.13.0"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "ai": "^7.0.181"
+      }
+    },
+    {
+      "name": "@ai-sdk/tools",
+      "version": "0.0.0",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftools/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git"
+      },
+      "integrity": "sha512-E2WewViwCun7dX2nNPu8V9zkmsIcvrJq71hz9P5dLg+wsTy5ssVhIooonp9V8JBeJD9VC0toGH8imFzRssjPrw==",
+      "entry": "./index.js",
+      "exports": {
+        ".": "./index.js"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/topaz",
+      "version": "3.0.30",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftopaz/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/topaz"
+      },
+      "integrity": "sha512-pFwAt6FuTvT8gniMxQN6fWZm7Yor50qdXCxYGR5S0I0AcN0NO/8Ge6J5xbsjxnIfc6nv4pQC1hWVxQGlg0Ptuw==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/tui",
+      "version": "1.0.182",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftui/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/tui"
+      },
+      "integrity": "sha512-rOBchGTu4qIODmn5wqA3ExCG7RMpa6lg1MN6mxp8Jg82jHCkkZNqWuSet7lh9PXOIeUP0nBZgrtX4kKzhWDAtQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ]
+    },
+    {
+      "name": "@ai-sdk/typesafe-ai",
+      "version": "3.0.42",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Ftypesafe-ai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/typesafe-ai"
+      },
+      "integrity": "sha512-wq/Oc9o0TYI1gbG4DQgorB4BClX+96qy0uOQ88XmxvfhUbEe2Jj/y7FNUhTGPs4QDNY1M/CFGRRFe5llYI28BA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/ui-utils",
+      "version": "1.2.11",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fui-utils/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git"
+      },
+      "integrity": "sha512-3zcwCc8ezzFlwp3ZD15wAPjf2Au4s3vAbKsXQVyhxODHcmu0iyPO2Eua6D/vicq/AUm/BAo60r97O6HU+EI0+w==",
+      "engines": {
+        "node": ">=18"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.mjs",
+          "require": "./dist/index.js"
+        },
+        "./test": {
+          "types": "./test/dist/index.d.ts",
+          "import": "./test/dist/index.mjs",
+          "module": "./test/dist/index.mjs",
+          "require": "./test/dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./test"
+      ],
+      "peerDependencies": {
+        "zod": "^3.23.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/valibot",
+      "version": "3.0.83",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fvalibot/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/valibot"
+      },
+      "integrity": "sha512-D+MiFxn1Fyw3nWfIt4lPfnyS77R2sUJ/IGyofG+wRW+JZ782bnZZ+Wclb4GPR+L+KM9iMf8/FyKg0EyelE85WA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "valibot": "^1.1.0",
+        "@valibot/to-json-schema": "^1.3.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/vercel",
+      "version": "3.0.30",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fvercel/latest",
+      "repository": {
+        "url": "git+https://github.com/vercel/ai.git",
+        "type": "git",
+        "directory": "packages/vercel"
+      },
+      "integrity": "sha512-D2M/hwYbhX4C5J6cv267z2cflS9XUYwOH0HZ4RDyjRCEBUIb/bp47P1AsHaq1jA5iliPCLhfDpuuUHRwWc3uNg==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "deprecated": "The v0 Model API has been removed, and @ai-sdk/vercel no longer works. Use the v0 API instead: https://v0.app/docs/api",
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/voyage",
+      "version": "2.0.85",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fvoyage/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/voyage"
+      },
+      "integrity": "sha512-F0P9O+TBzQa2xpEBPwV+o3LuS2CuAvOMZA2bnjl2pjsyXVEQ6W+cGcmvBxaPtPl6Tikw1kGGEDEyGL2ezThO8w==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/vue",
+      "version": "4.0.181",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fvue/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/vue"
+      },
+      "integrity": "sha512-zHy0G6LE9rKDDmnGvDX0MsMHpfWFS/XqahkZ8QSlu+krVrTQV2MTI2HixoxbS5Q5S2UB3yNNzy9hi49RmBwLKQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "vue": "^3.3.4"
+      }
+    },
+    {
+      "name": "@ai-sdk/workflow",
+      "version": "2.0.113",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fworkflow/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/workflow"
+      },
+      "integrity": "sha512-59prKD111zypj8ajjJ6a5iMVn63eywoHMJpnY1YAwm9bEuW6ngIA+grsqijO4GjQaotfd8KFeG2UPgEwK+iftA==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./video": {
+          "types": "./dist/video.d.ts",
+          "import": "./dist/video.js",
+          "default": "./dist/video.js"
+        },
+        "./client": {
+          "types": "./dist/client.d.ts",
+          "import": "./dist/client.js",
+          "default": "./dist/client.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        ".",
+        "./video",
+        "./client"
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8",
+        "workflow": "^5.1.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/workflow-harness",
+      "version": "1.0.193",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fworkflow-harness/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/workflow-harness"
+      },
+      "integrity": "sha512-OGUzQABpw1Qi5q9rmDwF3+JgKb7oq92mTT0viSS61JqeE0R2Mxq9lHe4E8ZoZDI5PnNluxjUMgcsLDwbJobiTQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "workflow": "^5.1.0"
+      }
+    },
+    {
+      "name": "@ai-sdk/xai",
+      "version": "5.0.50",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fxai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/xai"
+      },
+      "integrity": "sha512-6Rpox6yDf8F9WrT2uennrdOdRtdXtmzHZkxZCz7wEkbnr4+yP48mfIOXUiUEOD/KlB1RXPI12SN3fK+puudVcQ==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    },
+    {
+      "name": "@ai-sdk/zai",
+      "version": "3.0.57",
+      "source": "https://registry.npmjs.org/%40ai-sdk%2Fzai/latest",
+      "repository": {
+        "url": "https://github.com/vercel/ai",
+        "type": "git",
+        "directory": "packages/zai"
+      },
+      "integrity": "sha512-opRlsfo3cw6uAzs9pZlHEZegeYPcsqoLKXvQz7COwqOpVAreEB9wts4KrU5gt5e2Xw8s9taByrBECASgfPTgag==",
+      "engines": {
+        "node": ">=22"
+      },
+      "entry": "./dist/index.js",
+      "exports": {
+        ".": {
+          "types": "./dist/index.d.ts",
+          "import": "./dist/index.js",
+          "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+      },
+      "publicPaths": [
+        "."
+      ],
+      "peerDependencies": {
+        "zod": "^3.25.76 || ^4.1.8"
+      }
+    }
+  ]
+}

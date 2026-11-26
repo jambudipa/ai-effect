@@ -29,7 +29,7 @@ export function readConsumerLock(fixture, archive) {
   );
   const { packages: inventory } = JSON.parse(
     readFileSync(
-      new URL('../_bmad-output/sdk-upstream-inventory.json', import.meta.url),
+      new URL('../docs/sdk-upstream-inventory.json', import.meta.url),
       'utf8',
     ),
   );
