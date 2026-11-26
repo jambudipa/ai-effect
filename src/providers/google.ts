@@ -23,6 +23,11 @@ import {
 } from '@ai-sdk/google';
 import type { GoogleProvider as SdkProvider } from '@ai-sdk/google';
 import {
+  WORKFLOW_DESERIALIZE,
+  WORKFLOW_SERIALIZE,
+} from '@ai-sdk/provider-utils';
+import { Context, Effect } from 'effect';
+import {
   adaptMethod,
   adaptModelConstructor,
   wrapProviderBase,
@@ -226,13 +231,70 @@ export const Experimental_GoogleRealtimeModel: AdaptedConstructor<
 export type Experimental_GoogleRealtimeModel = ReturnType<
   typeof wrapRealtimeModel
 >;
+// Workflow calls these host hooks synchronously. The Effects have no services.
+const runWorkflowHook = Effect.runSyncWith(Context.empty());
+
+class GoogleSpeechTranslationWorkflowCarrier {
+  static [WORKFLOW_SERIALIZE](
+    model: Experimental_GoogleSpeechTranslationModel,
+  ) {
+    return runWorkflowHook(
+      Experimental_GoogleSpeechTranslationModel[WORKFLOW_SERIALIZE](model),
+    );
+  }
+
+  static [WORKFLOW_DESERIALIZE](
+    input: Parameters<
+      (typeof SdkExperimental_GoogleSpeechTranslationModel)[typeof WORKFLOW_DESERIALIZE]
+    >[0],
+  ) {
+    return runWorkflowHook(
+      Experimental_GoogleSpeechTranslationModel[WORKFLOW_DESERIALIZE](input),
+    );
+  }
+}
+
+const wrapWorkflowSpeechTranslationModel = (
+  model: SdkExperimental_GoogleSpeechTranslationModel,
+) => {
+  const wrapped = wrapSpeechTranslationModel(model);
+  Object.defineProperty(wrapped, 'constructor', {
+    value: GoogleSpeechTranslationWorkflowCarrier,
+  });
+  return wrapped;
+};
+
+class GoogleTranscriptionWorkflowCarrier {
+  static [WORKFLOW_SERIALIZE](model: GoogleTranscriptionModel) {
+    return runWorkflowHook(GoogleTranscriptionModel[WORKFLOW_SERIALIZE](model));
+  }
+
+  static [WORKFLOW_DESERIALIZE](
+    input: Parameters<
+      (typeof SdkGoogleTranscriptionModel)[typeof WORKFLOW_DESERIALIZE]
+    >[0],
+  ) {
+    return runWorkflowHook(
+      GoogleTranscriptionModel[WORKFLOW_DESERIALIZE](input),
+    );
+  }
+}
+
+const wrapWorkflowTranscriptionModel = (model: SdkGoogleTranscriptionModel) => {
+  const wrapped = wrapTranscriptionModel(model);
+  Object.defineProperty(wrapped, 'constructor', {
+    value: GoogleTranscriptionWorkflowCarrier,
+  });
+  return wrapped;
+};
+
 export const Experimental_GoogleSpeechTranslationModel: AdaptedWorkflowConstructor<
   typeof SdkExperimental_GoogleSpeechTranslationModel,
   Experimental_GoogleSpeechTranslationModel
 > = adaptWorkflowModelConstructor(
   'Experimental_GoogleSpeechTranslationModel',
   SdkExperimental_GoogleSpeechTranslationModel,
-  wrapSpeechTranslationModel,
+  wrapWorkflowSpeechTranslationModel,
   unwrapSpeechTranslationModel,
 );
 export type Experimental_GoogleSpeechTranslationModel = ReturnType<
@@ -248,7 +310,7 @@ export const GoogleTranscriptionModel: AdaptedWorkflowConstructor<
 > = adaptWorkflowModelConstructor(
   'GoogleTranscriptionModel',
   SdkGoogleTranscriptionModel,
-  wrapTranscriptionModel,
+  wrapWorkflowTranscriptionModel,
   unwrapTranscriptionModel,
 );
 export type GoogleTranscriptionModel = ReturnType<
