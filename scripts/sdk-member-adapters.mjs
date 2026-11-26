@@ -137,13 +137,24 @@ function* alternatives(type) {
 
 function* memberCandidates(checker, roots, member) {
   for (const root of roots) {
-    for (const actual of publicMembers(
-      checker,
-      root,
-      member.path,
-      member.symbolKey,
-    )) {
-      for (const type of alternatives(actual.type)) yield { ...actual, type };
+    const receiversToCheck = member.receiverBrand
+      ? receivers(checker, root)
+      : [root];
+    for (const receiver of receiversToCheck) {
+      if (
+        member.receiverBrand &&
+        !receiver.type.getProperty(member.receiverBrand)
+      ) {
+        continue;
+      }
+      for (const actual of publicMembers(
+        checker,
+        receiver,
+        member.path,
+        member.symbolKey,
+      )) {
+        for (const type of alternatives(actual.type)) yield { ...actual, type };
+      }
     }
   }
 }

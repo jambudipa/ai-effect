@@ -143,6 +143,17 @@ export function memberProjection(upstream, exported, member) {
 }
 
 export function resultProjection(upstream, exported, result) {
+  if (
+    upstream === '@ai-sdk/policy-opa' &&
+    exported === 'optionalOpaPolicy' &&
+    result.calls
+  ) {
+    return {
+      path: ['value'],
+      receiverBrand: '~effect/Option',
+      relation: 'optional-approval',
+    };
+  }
   if (upstream === 'ai' && exported === 'smoothStream' && result.calls) {
     return {
       path: ['apply'],
