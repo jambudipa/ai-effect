@@ -163,6 +163,8 @@ type DecisionIdentifiers<Options> = 'decisionModels' extends keyof Options
   ? ModelIdentifiers<Options, 'decisionModels'>
   : ModelIdentifiers<Options, 'evaluationModels'>;
 type ModelCall<Id, Model> = (modelId: Id) => Effect.Effect<Model, AiSdkError>;
+type CustomModelCall<Id, Model> = ModelCall<string, Model> &
+  ModelCall<Id, Model>;
 type Fallback<Options> = Options extends {
   readonly fallbackProvider?: infer Provider;
 }
@@ -171,41 +173,40 @@ type Fallback<Options> = Options extends {
 type CustomProviderScope<Options> = [Fallback<Options>] extends [never]
   ? never
   : Scope.Scope | ProviderServices<Fallback<Options>, RegistryMethods>;
-type CustomApi<Options, Key extends 'files' | 'skills', Value> =
-  Options extends Record<Key, Value>
-    ? () => Effect.Effect<Value, AiSdkError>
-    : Options extends {
-          readonly fallbackProvider: Record<
-            Key,
-            () => Effect.Effect<Value, AiSdkError>
-          >;
-        }
-      ? () => Effect.Effect<Value, AiSdkError>
-      : (() => Effect.Effect<Value, AiSdkError>) | undefined;
+type ResourceCall<Value> = () => Effect.Effect<Value, AiSdkError>;
+type CustomApi<
+  Options,
+  Key extends 'files' | 'skills',
+  Value,
+> = Options extends
+  | Readonly<Record<Key, Value>>
+  | { readonly fallbackProvider: Readonly<Record<Key, ResourceCall<Value>>> }
+  ? Readonly<Record<Key, ResourceCall<Value>>>
+  : Readonly<Partial<Record<Key, ResourceCall<Value>>>>;
 
 type CustomProvider<Options> = {
   readonly specificationVersion: 'v4';
-  readonly languageModel: ModelCall<
+  readonly languageModel: CustomModelCall<
     ModelIdentifiers<Options, 'languageModels'>,
     ReturnType<typeof wrapLanguageModel>
   >;
-  readonly embeddingModel: ModelCall<
+  readonly embeddingModel: CustomModelCall<
     ModelIdentifiers<Options, 'embeddingModels'>,
     ReturnType<typeof wrapEmbeddingModel>
   >;
-  readonly imageModel: ModelCall<
+  readonly imageModel: CustomModelCall<
     ModelIdentifiers<Options, 'imageModels'>,
     ReturnType<typeof wrapImageModel>
   >;
-  readonly transcriptionModel: ModelCall<
+  readonly transcriptionModel: CustomModelCall<
     ModelIdentifiers<Options, 'transcriptionModels'>,
     ReturnType<typeof wrapTranscriptionModel>
   >;
-  readonly speechModel: ModelCall<
+  readonly speechModel: CustomModelCall<
     ModelIdentifiers<Options, 'speechModels'>,
     ReturnType<typeof wrapSpeechModel>
   >;
-  readonly rerankingModel: ModelCall<
+  readonly rerankingModel: CustomModelCall<
     ModelIdentifiers<Options, 'rerankingModels'>,
     ReturnType<typeof wrapRerankingModel>
   >;
@@ -225,9 +226,8 @@ type CustomProvider<Options> = {
     ModelIdentifiers<Options, 'extractionModels'>,
     ReturnType<typeof wrapExtractionModel>
   >;
-  readonly files: CustomApi<Options, 'files', FilesV4Handle>;
-  readonly skills: CustomApi<Options, 'skills', SkillsV4Handle>;
-};
+} & CustomApi<Options, 'files', FilesV4Handle> &
+  CustomApi<Options, 'skills', SkillsV4Handle>;
 
 const sdkModel = <
   Native extends ResourceIdentity,
@@ -278,8 +278,15 @@ const optionalResource = <Handle extends object, Native>(
 
 const wrapCustomProvider = <Options extends CustomProviderOptions>(
   native: ReturnType<typeof sdk.customProvider>,
-): CustomProvider<Options> =>
-  Object.assign(wrapProviderBase('customProvider', native), {
+): CustomProvider<Options> => {
+  const { files, skills, ...provider } = wrapProviderBase(
+    'customProvider',
+    native,
+  );
+  return {
+    ...provider,
+    ...(files ? { files } : {}),
+    ...(skills ? { skills } : {}),
     videoModel: adaptMethod(
       'customProvider.videoModel',
       native.videoModel.bind(native),
@@ -300,7 +307,8 @@ const wrapCustomProvider = <Options extends CustomProviderOptions>(
       native.extractionModel.bind(native),
       wrapExtractionModel,
     ),
-  }) as unknown as CustomProvider<Options>;
+  } as unknown as CustomProvider<Options>;
+};
 
 type UserModels = Pick<
   CustomProviderOptions,
@@ -333,6 +341,8 @@ const withFallback = (
         other && !(local && Object.hasOwn(local, id)) ? other(id) : own(id),
       );
 
+  const files = provider.files ?? fallback.files;
+  const skills = provider.skills ?? fallback.skills;
   return rememberProviderFacade({
     ...provider,
     languageModel: select(
@@ -385,8 +395,8 @@ const withFallback = (
       provider.extractionModel,
       fallback.extractionModel,
     ),
-    files: provider.files ?? fallback.files,
-    skills: provider.skills ?? fallback.skills,
+    ...(files ? { files } : {}),
+    ...(skills ? { skills } : {}),
   });
 };
 

@@ -13,6 +13,7 @@ import {
 } from '../src/core-providers.js';
 import { wrapSpeechModel } from '../src/internal/provider-model.js';
 import { wrapLegacyModel } from '../src/internal/legacy-model.js';
+import { wrapFiles, wrapSkills } from '../src/internal/provider-resource.js';
 import { cerebras } from '../src/providers/cerebras.js';
 import type { ProviderV2, ProviderV3 } from '../src/protocols/provider.js';
 
@@ -44,6 +45,35 @@ const choose = (id: string) =>
   });
 
 describe('Core provider adapters', () => {
+  it.effect(
+    'omits unconfigured APIs and inherits configured fallback APIs',
+    () =>
+      Effect.gen(function* () {
+        const empty = yield* customProvider({});
+        expect(Object.hasOwn(empty, 'files')).toBe(false);
+        expect(Object.hasOwn(empty, 'skills')).toBe(false);
+
+        const files = wrapFiles({
+          specificationVersion: 'v4',
+          provider: 'fixture',
+          uploadFile: noGeneration,
+        });
+        const skills = wrapSkills({
+          specificationVersion: 'v4',
+          provider: 'fixture',
+          uploadSkill: noGeneration,
+        });
+        const configured = yield* customProvider({ files, skills });
+        const fallback = yield* customProvider({
+          fallbackProvider: configured,
+        });
+        expect((yield* configured.files()).provider).toBe('fixture');
+        expect((yield* configured.skills()).provider).toBe('fixture');
+        expect((yield* fallback.files()).provider).toBe('fixture');
+        expect((yield* fallback.skills()).provider).toBe('fixture');
+      }),
+  );
+
   it.effect('keeps custom IDs and the registry separator', () =>
     Effect.gen(function* () {
       const provider = yield* customProvider({ speechModels: { voice } });
@@ -196,6 +226,11 @@ describe('Core provider adapters', () => {
         expectTypeOf<
           Parameters<typeof custom.languageModel>[0]
         >().toEqualTypeOf<'local'>();
+        expect((yield* custom.languageModel('dialogue')).modelId).toBe(
+          'fallback/dialogue',
+        );
+        expect(Object.hasOwn(custom, 'files')).toBe(false);
+        expect(Object.hasOwn(custom, 'skills')).toBe(false);
         const registry = yield* createProviderRegistry({ custom });
         expect((yield* registry.languageModel('custom:local')).modelId).toBe(
           local.modelId,

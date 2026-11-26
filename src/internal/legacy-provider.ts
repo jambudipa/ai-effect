@@ -49,12 +49,13 @@ type LegacyExtensions<R> = {
   readonly extractionModel?: Selector<ExtractionModelV4, R>;
 };
 
-export type ProviderFacade = ProviderV4 & {
-  readonly videoModel?: Selector<VideoModelV4>;
-  readonly decisionModel?: Selector<DecisionModelV4>;
-  readonly evaluationModel?: Selector<ReturnType<typeof wrapEvaluationModel>>;
-  readonly extractionModel?: Selector<ExtractionModelV4>;
-};
+export type ProviderFacade = Omit<ProviderV4, 'files' | 'skills'> &
+  Partial<Pick<ProviderV4, 'files' | 'skills'>> & {
+    readonly videoModel?: Selector<VideoModelV4>;
+    readonly decisionModel?: Selector<DecisionModelV4>;
+    readonly evaluationModel?: Selector<ReturnType<typeof wrapEvaluationModel>>;
+    readonly extractionModel?: Selector<ExtractionModelV4>;
+  };
 export type ProviderMiddleware = Pick<
   Parameters<typeof sdk.wrapProvider>[0],
   'imageModelMiddleware'
@@ -315,9 +316,9 @@ export const applyProviderMiddleware = (
   provider: ProviderFacade,
   options: ProviderMiddleware,
   retainExtensions: boolean,
-): ProviderFacade => {
+): ProviderV4 & ProviderFacade => {
   const { languageModelMiddleware, imageModelMiddleware } = options;
-  const wrapped: ProviderFacade = {
+  const wrapped: ProviderV4 & ProviderFacade = {
     ...(retainExtensions ? provider : {}),
     specificationVersion: 'v4',
     languageModel: languageModelMiddleware
