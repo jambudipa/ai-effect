@@ -3,7 +3,10 @@ import { Context, Deferred, Effect, Fiber, Schema } from 'effect';
 import { expectTypeOf } from 'vitest';
 import { experimental_toolCaller, generateText, tool } from '../src/core.js';
 import type { LanguageModelV4GenerateResult } from '../src/protocols/provider.js';
-import { experimental_getToolCaller } from '../src/protocols/provider-utils.js';
+import {
+  experimental_getToolCaller,
+  experimental_toolCaller as providerUtilsToolCaller,
+} from '../src/protocols/provider-utils.js';
 import { createOpenAI } from '../src/providers/openai.js';
 import { MockLanguageModelV4 } from '../src/testing.js';
 
@@ -48,6 +51,37 @@ it('finds no caller definition on a plain tool', () => {
   expect(experimental_getToolCaller(tool({ inputSchema }))).toBeUndefined();
 });
 
+it.effect('retains the configured tool shape on both caller exports', () =>
+  Effect.gen(function* () {
+    const definition = {
+      inputSchema,
+      contextSchema: Schema.Struct({ label: Schema.String }),
+      outputSchema: Schema.String,
+      description: ({ context }: { context: { label: string } }) =>
+        context.label,
+      needsApproval: () => Effect.succeed(false),
+      onInputStart: () => Effect.void,
+      onInputDelta: () => Effect.void,
+      onInputAvailable: () => Effect.void,
+      execute: () => Effect.succeed('result'),
+      toModelOutput: () =>
+        Effect.succeed({ type: 'text' as const, value: 'result' }),
+    };
+    const caller = {
+      type: 'local' as const,
+      bind: () => Effect.succeed(definition),
+    };
+    const fromCore = yield* experimental_toolCaller(definition, caller);
+    const fromProviderUtils = yield* providerUtilsToolCaller(
+      definition,
+      caller,
+    );
+    expectTypeOf(fromCore).toExtend<typeof definition>();
+    expectTypeOf(fromProviderUtils).toExtend<typeof definition>();
+    expect(fromCore).toMatchObject(definition);
+    expect(fromProviderUtils).toMatchObject(definition);
+  }),
+);
 it.effect('applies provider caller options and retains the provider tool', () =>
   Effect.gen(function* () {
     let hookCalls = 0;
