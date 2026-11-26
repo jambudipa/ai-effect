@@ -20,6 +20,9 @@ export type {
 } from './internal/harness-contracts/sandbox-vercel.js';
 
 type WithoutTemplate<T> = T extends unknown ? Omit<T, 'template'> : never;
+type SandboxProvider = ReturnType<typeof wrapSandboxProvider>;
+type ResumableSandboxProvider = SandboxProvider &
+  Required<Pick<SandboxProvider, 'resumeSession'>>;
 
 export type VercelNetworkSandboxSessionCreateOptions<
   R = never,
@@ -39,8 +42,13 @@ export const createVercelSandbox = (
 /** Construct the legacy provider with explicit settings. */
 export const VercelSandboxProvider = {
   make: (settings: SDKContract.VercelSandboxSettings) =>
-    runSync('VercelSandboxProvider.make', () =>
-      wrapSandboxProvider(new sdk.VercelSandboxProvider(settings)),
+    runSync(
+      'VercelSandboxProvider.make',
+      () =>
+        // The pinned Vercel class always supplies the resume method.
+        wrapSandboxProvider(
+          new sdk.VercelSandboxProvider(settings),
+        ) as ResumableSandboxProvider,
     ),
 };
 export type VercelSandboxProvider = Effect.Success<
