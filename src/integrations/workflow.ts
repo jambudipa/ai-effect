@@ -18,10 +18,12 @@ export type {
   WorkflowToolApprovalSecret,
 } from '@ai-sdk/workflow';
 
+/** Convert a native model-call event to the corresponding UI stream chunk when supported. */
 export const toUIMessageChunk = (
   ...args: Parameters<typeof sdk.toUIMessageChunk>
 ) => runSync('Workflow.toUIMessageChunk', () => sdk.toUIMessageChunk(...args));
 
+/** Construct the native transform that converts model-call events to UI message chunks. */
 export const createModelCallToUIChunkTransform = (
   ...args: Parameters<typeof sdk.createModelCallToUIChunkTransform>
 ) =>
@@ -101,15 +103,20 @@ export type {
   ToolCallRepairFunction,
 } from './internal/workflow.js';
 
+/** Registered Effect v4 language model accepted by the Workflow agent constructor. */
 export type CompatibleLanguageModel = LanguageModelV4;
+/** Native workflow model-call stream event specialized to the bound tool set. */
 export type ModelCallStreamPart<T extends EffectTools = EffectTools> =
   sdk.ModelCallStreamPart<BoundTools<T>>;
+/** Workflow tool start event with types reflecting the selected Effect tools. */
 export type WorkflowAgentToolExecutionStartEvent<
   T extends EffectTools = EffectTools,
 > = sdk.WorkflowAgentToolExecutionStartEvent<BoundTools<T>>;
+/** Workflow tool completion event with types reflecting the selected Effect tools. */
 export type WorkflowAgentToolExecutionEndEvent<
   T extends EffectTools = EffectTools,
 > = sdk.WorkflowAgentToolExecutionEndEvent<BoundTools<T>>;
+/** Output parser with separate final and partial types and optional Effect service requirements. */
 export type OutputSpecification<A, P = A, R = never> = EffectOutput<
   A,
   P,
@@ -117,6 +124,7 @@ export type OutputSpecification<A, P = A, R = never> = EffectOutput<
   R
 >;
 
+/** Native lifecycle hooks that use the shared Effect binding without model conversion. */
 const lifecycle = [
   'onStepEnd',
   'onStepFinish',
@@ -128,39 +136,48 @@ const lifecycle = [
   'onToolExecutionEnd',
 ] as const;
 
+/** Keys of the SDK hooks adapted by the shared callback binder. */
 type Lifecycle = (typeof lifecycle)[number];
+/** Constructor options before binding the Effect tool and output types. */
 type NativeSettings<A, P> = sdk.WorkflowAgentOptions<
   ToolSet,
   Record<string, unknown>,
   A,
   P
 >;
+/** Native complete-generation request specialized to the expected output types. */
 type NativeGenerate<A, P> = sdk.WorkflowAgentGenerateOptions<
   ToolSet,
   Record<string, unknown>,
   A,
   P
 >;
+/** Native stream request specialized to the expected output types. */
 type NativeStream<A, P> = sdk.WorkflowAgentStreamOptions<
   ToolSet,
   Record<string, unknown>,
   A,
   P
 >;
+/** Shared native request options for callback type inference. */
 type NativeCall<A, P> = sdk.WorkflowAgentCallOptions<
   ToolSet,
   Record<string, unknown>,
   A,
   P
 >;
+/** SDK callback event for the start of the whole call, before wrapping the model. */
 type NativeStart = Parameters<
   NonNullable<NativeSettings<never, never>['onStart']>
 >[0];
+/** SDK callback event for the start of one model step, before wrapping the model. */
 type NativeStepStart = Parameters<
   NonNullable<NativeSettings<never, never>['onStepStart']>
 >[0];
+/** Model identity exposed to start callbacks, including the legacy versions the SDK may report. */
 type StartModel = string | LanguageModelV2 | LanguageModelV3 | LanguageModelV4;
 
+/** Preserve workflow model IDs and wrap v2, v3, or v4 native models for start callbacks. */
 const wrapStartModel = (model: NativeStart['model']): StartModel => {
   if (typeof model === 'string') return model;
   switch (model.specificationVersion) {
@@ -173,16 +190,19 @@ const wrapStartModel = (model: NativeStart['model']): StartModel => {
   }
 };
 
+/** Start callback input with a wrapped model and the native prompt and context values. */
 type StartEvent = {
   readonly model: StartModel;
   readonly messages: NativeStart['messages'];
   readonly runtimeContext: NativeStart['runtimeContext'];
   readonly toolsContext: NativeStart['toolsContext'];
 };
+/** Step start callback input with step index and results accumulated in the current call. */
 type StepStartEvent = StartEvent & {
   readonly stepNumber: number;
   readonly steps: NativeStepStart['steps'];
 };
+/** Start hooks, including experimental names, that receive a model handle adapted for Effect. */
 type StartCallbacks<E, R> = {
   readonly onStart?: (event: StartEvent) => Effect.Effect<void, E, R>;
   readonly experimental_onStart?: (
@@ -194,6 +214,7 @@ type StartCallbacks<E, R> = {
   ) => Effect.Effect<void, E, R>;
 };
 
+/** Bind start hooks to the operation owner and adapt models before calling user code. */
 const bindStartCallbacks = <E, R>(
   options: StartCallbacks<E, R>,
   owner: Effect.Success<ReturnType<typeof openOperation<R>>>,
@@ -231,6 +252,7 @@ const bindStartCallbacks = <E, R>(
   };
 };
 
+/** Native constructor options preserved without adapting their value representation. */
 type GeneralSettings =
   | 'id'
   | 'instructions'
@@ -242,6 +264,7 @@ type GeneralSettings =
   | 'toolOrder'
   | 'timeout';
 
+/** Construct a Workflow agent from a registered model or model ID with optional Effect hooks, tools, and sandbox. */
 export type WorkflowAgentOptions<
   T extends EffectTools = {},
   A = never,
@@ -267,6 +290,7 @@ export type WorkflowAgentOptions<
     readonly experimental_sandbox?: SandboxSession;
   };
 
+/** Native option keys whose Effect equivalents require more than generic callback binding. */
 type Omitted =
   | 'repairToolCall'
   | 'experimental_repairToolCall'
@@ -280,6 +304,7 @@ type Omitted =
   | keyof StartCallbacks<never, never>
   | 'output';
 
+/** Preserve all native request variants and adapt their callbacks, output, sandbox, and telemetry settings. */
 type OperationOptions<N, A, P, E, R> = N extends unknown
   ? Omit<WithEffectCallbacks<N, Lifecycle, E, R>, Omitted> &
       StartCallbacks<E, R> &
@@ -289,6 +314,7 @@ type OperationOptions<N, A, P, E, R> = N extends unknown
       }
   : never;
 
+/** Shared call configuration used to type Workflow lifecycle callbacks. */
 export type WorkflowAgentCallOptions<
   A = never,
   P = A,
@@ -296,6 +322,7 @@ export type WorkflowAgentCallOptions<
   R = never,
 > = OperationOptions<NativeCall<A, P>, A, P, E, R>;
 
+/** Complete-generation request with optional Effect structured output and per-call hooks. */
 export type WorkflowAgentGenerateOptions<
   A = string,
   P = A,
@@ -303,6 +330,7 @@ export type WorkflowAgentGenerateOptions<
   R = never,
 > = OperationOptions<NativeGenerate<A, P>, A, P, E, R>;
 
+/** Stream request with optional Effect structured output and per-call hooks. */
 export type WorkflowAgentStreamOptions<
   A = never,
   P = A,
@@ -310,8 +338,10 @@ export type WorkflowAgentStreamOptions<
   R = never,
 > = OperationOptions<NativeStream<A, P>, A, P, E, R>;
 
+/** Native completed generation result with the caller's parsed output type. */
 export type WorkflowAgentGenerateResult<A = string> =
   sdk.WorkflowAgentGenerateResult<ToolSet, Record<string, unknown>, A>;
+/** Workflow stream completion data with a tagged error when the SDK reports one in the result. */
 export type WorkflowAgentStreamResult<A = never> = Omit<
   sdk.WorkflowAgentStreamResult<ToolSet, A>,
   'error'
@@ -319,6 +349,7 @@ export type WorkflowAgentStreamResult<A = never> = Omit<
   readonly error?: AiSdkError;
 };
 
+/** Native agent instance parameterized by complete and partial output for this wrapper. */
 type NativeAgent<A, P> = sdk.WorkflowAgent<
   ToolSet,
   Record<string, unknown>,
@@ -326,7 +357,9 @@ type NativeAgent<A, P> = sdk.WorkflowAgent<
   P
 >;
 
+/** Workflow-hosted agent that runs the native model with Effect tools and callback ownership. */
 export class WorkflowAgent<A = never, P = A> {
+  /** Validate model and sandbox identity before acquiring the constructor callback scope. */
   static make<
     T extends EffectTools = {},
     A = never,
@@ -386,15 +419,19 @@ export class WorkflowAgent<A = never, P = A> {
     });
   }
 
+  /** Keep the native Workflow agent behind the tagged request boundary. */
   private constructor(private readonly native: NativeAgent<A, P>) {}
 
+  /** Identifier configured on the native Workflow agent. */
   get id() {
     return this.native.id;
   }
+  /** Return wrapped tools with their native Workflow tool keys. */
   get tools() {
     return wrapTools('WorkflowAgent.tools', this.native.tools);
   }
 
+  /** Run a complete Workflow call and retain its full structured-output type. */
   generate<
     Out = [A] extends [never] ? string : A,
     Part = P,
@@ -413,6 +450,7 @@ export class WorkflowAgent<A = never, P = A> {
     );
   }
 
+  /** Run a streaming Workflow call and map any embedded native failure to `AiSdkError`. */
   stream<Out = A, Part = P, E = never, R = never>(
     options: WorkflowAgentStreamOptions<Out, Part, E, R>,
   ) {
@@ -436,8 +474,10 @@ export class WorkflowAgent<A = never, P = A> {
   }
 }
 
+/** Native request contracts handled by the shared scoped invocation helper. */
 type NativeOptions<A, P> = NativeGenerate<A, P> | NativeStream<A, P>;
 
+/** Bind per-call callbacks, output, and cancellation before waiting for durable Workflow completion. */
 const invokeWorkflow = <N extends NativeOptions<A, P>, A, P, E, R, Result>(
   name: string,
   options: OperationOptions<N, A, P, E, R>,
@@ -491,57 +531,69 @@ const invokeWorkflow = <N extends NativeOptions<A, P>, A, P, E, R, Result>(
     }),
   );
 
+/** Recover the tool definitions exposed by a concrete Workflow agent instance. */
 export type InferWorkflowAgentTools<A extends WorkflowAgent> = A['tools'];
+/** Infer a workflow UI message using the tools available on the supplied agent type. */
 export type InferWorkflowAgentUIMessage<
   A extends WorkflowAgent,
   Metadata = unknown,
 > = UIMessage<Metadata>;
 
+/** Effect handler for Workflow abort events with the caller's callback services. */
 export type WorkflowAgentOnAbortCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onAbort']>;
+/** Effect handler for the native Workflow operation's end event. */
 export type WorkflowAgentOnEndCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onEnd']>;
+/** Effect handler for errors reported by a native Workflow call. */
 export type WorkflowAgentOnErrorCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onError']>;
+/** Effect handler for the SDK's finish event, preserving the typed output. */
 export type WorkflowAgentOnFinishCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onFinish']>;
+/** Effect handler for call start with an adapted model identity. */
 export type WorkflowAgentOnStartCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onStart']>;
+/** Effect handler for the end of a Workflow step. */
 export type WorkflowAgentOnStepEndCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onStepEnd']>;
+/** Effect handler for the native step-finish callback name. */
 export type WorkflowAgentOnStepFinishCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onStepFinish']>;
+/** Effect handler for step start with the adapted model and accumulated history. */
 export type WorkflowAgentOnStepStartCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onStepStart']>;
+/** Effect handler for completion of a Workflow tool invocation. */
 export type WorkflowAgentOnToolExecutionEndCallback<
   A = never,
   E = never,
   R = never,
 > = NonNullable<WorkflowAgentCallOptions<A, A, E, R>['onToolExecutionEnd']>;
+/** Effect handler for start of a Workflow tool invocation. */
 export type WorkflowAgentOnToolExecutionStartCallback<
   A = never,
   E = never,

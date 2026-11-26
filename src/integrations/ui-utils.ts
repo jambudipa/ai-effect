@@ -35,36 +35,47 @@ export type {
   UIMessage,
 } from '@ai-sdk/ui-utils';
 
+/** Generic callable type used to infer each native stream callback's argument list. */
 type LegacyCallback = (...args: never[]) => unknown;
+/** Extract native parser callbacks separately from the input byte stream. */
 type Callbacks<Options> = Omit<Options, 'stream'>;
+/** Preserve each native callback's argument list and make it return an Effect. */
 type EffectCallbacks<Options, Services> = {
   [K in keyof Callbacks<Options>]: (
     ...args: Parameters<Extract<Callbacks<Options>[K], LegacyCallback>>
   ) => Effect.Effect<void, unknown, Services>;
 };
+/** Provide a native byte stream, cancellation signal, and Effect delivery callbacks for one reader. */
 type ProcessOptions<Options, Services> = EffectCallbacks<Options, Services> & {
   readonly stream: ReadableStream<Uint8Array>;
   readonly abortSignal?: AbortSignal;
 };
 
+/** Parsed event union for the legacy AI SDK data stream protocol. */
 type DataPart = ReturnType<typeof sdk.parseDataStreamPart>;
+/** Parsed event union for the legacy AI SDK assistant stream protocol. */
 type AssistantPart = ReturnType<typeof sdk.parseAssistantStreamPart>;
+/** Match a legacy data event discriminator to its parsed payload. */
 type DataValue<Kind extends DataPart['type']> = Extract<
   DataPart,
   { type: Kind }
 >['value'];
+/** Match a legacy assistant event discriminator to its parsed payload. */
 type AssistantValue<Kind extends AssistantPart['type']> = Extract<
   AssistantPart,
   { type: Kind }
 >['value'];
+/** Handle one decoded payload with the services of the stream's owning scope. */
 type StreamCallback<Value, R> = (
   part: Value,
 ) => Effect.Effect<void, unknown, R>;
+/** Shared input byte stream and optional cancellation signal for legacy protocol readers. */
 type StreamInput = {
   readonly stream: ReadableStream<Uint8Array>;
   readonly abortSignal?: AbortSignal;
 };
 
+/** Data protocol input with optional Effect callbacks keyed by event payload type. */
 type DataStreamOptions<R> = StreamInput & {
   readonly onTextPart?: StreamCallback<DataValue<'text'>, R>;
   readonly onReasoningPart?: StreamCallback<DataValue<'reasoning'>, R>;
@@ -99,6 +110,7 @@ type DataStreamOptions<R> = StreamInput & {
   readonly onStartStepPart?: StreamCallback<DataValue<'start_step'>, R>;
 };
 
+/** Assistant protocol input with optional Effect callbacks for assistant and control messages. */
 type AssistantStreamOptions<R> = StreamInput & {
   readonly onTextPart?: StreamCallback<AssistantValue<'text'>, R>;
   readonly onErrorPart?: StreamCallback<AssistantValue<'error'>, R>;
@@ -116,6 +128,7 @@ type AssistantStreamOptions<R> = StreamInput & {
   >;
 };
 
+/** Own the stream reader, bind native parser callbacks, and cancel processing when the scope closes. */
 const processStream = <
   Options extends { stream: ReadableStream<Uint8Array> },
   Services,
@@ -182,6 +195,7 @@ export const processTextStream = <R = never>(
     options,
   );
 
+/** Describe the wire code, event name, parser, and formatter for a legacy data part. */
 export type DataStreamPart<Code extends string, Name extends string, Value> = {
   readonly code: Code;
   readonly name: Name;
@@ -190,13 +204,16 @@ export type DataStreamPart<Code extends string, Name extends string, Value> = {
   ) => Effect.Effect<{ type: Name; value: Value }, AiSdkError>;
 };
 
+/** Legacy assistant part descriptor with its wire code, name, and corresponding payload type. */
 export type AssistantStreamPart<
   Code extends string,
   Name extends string,
   Value,
 > = DataStreamPart<Code, Name, Value>;
+/** Synchronous ID factory used by legacy host and message helpers. */
 export type IdGenerator = () => string;
 
+/** Encode a typed data part in the legacy wire format through the native formatter. */
 export const formatDataStreamPart = <Kind extends DataPart['type']>(
   ...args: Parameters<typeof sdk.formatDataStreamPart<Kind>>
 ) =>
@@ -204,6 +221,7 @@ export const formatDataStreamPart = <Kind extends DataPart['type']>(
     sdk.formatDataStreamPart<Kind>(...args),
   );
 
+/** Encode a typed assistant part in the legacy wire format through the native formatter. */
 export const formatAssistantStreamPart = <Kind extends AssistantPart['type']>(
   ...args: Parameters<typeof sdk.formatAssistantStreamPart<Kind>>
 ) =>
@@ -211,19 +229,23 @@ export const formatAssistantStreamPart = <Kind extends AssistantPart['type']>(
     sdk.formatAssistantStreamPart<Kind>(...args),
   );
 
+/** Parse a legacy data stream line and return a tagged failure for invalid native input. */
 export const parseDataStreamPart = (
   line: string,
 ): Effect.Effect<DataPart, AiSdkError> =>
   runSync('legacy.parseDataStreamPart', () => sdk.parseDataStreamPart(line));
 
+/** Parse a legacy assistant stream line through the native parser's tagged boundary. */
 export const parseAssistantStreamPart = (line: string) =>
   runSync('legacy.parseAssistantStreamPart', () =>
     sdk.parseAssistantStreamPart(line),
   );
 
+/** Create an SDK-compatible ID when the Effect runs. */
 export const generateId = (...args: Parameters<typeof sdk.generateId>) =>
   runSync('legacy.generateId', () => sdk.generateId(...args));
 
+/** Find the highest tool invocation step in the supplied legacy message sequence. */
 export const extractMaxToolInvocationStep = (
   ...args: Parameters<typeof sdk.extractMaxToolInvocationStep>
 ) =>
@@ -231,19 +253,23 @@ export const extractMaxToolInvocationStep = (
     sdk.extractMaxToolInvocationStep(...args),
   );
 
+/** Populate legacy message parts from the stored message fields through the SDK helper. */
 export const fillMessageParts = (
   ...args: Parameters<typeof sdk.fillMessageParts>
 ) => runSync('legacy.fillMessageParts', () => sdk.fillMessageParts(...args));
 
+/** Derive the legacy parts representation of a message through the native conversion rules. */
 export const getMessageParts = (
   ...args: Parameters<typeof sdk.getMessageParts>
 ) => runSync('legacy.getMessageParts', () => sdk.getMessageParts(...args));
 
+/** Decode text from a data URL using the native helper's accepted formats. */
 export const getTextFromDataUrl = (
   ...args: Parameters<typeof sdk.getTextFromDataUrl>
 ) =>
   runSync('legacy.getTextFromDataUrl', () => sdk.getTextFromDataUrl(...args));
 
+/** Check whether an assistant message's tool calls have their required results. */
 export const isAssistantMessageWithCompletedToolCalls = (
   ...args: Parameters<typeof sdk.isAssistantMessageWithCompletedToolCalls>
 ) =>
@@ -251,15 +277,18 @@ export const isAssistantMessageWithCompletedToolCalls = (
     sdk.isAssistantMessageWithCompletedToolCalls(...args),
   );
 
+/** Compare legacy data by the SDK's deep equality rules. */
 export const isDeepEqualData = (
   ...args: Parameters<typeof sdk.isDeepEqualData>
 ) => runSync('legacy.isDeepEqualData', () => sdk.isDeepEqualData(...args));
 
+/** Parse streamed JSON that may still be incomplete using the legacy SDK's parser. */
 export const parsePartialJson = (
   ...args: Parameters<typeof sdk.parsePartialJson>
 ): Effect.Effect<ReturnType<typeof sdk.parsePartialJson>, AiSdkError> =>
   runSync('legacy.parsePartialJson', () => sdk.parsePartialJson(...args));
 
+/** Convert request attachments through the native asynchronous file helper. */
 export const prepareAttachmentsForRequest = (
   ...args: Parameters<typeof sdk.prepareAttachmentsForRequest>
 ) =>
@@ -267,6 +296,7 @@ export const prepareAttachmentsForRequest = (
     sdk.prepareAttachmentsForRequest(...args),
   );
 
+/** Apply native legacy chat rules to decide whether to submit messages again. */
 export const shouldResubmitMessages = (
   ...args: Parameters<typeof sdk.shouldResubmitMessages>
 ) =>
@@ -274,6 +304,7 @@ export const shouldResubmitMessages = (
     sdk.shouldResubmitMessages(...args),
   );
 
+/** Insert a tool result into the matching invocation using the SDK's message update rules. */
 export const updateToolCallResult = (
   ...args: Parameters<typeof sdk.updateToolCallResult>
 ) =>
@@ -281,11 +312,15 @@ export const updateToolCallResult = (
     sdk.updateToolCallResult(...args),
   );
 
+/** JSON Schema representation accepted by the legacy constructor. */
 type LegacyJsonSchema = Parameters<typeof sdk.jsonSchema>[0];
+/** Validation outcome that distinguishes decoded data from an ordinary validation failure. */
 type Validated<A> =
   { success: true; value: A } | { success: false; error: Error };
+/** Zod schema input supported by the legacy SDK's adapter. */
 type LegacyZodSchema<A> = Parameters<typeof sdk.zodSchema<A>>[0];
 
+/** Type-only brand that keeps legacy schemas distinct from other SDK schema families. */
 declare const schemaFamily: unique symbol;
 
 /** A schema for the legacy AI SDK 4 protocol. */
@@ -297,6 +332,7 @@ export type Schema<A = unknown, R = never> = {
   ) => Effect.Effect<Validated<A>, AiSdkError, R>;
 };
 
+/** Preserve native JSON Schema and expose any validator through the tagged Effect boundary. */
 const wrapSchema = <A>(schema: sdk.Schema<A>): Schema<A> => {
   const validate = schema.validate;
   return {
@@ -318,6 +354,7 @@ const wrapSchema = <A>(schema: sdk.Schema<A>): Schema<A> => {
   } as Schema<A>;
 };
 
+/** Build a legacy schema with an optional Effect validator supplied by the caller. */
 export const jsonSchema = <A = unknown, R = never>(
   definition: LegacyJsonSchema,
   options?: {
@@ -334,9 +371,11 @@ export const jsonSchema = <A = unknown, R = never>(
     };
   });
 
+/** Adapt a supported Zod schema to the legacy protocol with deferred validation. */
 export const zodSchema = <A>(...args: Parameters<typeof sdk.zodSchema<A>>) =>
   runSync('legacy.zodSchema', () => wrapSchema(sdk.zodSchema<A>(...args)));
 
+/** Reuse an existing legacy schema or adapt a supported Zod schema through the SDK. */
 export const asSchema = <A, R = never>(
   schema: LegacyZodSchema<A> | Schema<A, R>,
 ): Effect.Effect<Schema<A, R>, AiSdkError> =>
@@ -344,19 +383,27 @@ export const asSchema = <A, R = never>(
     'jsonSchema' in schema ? schema : wrapSchema(sdk.asSchema(schema)),
   );
 
+/** Capture services and cancellation for response and tool callbacks on one legacy HTTP request. */
 type RequestOwner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
+/** Native chat request options used to preserve update callback and message types. */
 type ChatOptions = Parameters<typeof sdk.callChatApi>[0];
+/** Host callback result accepted by the legacy framework-facing options. */
 type HostResult<A> = A | PromiseLike<A> | Effect.Effect<A, unknown>;
+/** Preserve the parameter order of the native chat finish callback. */
 type ChatFinish = Parameters<NonNullable<sdk.UseChatOptions['onFinish']>>;
+/** Native notification payload for a tool call received by the active chat host. */
 type ToolCall = Parameters<NonNullable<sdk.UseChatOptions['onToolCall']>>[0];
+/** Native chat update payload retained for host state changes. */
 type ChatUpdate = Parameters<ChatOptions['onUpdate']>[0];
 
+/** Shared transport settings for legacy hosts with a tagged error callback. */
 type FetchSettings = {
   readonly credentials?: RequestCredentials;
   readonly headers?: Record<string, string> | Headers;
   readonly fetch?: typeof globalThis.fetch;
   readonly onError?: (error: AiSdkError) => HostResult<void>;
 };
+/** Shared text-host setup for endpoint selection, protocol, and response observation. */
 type TextSettings = FetchSettings & {
   readonly api?: string;
   readonly id?: string;
@@ -365,6 +412,7 @@ type TextSettings = FetchSettings & {
   readonly onResponse?: (response: Response) => HostResult<void>;
 };
 
+/** Legacy chat host options with native message state and optional client tool callbacks. */
 export type UseChatOptions = TextSettings & {
   readonly initialMessages?: sdk.Message[];
   readonly onToolCall?: (call: ToolCall) => HostResult<unknown>;
@@ -374,18 +422,21 @@ export type UseChatOptions = TextSettings & {
   readonly sendExtraMessageFields?: boolean;
 };
 
+/** Legacy completion host options with initial output and optional finish handling. */
 export type UseCompletionOptions = TextSettings & {
   readonly initialCompletion?: string;
   readonly onFinish?: (prompt: string, completion: string) => HostResult<void>;
   readonly body?: object;
 };
 
+/** Legacy assistant host settings for the endpoint, thread, and request payload. */
 export type UseAssistantOptions = FetchSettings & {
   readonly api: string;
   readonly threadId?: string;
   readonly body?: object;
 };
 
+/** Common request settings for the legacy HTTP helpers and their scoped response callbacks. */
 type HttpRequest<R> = {
   readonly api: string;
   readonly body: Record<string, unknown>;
@@ -398,6 +449,7 @@ type HttpRequest<R> = {
   readonly abortSignal?: AbortSignal;
 };
 
+/** Chat request with UI state updates, restore-on-failure behavior, and optional tool handling. */
 type ChatRequestOptions<R> = HttpRequest<R> & {
   readonly abortController: (() => AbortController | null) | undefined;
   readonly restoreMessagesOnFailure: () => void;
@@ -410,6 +462,7 @@ type ChatRequestOptions<R> = HttpRequest<R> & {
   readonly requestType?: 'generate' | 'resume';
 };
 
+/** Completion request with text, loading, error, and abort state callbacks owned by the UI. */
 type CompletionRequestOptions<R> = HttpRequest<R> & {
   readonly prompt: string;
   readonly setCompletion: (completion: string) => void;
@@ -421,6 +474,7 @@ type CompletionRequestOptions<R> = HttpRequest<R> & {
   readonly onData: ((data: sdk.JSONValue[]) => void) | undefined;
 };
 
+/** Run the legacy HTTP request in a scope and connect its supplied abort signal to interruption. */
 const scopedRequest = <A, R>(
   operation: string,
   signal: AbortSignal | undefined,
@@ -437,6 +491,7 @@ const scopedRequest = <A, R>(
     }),
   );
 
+/** Send or resume a legacy chat request while guarding UI updates after cancellation. */
 export const callChatApi = <R = never>(options: ChatRequestOptions<R>) =>
   scopedRequest<void, R>('legacy.callChatApi', options.abortSignal, (owner) => {
     const { abortSignal, onResponse, onToolCall, ...request } = options;
@@ -465,6 +520,7 @@ export const callChatApi = <R = never>(options: ChatRequestOptions<R>) =>
     });
   });
 
+/** Send a legacy text completion request and map native errors to tagged values for the host. */
 export const callCompletionApi = <R = never>(
   options: CompletionRequestOptions<R>,
 ) =>
