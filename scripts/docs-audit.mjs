@@ -20,7 +20,13 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -105,7 +111,10 @@ function discoverSourceFiles(root, roots, excludes) {
     else walkInto(root, collected);
   }
   const kept = collected.filter(
-    (file) => SOURCE_EXTENSIONS.has(extname(file)) && !file.endsWith('.d.ts') && !isExcluded(relative(root, file), excludes),
+    (file) =>
+      SOURCE_EXTENSIONS.has(extname(file)) &&
+      !file.endsWith('.d.ts') &&
+      !isExcluded(relative(root, file), excludes),
   );
   return [...new Set(kept)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
@@ -118,11 +127,15 @@ function discoverSourceFiles(root, roots, excludes) {
  */
 function gitFiles(root) {
   try {
-    const out = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
-      cwd: root,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-    });
+    const out = execFileSync(
+      'git',
+      ['ls-files', '--cached', '--others', '--exclude-standard'],
+      {
+        cwd: root,
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    );
     return out.split('\n').filter(Boolean);
   } catch {
     return null;
@@ -163,7 +176,10 @@ function walkInto(dir, out) {
 function isExcluded(relPath, excludes) {
   const posix = relPath.split(sep).join('/');
   return [...DEFAULT_EXCLUDES, ...excludes].some(
-    (fragment) => posix === fragment || posix.startsWith(`${fragment}/`) || posix.includes(`/${fragment}/`),
+    (fragment) =>
+      posix === fragment ||
+      posix.startsWith(`${fragment}/`) ||
+      posix.includes(`/${fragment}/`),
   );
 }
 
@@ -180,7 +196,12 @@ function isExcluded(relPath, excludes) {
  * @returns {{line: number, kind: string, name: string}[]} Gaps, in source order.
  */
 export function auditDeclarations(ts, fileName, text) {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
+  const source = ts.createSourceFile(
+    fileName,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+  );
   const gaps = [];
 
   const documented = (node) =>
@@ -188,8 +209,10 @@ export function auditDeclarations(ts, fileName, text) {
       const body = ts.getTextOfJSDocComment(doc.comment) ?? '';
       return body.trim().length > 0 || (doc.tags ?? []).length > 0;
     });
-  const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
-  const nameOf = (node) => (node.name ? node.name.getText(source) : '(anonymous)');
+  const lineOf = (node) =>
+    source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+  const nameOf = (node) =>
+    node.name ? node.name.getText(source) : '(anonymous)';
   const record = (node, kind, name) => {
     if (!documented(node)) gaps.push({ line: lineOf(node), kind, name });
   };
@@ -208,7 +231,9 @@ export function auditDeclarations(ts, fileName, text) {
    * @returns {boolean} True when the node is an overload implementation.
    */
   const isOverloadImplementation = (node) =>
-    Boolean(node.body) && node.name && overloaded.has(node.name.getText(source));
+    Boolean(node.body) &&
+    node.name &&
+    overloaded.has(node.name.getText(source));
 
   /**
    * Visits one declaration node.
@@ -225,7 +250,8 @@ export function auditDeclarations(ts, fileName, text) {
         }
         return;
       case k.FunctionDeclaration:
-        if (!isOverloadImplementation(node)) record(node, 'function', nameOf(node));
+        if (!isOverloadImplementation(node))
+          record(node, 'function', nameOf(node));
         return;
       case k.ClassDeclaration:
       case k.ClassExpression:
@@ -258,7 +284,8 @@ export function auditDeclarations(ts, fileName, text) {
       }
       case k.MethodDeclaration:
       case k.MethodSignature:
-        if (!isOverloadImplementation(node)) record(node, 'method', nameOf(node));
+        if (!isOverloadImplementation(node))
+          record(node, 'method', nameOf(node));
         return;
       case k.PropertyDeclaration:
       case k.PropertySignature:
@@ -284,7 +311,13 @@ export function auditDeclarations(ts, fileName, text) {
     const outer = overloaded;
     overloaded = new Set(
       members
-        .filter((m) => !m.body && m.name && (m.kind === ts.SyntaxKind.FunctionDeclaration || m.kind === ts.SyntaxKind.MethodDeclaration))
+        .filter(
+          (m) =>
+            !m.body &&
+            m.name &&
+            (m.kind === ts.SyntaxKind.FunctionDeclaration ||
+              m.kind === ts.SyntaxKind.MethodDeclaration),
+        )
         .map((m) => m.name.getText(source)),
     );
     members.forEach(visit);
@@ -326,7 +359,8 @@ export function auditFolder(dir) {
 export function auditMaintenance(root) {
   const gaps = [];
   const readme = join(root, 'README.md');
-  if (!existsSync(readme)) gaps.push({ file: 'README.md', reason: 'file missing' });
+  if (!existsSync(readme))
+    gaps.push({ file: 'README.md', reason: 'file missing' });
   else if (!readFileSync(readme, 'utf8').includes(MAINTENANCE_MARKER)) {
     gaps.push({ file: 'README.md', reason: `no ${MAINTENANCE_MARKER} block` });
   }
@@ -339,7 +373,10 @@ export function auditMaintenance(root) {
     }
     const text = readFileSync(file, 'utf8');
     if (!text.includes(MAINTENANCE_MARKER) && !text.includes('README.md')) {
-      gaps.push({ file: name, reason: `no ${MAINTENANCE_MARKER} block and no README.md reference` });
+      gaps.push({
+        file: name,
+        reason: `no ${MAINTENANCE_MARKER} block and no README.md reference`,
+      });
     }
   }
   return gaps;
@@ -393,20 +430,27 @@ export function runAudit(options) {
       } catch {
         continue;
       }
-      for (const gap of auditDeclarations(ts, rel, text)) gaps.jsdoc.push({ file: rel, ...gap });
+      for (const gap of auditDeclarations(ts, rel, text))
+        gaps.jsdoc.push({ file: rel, ...gap });
     }
   }
 
-  const folders = [...new Set(scoped.map((file) => file.slice(0, file.lastIndexOf(sep))))].sort();
+  const folders = [
+    ...new Set(scoped.map((file) => file.slice(0, file.lastIndexOf(sep)))),
+  ].sort();
   if (wants('folders')) {
     for (const dir of folders) {
       const reasons = auditFolder(dir);
       if (reasons.length > 0) {
-        gaps.folders.push({ dir: relative(root, dir).split(sep).join('/') || '.', missing: reasons });
+        gaps.folders.push({
+          dir: relative(root, dir).split(sep).join('/') || '.',
+          missing: reasons,
+        });
       }
     }
   }
-  if (wants('maintenance') && !options.dir) gaps.maintenance = auditMaintenance(root);
+  if (wants('maintenance') && !options.dir)
+    gaps.maintenance = auditMaintenance(root);
 
   const limited = {};
   for (const [kind, list] of Object.entries(gaps)) {
@@ -420,7 +464,11 @@ export function runAudit(options) {
     filesScanned: scoped.length,
     foldersScanned: folders.length,
   };
-  return { ok: counts.jsdoc + counts.folders + counts.maintenance === 0, counts, gaps: limited };
+  return {
+    ok: counts.jsdoc + counts.folders + counts.maintenance === 0,
+    counts,
+    gaps: limited,
+  };
 }
 
 /**
@@ -503,7 +551,10 @@ Exit codes: 0 = clean, 1 = gaps found, 2 = the gate could not run.
 function invokedDirectly() {
   if (!process.argv[1]) return false;
   try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
   } catch {
     return false;
   }

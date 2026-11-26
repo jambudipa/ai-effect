@@ -17,7 +17,13 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
-import { auditDeclarations, auditFolder, auditMaintenance, MAINTENANCE_MARKER, runAudit } from './docs-audit.mjs';
+import {
+  auditDeclarations,
+  auditFolder,
+  auditMaintenance,
+  MAINTENANCE_MARKER,
+  runAudit,
+} from './docs-audit.mjs';
 
 const SOURCE = `
 /** Documented. */
@@ -47,10 +53,12 @@ type Missing = number;
 
 void test('reports every undocumented declaration and nothing else', () => {
   const gaps = auditDeclarations(ts, 'sample.ts', SOURCE);
-  assert.deepEqual(
-    gaps.map((gap) => gap.name).sort(),
-    ['Missing', 'bare', 'missing', 'undocumentedConst'],
-  );
+  assert.deepEqual(gaps.map((gap) => gap.name).sort(), [
+    'Missing',
+    'bare',
+    'missing',
+    'undocumentedConst',
+  ]);
 });
 
 void test('a folder needs one non-empty README.md', () => {
@@ -71,11 +79,17 @@ void test('the root files must carry the upkeep marker', () => {
 
   assert.equal(auditMaintenance(root).length, 3);
 
-  writeFileSync(join(root, 'README.md'), `Repo docs.\n\n${MAINTENANCE_MARKER}\nKeep them current.\n`);
+  writeFileSync(
+    join(root, 'README.md'),
+    `Repo docs.\n\n${MAINTENANCE_MARKER}\nKeep them current.\n`,
+  );
   writeFileSync(join(root, 'AGENTS.md'), '@README.md\n');
   writeFileSync(join(root, 'CLAUDE.md'), 'Project notes.\n');
   assert.deepEqual(auditMaintenance(root), [
-    { file: 'CLAUDE.md', reason: `no ${MAINTENANCE_MARKER} block and no README.md reference` },
+    {
+      file: 'CLAUDE.md',
+      reason: `no ${MAINTENANCE_MARKER} block and no README.md reference`,
+    },
   ]);
 
   // Root entry points that only point at README.md pass: the rule is stated once, not three times.
@@ -84,12 +98,20 @@ void test('the root files must carry the upkeep marker', () => {
 });
 
 void test('an empty block does not count as documentation', () => {
-  const gaps = auditDeclarations(ts, 'empty.ts', '/** */\nexport function hollow(): void {}\n');
-  assert.deepEqual(gaps.map((gap) => gap.name), ['hollow']);
+  const gaps = auditDeclarations(
+    ts,
+    'empty.ts',
+    '/** */\nexport function hollow(): void {}\n',
+  );
+  assert.deepEqual(
+    gaps.map((gap) => gap.name),
+    ['hollow'],
+  );
 });
 
 void test('a block of tags alone counts as documentation', () => {
-  const source = '/** @returns nothing of interest */\nexport function tagged(): void {}\n';
+  const source =
+    '/** @returns nothing of interest */\nexport function tagged(): void {}\n';
   assert.deepEqual(auditDeclarations(ts, 'tags.ts', source), []);
 });
 
@@ -120,8 +142,12 @@ void test('an overload implementation inside a namespace is exempt too', () => {
 
 void test('members of a dotted namespace are audited', () => {
   // `namespace A.B` nests one declaration per segment; the gate once stopped at `A` and passed.
-  const source = '/** Documented. */\nnamespace A.B {\n  export const hidden = 1;\n}\n';
-  assert.deepEqual(auditDeclarations(ts, 'dotted.ts', source).map((gap) => gap.name), ['hidden']);
+  const source =
+    '/** Documented. */\nnamespace A.B {\n  export const hidden = 1;\n}\n';
+  assert.deepEqual(
+    auditDeclarations(ts, 'dotted.ts', source).map((gap) => gap.name),
+    ['hidden'],
+  );
 });
 
 void test('a run through a symlink still runs the gate', () => {
@@ -129,16 +155,32 @@ void test('a run through a symlink still runs the gate', () => {
   // symlinked run skip the gate entirely and exit 0.
   const dir = mkdtempSync(join(tmpdir(), 'docs-audit-link-'));
   const link = join(dir, 'docs-audit.mjs');
-  symlinkSync(join(dirname(fileURLToPath(import.meta.url)), 'docs-audit.mjs'), link);
-  const out = execFileSync(process.execPath, [link, '--help'], { encoding: 'utf8' });
+  symlinkSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'docs-audit.mjs'),
+    link,
+  );
+  const out = execFileSync(process.execPath, [link, '--help'], {
+    encoding: 'utf8',
+  });
   assert.match(out, /^Usage:/);
 });
 
 void test('a --dir that matches nothing fails loudly instead of reporting clean', () => {
   const root = mkdtempSync(join(tmpdir(), 'docs-audit-dir-'));
-  writeFileSync(join(root, 'real.ts'), '/** Documented. */\nexport const real = 1;\n');
+  writeFileSync(
+    join(root, 'real.ts'),
+    '/** Documented. */\nexport const real = 1;\n',
+  );
   assert.throws(
-    () => runAudit({ root, roots: [], dir: 'no/such/folder', kind: 'all', excludes: [], limit: 0 }),
+    () =>
+      runAudit({
+        root,
+        roots: [],
+        dir: 'no/such/folder',
+        kind: 'all',
+        excludes: [],
+        limit: 0,
+      }),
     /matched no source files/,
   );
 });
@@ -165,7 +207,13 @@ void test('an option value is not mistaken for a scan root', () => {
   writeFileSync(join(root, 'real.ts'), 'export const bare = 1;\n');
   // `--exclude generated` once made "generated" the only directory scanned, so the gate reported
   // clean on a repository it never looked at.
-  const report = runAudit({ root, roots: [], kind: 'folders', excludes: ['generated'], limit: 0 });
+  const report = runAudit({
+    root,
+    roots: [],
+    kind: 'folders',
+    excludes: ['generated'],
+    limit: 0,
+  });
   assert.equal(report.counts.filesScanned, 1);
   assert.equal(report.counts.foldersScanned, 1);
 });
