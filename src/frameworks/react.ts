@@ -363,6 +363,10 @@ type Command<Args extends unknown[] = []> = (
   ...args: Args
 ) => Effect.Effect<void, AiSdkError>;
 
+type RealtimeConnectOptions = Parameters<
+  ReturnType<typeof sdk.experimental_useRealtime>['connect']
+>[0];
+
 export type Experimental_UseRealtimeReturn = {
   readonly status: Experimental_RealtimeStatus;
   readonly messages: UIMessage[];
@@ -370,9 +374,10 @@ export type Experimental_UseRealtimeReturn = {
   readonly isCapturing: boolean;
   readonly isPlaying: boolean;
   readonly session: Experimental_RealtimeSessionState | undefined;
-  readonly connect: Command<
-    [options: { stream?: MediaStream; capture?: boolean }]
-  >;
+  readonly connect: {
+    (): Effect.Effect<void, AiSdkError>;
+    (options: RealtimeConnectOptions): Effect.Effect<void, AiSdkError>;
+  };
   readonly close: Command<[options?: { eventId?: string }]>;
   readonly resumePlayback: Command;
   readonly resumeAudioCapture: Command;
@@ -431,10 +436,11 @@ export function experimental_useRealtime(
     isCapturing: native.isCapturing,
     isPlaying: native.isPlaying,
     session: native.session,
-    connect: (...args: Parameters<typeof native.connect>) =>
+    connect: (options?: RealtimeConnectOptions) =>
       view.command(
         'useRealtime.connect',
-        () => native.connect(...args),
+        () =>
+          options === undefined ? native.connect() : native.connect(options),
         native.disconnect,
       ),
     close: (...args: Parameters<typeof native.close>) =>
