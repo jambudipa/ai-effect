@@ -10,14 +10,14 @@ operations, scoped streams, and typed failures for TypeScript applications.
 
 ## Start here
 
-[Get your first text result](tutorials/first-text-result.md) runs `AiSdk` with a
-model fixture. The example uses no provider credentials. See the
-[tutorials](tutorials/README.md) for the next lesson.
+[Get your first text result](tutorials/getting-started/first-text-result.md) runs
+`AiSdk` with a local model fixture. See the [tutorial tracks](tutorials/README.md)
+for more hands-on lessons.
 
 ## Get a task done
 
-The [how-to guides](how-to/README.md) cover model selection, typed output, tools,
-streaming, tests, MCP, and React chat.
+The [how-to guides](how-to/README.md) group working examples by task, including
+model selection, structured output, tools, media, streaming, and integrations.
 
 ## Look up the API
 

@@ -33,8 +33,8 @@ sources:
    ```
 
    The gateway model ID requires gateway credentials. See
-   [How to choose a provider and model](choose-a-provider.md) for model handles.
+   [How to choose a provider and model](../providers/choose-a-provider.md) for model handles.
 
 Use `Output.array({ element })` for a list or `Output.choice({ options })`
 for one of several strings. Use the Effect error channel to handle provider
-or validation failures. See the [Core API reference](../reference/core.md).
+or validation failures. See the [Core API reference](../../reference/core.md).

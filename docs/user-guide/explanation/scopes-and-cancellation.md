@@ -36,5 +36,5 @@ An SDK `abort` event produces `AiSdkStreamAborted`. An SDK failure part produces
 an error in the stream. A tool execution failure can remain a `tool-error`
 event because the SDK's tool loop may need to send it back to the model.
 
-See [Consume a text stream](../how-to/consume-a-text-stream.md) and the
+See [Consume a text stream](../how-to/streaming/consume-a-text-stream.md) and the
 [Core API reference](../reference/core.md).

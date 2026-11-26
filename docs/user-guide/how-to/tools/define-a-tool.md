@@ -43,4 +43,4 @@ sources:
 Use a tool-capable model and configure its credentials before running the
 request. If the tool or an approval callback needs an Effect service, apply
 its layer to `request` before running it. See
-[The boundary between Effect and the SDK](../explanation/effect-and-sdk-boundary.md).
+[The boundary between Effect and the SDK](../../explanation/effect-and-sdk-boundary.md).

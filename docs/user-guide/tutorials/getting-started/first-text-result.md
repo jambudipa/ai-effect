@@ -17,10 +17,11 @@ Use Node.js 24 and npm. The fixture supplies the response in the process.
    mkdir ai-effect-first-result
    cd ai-effect-first-result
    npm init -y
-   npm install --ignore-scripts @jambudipa/ai-effect@0.1.0 effect@4.1.5
+   npm install --ignore-scripts @jambudipa/ai-effect@0.1.1 effect@4.1.5
+   npm ls --depth=0
    ```
 
-   npm lists the installed packages when it finishes.
+   Check that the list includes `@jambudipa/ai-effect@0.1.1` and `effect@4.1.5`.
 
 2. Create `first-result.mjs`.
 
@@ -62,6 +63,9 @@ Use Node.js 24 and npm. The fixture supplies the response in the process.
    Model calls: 1
    ```
 
+4. Change the fixture's `Hello from Effect.` to `Hello again.` Run the same
+   command. Confirm that the first line changes and the call count stays at one.
+
 You used the default service layer and a fixture to get a full SDK result. Next,
 [read your first text stream](first-text-stream.md) or
-[choose a provider](../how-to/choose-a-provider.md).
+[choose a provider](../../how-to/providers/choose-a-provider.md).

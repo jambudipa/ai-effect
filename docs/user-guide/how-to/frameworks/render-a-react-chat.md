@@ -15,7 +15,7 @@ sources:
 > **TL;DR:** Import `useChat` from the React entry. Read messages and status
 > during render. Run the Effect returned by a chat command at the event boundary.
 
-1. Install a [compatible React peer](../reference/installation.md). Set up your
+1. Install a [compatible React peer](../../reference/installation.md). Set up your
    server to accept the chat request and return a UI message stream.
 2. Place the chat hook in a client component. The default transport uses
    `/api/chat`. Configure a transport if the endpoint differs.
@@ -55,4 +55,4 @@ sources:
    ```
 
 Use the helper's `stop()` Effect for a cancel button. See
-[Framework adapters](../reference/frameworks.md) for the host exports.
+[Framework adapters](../../reference/frameworks.md) for the host exports.

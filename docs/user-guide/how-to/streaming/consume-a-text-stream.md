@@ -15,7 +15,7 @@ sources:
 > **TL;DR:** Consume the service stream for generation events. Use the direct
 > `streamText` function inside a scope when you also need result metadata.
 
-1. Select a [provider and model](choose-a-provider.md). Add your cancellation
+1. Select a [provider and model](../providers/choose-a-provider.md). Add your cancellation
    signal to the SDK options if the application already has one.
 2. Choose the stream you need. Use the service stream for events, or use the
    direct function's `textStream` for text chunks and its `fullStream` for
@@ -43,5 +43,5 @@ sources:
 
 The gateway model ID requires gateway credentials. Use the service stream's
 `text-delta` events when the application also processes tool calls or finish
-events. See [Scopes and cancellation](../explanation/scopes-and-cancellation.md)
+events. See [Scopes and cancellation](../../explanation/scopes-and-cancellation.md)
 for how early exit affects the request.

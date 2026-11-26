@@ -34,4 +34,4 @@ sources: [src/integrations/mcp.ts, src/integrations/mcp/mcp-stdio.ts]
 
 For a local MCP server, build a `StdioMCPTransport` from
 `@jambudipa/ai-effect/mcp/mcp-stdio` and pass its handle as `transport`.
-See [Integration adapters](../reference/integrations.md) for the MCP exports.
+See [Integration adapters](../../../reference/integrations.md) for the MCP exports.

@@ -62,5 +62,5 @@ result handles expose call histories.
 See the [SDK surface inventory](../../sdk-surface.json) for the pinned names
 behind `ai` and `ai/test`. The package declarations give the wrapper signatures.
 See [Scopes and cancellation](../explanation/scopes-and-cancellation.md) for
-the stream lifetime and [How to test an AI feature](../how-to/test-an-ai-feature.md)
+the stream lifetime and [How to test an AI feature](../how-to/testing/test-an-ai-feature.md)
 for fixtures.

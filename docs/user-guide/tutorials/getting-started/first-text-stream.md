@@ -63,7 +63,10 @@ Use the project from [Get your first text result](first-text-result.md).
    Hello stream.
    ```
 
+3. Change the first delta from `Hello ` to `Hi `, including the trailing space.
+   Run the same command. Check that the program now prints `Hi stream.`.
+
 The model fixture emits four text events. The filter keeps the two deltas. See
-[Consume a text stream](../how-to/consume-a-text-stream.md) for a live consumer
-and [Scopes and cancellation](../explanation/scopes-and-cancellation.md) for the
+[Consume a text stream](../../how-to/streaming/consume-a-text-stream.md) for a live consumer
+and [Scopes and cancellation](../../explanation/scopes-and-cancellation.md) for the
 stream lifetime.

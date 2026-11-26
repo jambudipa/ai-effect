@@ -27,5 +27,5 @@ The default route exports `readStreamableValue`, `useAIState`, `useActions`,
 State such as messages and status follows the host API. A command such as
 React's `sendMessage` returns an Effect. Its lifetime belongs to the host
 binding. Exact peer ranges are in [Installation and compatibility](installation.md).
-See [How to render a React chat](../how-to/render-a-react-chat.md) for a client
+See [How to render a React chat](../how-to/frameworks/render-a-react-chat.md) for a client
 component.

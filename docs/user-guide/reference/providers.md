@@ -35,5 +35,5 @@ are in [Import paths](import-paths.md).
 The settings type for each factory defines its options, such as credentials,
 endpoint, headers, and fetch. The [SDK surface inventory](../../sdk-surface.json)
 lists the exports of each pinned provider. See
-[How to choose a provider and model](../how-to/choose-a-provider.md) for an
+[How to choose a provider and model](../how-to/providers/choose-a-provider.md) for an
 application example.

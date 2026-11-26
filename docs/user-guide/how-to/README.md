@@ -5,12 +5,15 @@ doc-type: index
 
 # How-to guides
 
-Use these guides to complete a specific task in an application that uses ai-effect.
+Choose the task you need to complete in an existing ai-effect application.
+Each folder index links examples for that type of work.
 
-- [Choose a provider and model](choose-a-provider.md). Configure a provider and select a model.
-- [Return structured output](return-structured-output.md). Validate model output with a schema.
-- [Consume a text stream](consume-a-text-stream.md). Read events or text with result metadata.
-- [Define an Effect tool](define-a-tool.md). Supply an input schema and an Effect callback.
-- [Test an AI feature](test-an-ai-feature.md). Use a model fixture or replace the service layer.
-- [Connect an MCP client](connect-an-mcp-client.md). Manage a client in an Effect scope.
-- [Render a React chat](render-a-react-chat.md). Run chat commands at the event boundary.
+- [Configure providers and models](providers/README.md). Select models, connect endpoints, and rotate credentials.
+- [Generate and validate results](generation/README.md). Set output formats and send document input.
+- [Use tools](tools/README.md). Run tools, ask for approval, and handle tool failures.
+- [Work with media and search](media/README.md). Make embeddings, rank results, and process media.
+- [Stream responses](streaming/README.md). Consume, forward, and stop streams.
+- [Handle failures and time limits](reliability/README.md). Control what happens when a request fails or takes too long.
+- [Connect UI frameworks](frameworks/README.md). Send and display chat messages in an application.
+- [Test AI features](testing/README.md). Control responses and check requests.
+- [Connect integrations](integrations/README.md). Work with MCP and other package integrations.
