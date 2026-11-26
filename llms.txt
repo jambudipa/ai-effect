@@ -2,18 +2,51 @@
 
 > Use the Vercel AI SDK with Effect v4 in TypeScript applications.
 
+The npm package is `@jambudipa/ai-effect`. Use the root entry for the `AiSdk`
+service and its default layer. Use `@jambudipa/ai-effect/ai` for direct SDK
+operations and `@jambudipa/ai-effect/ai/test` for model and stream fixtures.
+
+Model calls start when the Effect runs. Stream consumption starts a request,
+and closing its scope early cancels it. The first tutorials use local fixtures
+and run without provider credentials.
+
 ## Start here
 
 - [Project README](README.md): Package setup, text generation, and public imports.
 - [User guide](docs/user-guide/README.md): Entry points for lessons, tasks, and the API.
-- [First text result](docs/user-guide/tutorials/getting-started/first-text-result.md): Run a text request with a local fixture.
+- [Installation and compatibility](docs/user-guide/reference/installation.md): Supported Node.js and Effect versions, optional peers, and host requirements.
 
-## Guides and API
+## Tutorials
 
-- [How-to guides](docs/user-guide/how-to/README.md): Examples for providers, generation, tools, media, streaming, and testing.
+- [First text result](docs/user-guide/tutorials/getting-started/first-text-result.md): Set up a project and run a fixed text request through `AiSdk`.
+- [First text stream](docs/user-guide/tutorials/getting-started/first-text-stream.md): Collect text deltas from a model fixture.
+- [Triage a support ticket](docs/user-guide/tutorials/generation/triage-a-support-ticket.md): Validate a model response against a schema.
+- [Check a model request](docs/user-guide/tutorials/testing/check-a-model-request.md): Assert the answer, forwarded prompt, and request count in a local test.
+- [All tutorials](docs/user-guide/tutorials/README.md): Lessons on generation, streaming, providers, tests, and integrations.
+
+## Common tasks
+
+- [Choose a provider and model](docs/user-guide/how-to/providers/choose-a-provider.md): Configure credentials and select a model handle for a request.
+- [Return structured output](docs/user-guide/how-to/generation/return-structured-output.md): Use `Output.object` and read the validated result.
+- [Serve a UI message response](docs/user-guide/how-to/streaming/serve-a-ui-message-response.md): Send a model response to a compatible chat client.
+- [Ask for approval before a tool writes data](docs/user-guide/how-to/tools/approve-a-tool-action.md): Save the pending action and resume with the user's decision.
+- [Cancel a disconnected request](docs/user-guide/how-to/reliability/cancel-a-disconnected-request.md): Pass the request's abort signal to the model call.
+- [Connect an MCP client](docs/user-guide/how-to/integrations/mcp/connect-an-mcp-client.md): Open a connection and release it when the scope closes.
+- [Test application requests](docs/user-guide/how-to/testing/README.md): Use model fixtures, a replacement service, or HTTP fixtures.
+- [All how-to guides](docs/user-guide/how-to/README.md): Find tasks for providers, tools, streams, media, frameworks, reliability, and integrations.
+
+## API reference
+
 - [Reference](docs/user-guide/reference/README.md): Installation, import paths, and API contracts.
+- [Import paths](docs/user-guide/reference/import-paths.md): Public subpaths and the conditions that select their implementations.
+- [Core API](docs/user-guide/reference/core.md): The service layer, generation functions, result types, and errors.
 - [Public declarations](docs/user-guide/reference/api/README.md): API signatures grouped by source folder.
+- [Provider adapters](docs/user-guide/reference/api/providers/README.md): Model selectors, settings, and provider tools.
+- [Framework adapters](docs/user-guide/reference/api/frameworks/README.md): UI bindings and host-specific entries.
+- [Integration APIs](docs/user-guide/reference/api/integrations/README.md): MCP, tools, agents, Workflow, telemetry, and test servers.
 
 ## Optional
 
 - [Scopes and cancellation](docs/user-guide/explanation/scopes-and-cancellation.md): How Effect scopes control native requests.
+- [The Effect and SDK boundary](docs/user-guide/explanation/effect-and-sdk-boundary.md): How the package handles SDK values, callbacks, and errors.
+- [Contributor guide](docs/user-guide/contributing/README.md): Check the source and verify the packed package.
