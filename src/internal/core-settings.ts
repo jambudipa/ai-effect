@@ -25,19 +25,24 @@ import { runRequest, type AiSdkError } from './operation.js';
 import { unwrapSteering, type Steering } from './steering.js';
 import type { EffectTools } from './tool.js';
 
+/** Replace the native parser interface with the public Effect output specification. */
 type PublicOutput<Output> =
   Output extends sdk.OutputInterface<infer A, infer P, infer I>
     ? OutputSpecification<A, P, I>
     : Output;
+/** Use public model handles for model fields that would otherwise expose native model objects. */
 type PublicModel<Value> =
   Value extends Exclude<sdk.LanguageModel, string> ? LanguageModel : Value;
+/** Restore the caller's original tool definitions in native callback fields. */
 type PublicTools<Value, Tools> = Value extends sdk.ToolSet ? Tools : Value;
+/** Make a native input-schema callback return an Effect while preserving its arguments. */
 type PublicInputSchema<Value> = Value extends (
   ...args: infer Args
 ) => infer Result
   ? (...args: Args) => Effect.Effect<Awaited<Result>, AiSdkError>
   : Value;
 
+/** Adapt native event fields that expose models, tools, schemas, or sandbox handles. */
 export type CoreEvent<
   Event,
   Tools extends object = object,
@@ -61,6 +66,7 @@ export type CoreEvent<
       }
     : Event;
 
+/** Preserve callback arguments and expose effectful results under the current operation owner. */
 export type CoreCallback<
   Value,
   R,
@@ -73,6 +79,7 @@ export type CoreCallback<
     ? readonly CoreCallback<Item, R, Tools>[]
     : Value;
 
+/** Adapt either one callback or the named entries of a callback map. */
 type CallbackMap<Value, R, Tools extends object> = Value extends (
   ...args: never[]
 ) => unknown
@@ -81,6 +88,7 @@ type CallbackMap<Value, R, Tools extends object> = Value extends (
     ? { [K in keyof Value]: CoreCallback<Value[K], R, Tools> }
     : Value;
 
+/** Use Effect integrations in native telemetry configurations while preserving other settings. */
 type Telemetry<Value> = Value extends object
   ? {
       [K in keyof Value]: K extends 'integrations'
@@ -89,6 +97,7 @@ type Telemetry<Value> = Value extends object
     }
   : Value;
 
+/** Adapt agent call preparation inputs and permit a scoped Effect result. */
 type PrepareCall<Value, R, Tools extends object> = Value extends (
   ...args: infer Args
 ) => infer Result
@@ -103,12 +112,14 @@ type PrepareCall<Value, R, Tools extends object> = Value extends (
     >
   : Value;
 
+/** Keep synchronous stop predicates usable alongside Effect-based predicates. */
 type StopCallback<Value, R> = Value extends (...args: infer Args) => unknown
   ? (...args: Args) => boolean | Effect.Effect<boolean, unknown, R>
   : Value extends readonly (infer Item)[]
     ? readonly StopCallback<Item, R>[]
     : Value;
 
+/** Preserve settings hooks that the SDK must invoke synchronously. */
 type SyncSettings<Value> = Value extends object
   ? {
       [K in keyof Value]: Value[K] extends (...args: infer Args) => infer A
@@ -117,6 +128,7 @@ type SyncSettings<Value> = Value extends object
     }
   : Value;
 
+/** Identify option keys whose values may contain a direct Effect callback. */
 type DirectCallback =
   | `on${string}`
   | `experimental_on${string}`
@@ -130,9 +142,11 @@ type DirectCallback =
   | 'download'
   | 'experimental_download';
 
+/** Identify input refinement and approval settings that can hold callbacks keyed by tool name. */
 type CallbackMapName =
   'toolApproval' | 'experimental_refineToolInput' | 'refineToolInput';
 
+/** Extract services from the result of an Effect callback in an option. */
 type ServicesInCallback<Value> = Value extends (
   ...args: never[]
 ) => infer Result
@@ -143,6 +157,7 @@ type ServicesInCallback<Value> = Value extends (
     ? ServicesInCallback<Item>
     : never;
 
+/** Collect the service requirements that the provided Core option callbacks introduce. */
 export type CoreServices<Options> = {
   [Key in keyof Options]: Key extends DirectCallback
     ? ServicesInCallback<Options[Key]>
@@ -160,11 +175,13 @@ export type CoreServices<Options> = {
             : never;
 }[keyof Options];
 
+/** Extract dependencies from the public output parser specification. */
 type OutputServices<Value> =
   Value extends OutputSpecification<unknown, unknown, unknown, infer R>
     ? R
     : never;
 
+/** Extract dependencies required by schema resolution or decoding. */
 type SchemaServices<Value> = Value extends
   | Schema<unknown, infer R>
   | EffectSchema.ConstraintDecoder<unknown, infer R>
@@ -172,6 +189,7 @@ type SchemaServices<Value> = Value extends
   ? R
   : never;
 
+/** Preserve native Core option shapes while adapting supported callbacks and settings to Effect. */
 export type CoreOptions<
   Options,
   R,
@@ -204,6 +222,7 @@ export type CoreOptions<
     }
   : Options;
 
+/** Pass model IDs through and resolve registered native language models by protocol version. */
 export function modelForSdk(model: LanguageModel) {
   if (typeof model === 'string') return model;
   const native =
@@ -215,6 +234,7 @@ export function modelForSdk(model: LanguageModel) {
   return native;
 }
 
+/** Wrap native event models, schemas, sandbox handles, and errors for public callbacks. */
 function publicEvent(event: unknown, tools: object | undefined) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) return event;
   const exposed = wrapTelemetryEvent(event, 'Core.callback');
@@ -254,6 +274,7 @@ function publicEvent(event: unknown, tools: object | undefined) {
   };
 }
 
+/** Find the caller abort signal supplied in native callback arguments, if present. */
 function signal(args: readonly unknown[]) {
   return args.find(
     (value): value is { abortSignal: AbortSignal } =>
@@ -264,10 +285,12 @@ function signal(args: readonly unknown[]) {
   )?.abortSignal;
 }
 
+/** Represent a callback that must run through the operation owner's Effect context. */
 type EffectCallback<R> = (
   ...args: unknown[]
 ) => Effect.Effect<unknown, unknown, R>;
 
+/** Keep runtime names for direct callbacks that lack an SDK event hook prefix. */
 const directNames = HashSet.fromIterable<string>([
   'stopWhen',
   'prepareStep',
@@ -280,6 +303,7 @@ const directNames = HashSet.fromIterable<string>([
   'experimental_download',
 ]);
 
+/** Bind Core callbacks, telemetry integrations, and settings before creating the native request. */
 export function bindCoreOptions<Native = Record<string, unknown>, R = never>(
   options: object,
   owner: Owner<R>,

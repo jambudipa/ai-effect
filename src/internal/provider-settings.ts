@@ -4,12 +4,15 @@ import { openOperation, runSync } from './operation.js';
 import type { AiSdkError } from './operation.js';
 import type { ProviderHostOption } from './provider-host-configuration.js';
 
+/** Infer the setting value after evaluating its native resolver and settling any promise. */
 export type ProviderSettingValue<T> = T extends () => infer A
   ? Awaited<A>
   : Awaited<T>;
 
+/** Accept a resolved setting or an Effect that resolves it in the provider scope. */
 export type ProviderSetting<T, E, R> = T | Effect.Effect<T, E, R>;
 
+/** Bind configured Effect settings to the provider owner's callbacks and defer their evaluation. */
 export const createWithProviderSettings = <Native extends object, R, Provider>(
   operation: string,
   options: object | undefined,
@@ -43,16 +46,19 @@ export const createWithProviderSettings = <Native extends object, R, Provider>(
     });
   });
 
+/** Exclude native promise and resolver shapes from the static settings overload. */
 type PlainSetting<T> = T extends (() => unknown) | PromiseLike<unknown>
   ? never
   : T;
 
+/** Require direct values for selected settings when no callback scope is needed. */
 export type StaticProviderSettings<Native, Keys extends keyof Native> = {
   [Key in keyof Native]: Key extends Keys
     ? PlainSetting<Required<Native>[Key]>
     : ProviderHostOption<Key, Native[Key]>;
 };
 
+/** Accept Effects only on selected native settings that support deferred resolution. */
 export type EffectProviderSettings<Native, Keys extends keyof Native, E, R> = {
   [Key in keyof Native]: Key extends Keys
     ? | PlainSetting<Required<Native>[Key]>
@@ -60,6 +66,7 @@ export type EffectProviderSettings<Native, Keys extends keyof Native, E, R> = {
     : ProviderHostOption<Key, Native[Key]>;
 };
 
+/** Keep static provider construction scope-free and expose requirements for effectful settings. */
 export interface ProviderFactory<Native, Keys extends keyof Native, Provider> {
   (
     options?: StaticProviderSettings<Native, Keys>,
@@ -69,6 +76,7 @@ export interface ProviderFactory<Native, Keys extends keyof Native, Provider> {
   ): Effect.Effect<Provider, AiSdkError, R | Scope.Scope>;
 }
 
+/** Build a public provider factory that binds resolvers before invoking the native constructor. */
 export const adaptProviderFactory = <
   Native extends object,
   Keys extends Extract<keyof Native, string>,

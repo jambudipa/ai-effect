@@ -11,10 +11,12 @@ import { wrapLanguageModel } from './language-model.js';
 import { adaptMethod, wrapProviderBase } from './provider-adapter.js';
 import { wrapEmbeddingModel, wrapImageModel } from './provider-model.js';
 
+/** Keep the installed provider's language model settings for its optional second argument. */
 type NativeLanguageModelOptions = NonNullable<
   Parameters<SdkProvider['languageModel']>[1]
 >;
 
+/** Select a compatible language model with either static or scoped configuration. */
 export interface SelectCompatibleLanguageModel<Id extends string> {
   (
     modelId: Id,
@@ -26,6 +28,7 @@ export interface SelectCompatibleLanguageModel<Id extends string> {
   ): Effect.Effect<LanguageModelV4, AiSdkError, R | Scope.Scope>;
 }
 
+/** Adapt a native model selector after resolving its optional compatible settings. */
 const selectLanguageModel = <Id extends string>(
   name: string,
   select: (
@@ -46,6 +49,7 @@ const selectLanguageModel = <Id extends string>(
   return selected as SelectCompatibleLanguageModel<Id>;
 };
 
+/** Expose chat, completion, embedding, and image lookups with their provider-specific IDs intact. */
 export const wrapOpenAICompatibleProvider = <
   Chat extends string,
   Completion extends string,
@@ -88,6 +92,7 @@ export const wrapOpenAICompatibleProvider = <
     ),
   });
 
+/** Use a registered compatible provider with separate ID types for its model capabilities. */
 export type OpenAICompatibleProvider<
   Chat extends string = string,
   Completion extends string = string,

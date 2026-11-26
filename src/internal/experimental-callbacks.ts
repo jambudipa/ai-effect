@@ -8,6 +8,7 @@ import {
 } from '../integrations/internal/telemetry.js';
 import { openOperation, runRequest } from './operation.js';
 
+/** List the experimental operation callbacks that require Effect binding at runtime. */
 const callbackNames = [
   'onStart',
   'onEnd',
@@ -16,21 +17,27 @@ const callbackNames = [
   'download',
 ] as const;
 
+/** Keep the type-level callback name union aligned with the runtime binding table. */
 type CallbackName = (typeof callbackNames)[number];
+/** Carry the scoped callback runtime shared by the model operation. */
 export type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
 
+/** Preserve native callback parameters and resolve its awaited result in Effect. */
 type AdaptCallback<F, R> = F extends (...args: infer Args) => infer A
   ? (...args: Args) => Effect.Effect<Awaited<A>, unknown, R>
   : F;
 
+/** Keep a callback synchronous when the native SDK cannot await its result. */
 type SyncCallback<F> = F extends (...args: infer Args) => infer A
   ? (...args: Args) => A
   : F;
 
+/** Preserve the configured option shape while retaining synchronous callback fields. */
 type AdaptSync<T> = T extends object
   ? { [K in keyof T]: SyncCallback<T[K]> }
   : T;
 
+/** Replace the native telemetry integration slot with Effect-aware integrations. */
 type AdaptTelemetry<T> = T extends object
   ? {
       [K in keyof T]: K extends 'integrations'
@@ -39,6 +46,7 @@ type AdaptTelemetry<T> = T extends object
     }
   : T;
 
+/** Adapt model selection, telemetry, and recognized callbacks while preserving other SDK options. */
 export type ExperimentalOptions<Native, Model, R> = {
   [K in keyof Native]: K extends 'model'
     ? Model
@@ -51,6 +59,7 @@ export type ExperimentalOptions<Native, Model, R> = {
           : Native[K];
 };
 
+/** Use a callback's abort signal when the native SDK supplied one. */
 const callbackSignal = (args: unknown[]) =>
   args.find(
     (arg): arg is { abortSignal: AbortSignal } =>
@@ -60,6 +69,7 @@ const callbackSignal = (args: unknown[]) =>
       arg.abortSignal instanceof AbortSignal,
   )?.abortSignal;
 
+/** Bind registered or custom telemetry callbacks to the operation owner and adapt their event data. */
 export const bindTelemetry = <R>(
   telemetry: EffectTelemetry,
   owner: Owner<R>,
@@ -145,6 +155,7 @@ export const bindTelemetry = <R>(
   );
 };
 
+/** Build native options with experimental callbacks and telemetry bound to the current owner. */
 export const bindExperimentalOptions = <Native, Model, R>(
   options: ExperimentalOptions<Native, Model, R>,
   owner: Owner<R>,
