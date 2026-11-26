@@ -142,3 +142,36 @@ uses npm trusted publishing after a maintainer configures the publisher for the
 package. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
 
 MIT
+
+## Repository development
+
+- Follow [the Effect development standards](docs/effect-v4.md) and
+  [the review rules](.github/review-rules/effect_v4.md). The installed Effect
+  version and the canonical TypeScript guidance take precedence for API names.
+  In particular, use `it.effect` for scoped tests with Effect 4.1.5.
+- Keep SDK calls lazy. Preserve SDK types and options at the boundary, map
+  foreign failures to tagged errors, and pass interruption to the SDK.
+- Use a package-qualified `Context.Service` key and an explicit layer.
+  Keep the native SDK bridge in the service module.
+- Keep both files in `eslint/` byte-identical to the canonical bundle in
+  `~/.agents/resources/typescript-effect/eslint/`.
+- Run `npm run lint`, `npm run typecheck`, and `npm test`. Check the tarball
+  with `npm pack --dry-run` after changes to the package surface.
+
+<!-- docs-audit:maintenance -->
+
+### Keep the documentation current
+
+1. Give each declaration in the audit a JSDoc block. Describe its purpose and
+   the conditions that its caller must meet. Update the block with the declaration.
+2. Give each source folder a `README.md` that explains its purpose and names its
+   entry points. Update it when the folder's purpose or entry points change.
+3. Keep these rules in this README. Keep the root `AGENTS.md` and `CLAUDE.md`
+   pointed at this file.
+
+Run `npm run docs:audit` before each commit. CI runs the same command.
+
+The audit skips test declarations and declaration files by default. It also
+skips `eslint/` because the lint bundle must match its canonical files. Keep
+`src/internal/sdk-data/`, `src/protocols/provider-utils-simple.ts`, and
+`src/integrations/internal/{code-mode,mcp}-contract.ts` in sync with their generators.

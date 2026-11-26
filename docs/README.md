@@ -2,7 +2,7 @@
 
 The [Effect standards](effect-v4.md) and [review rules](../.github/review-rules/effect_v4.md)
 come from `jambudipa.io` at `ab73576779221386b923d48c431fc926ed5e2754`.
-The copied standards retain their source text. The local [agent instructions](../AGENTS.md)
+The copied standards retain their source text. The local [development instructions](../README.md#repository-development)
 record the test API correction for the installed version.
 
 The local CI applies the reference workflows' read-only checkout, credential
