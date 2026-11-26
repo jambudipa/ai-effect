@@ -35,9 +35,15 @@ export type AdaptedWorkflowConstructor<
 > = AdaptedConstructor<Constructor, Model> &
   AdaptedWorkflowHooks<Constructor, Model>;
 
-export const workflowModelHooks = <Native, Payload, Input, Model>(
+export const workflowModelHooks = <
+  Args extends unknown[],
+  Native,
+  Payload,
+  Input,
+  Model,
+>(
   operation: string,
-  ModelClass: WorkflowModelClass<never[], Native, Payload, Input>,
+  ModelClass: WorkflowModelClass<Args, Native, Payload, Input>,
   wrap: (model: Native) => Model,
   unwrap: (model: Model) => unknown,
 ) => ({
