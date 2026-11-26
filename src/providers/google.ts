@@ -29,6 +29,8 @@ import {
 } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import {
+  unwrapSpeechTranslationModel,
+  unwrapTranscriptionModel,
   wrapDecisionModel,
   wrapEmbeddingModel,
   wrapEvaluationModel,
@@ -40,6 +42,10 @@ import {
   wrapVideoModel,
 } from '../internal/provider-model.js';
 import { wrapBatch, wrapFiles } from '../internal/provider-resource.js';
+import {
+  adaptWorkflowModelConstructor,
+  type AdaptedWorkflowConstructor,
+} from '../internal/workflow-model.js';
 
 export { VERSION } from '@ai-sdk/google';
 export type {
@@ -220,13 +226,14 @@ export const Experimental_GoogleRealtimeModel: AdaptedConstructor<
 export type Experimental_GoogleRealtimeModel = ReturnType<
   typeof wrapRealtimeModel
 >;
-export const Experimental_GoogleSpeechTranslationModel: AdaptedConstructor<
+export const Experimental_GoogleSpeechTranslationModel: AdaptedWorkflowConstructor<
   typeof SdkExperimental_GoogleSpeechTranslationModel,
   Experimental_GoogleSpeechTranslationModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'Experimental_GoogleSpeechTranslationModel',
   SdkExperimental_GoogleSpeechTranslationModel,
   wrapSpeechTranslationModel,
+  unwrapSpeechTranslationModel,
 );
 export type Experimental_GoogleSpeechTranslationModel = ReturnType<
   typeof wrapSpeechTranslationModel
@@ -235,13 +242,14 @@ export const Experimental_GoogleTranslationModel =
   Experimental_GoogleSpeechTranslationModel;
 export type Experimental_GoogleTranslationModel =
   Experimental_GoogleSpeechTranslationModel;
-export const GoogleTranscriptionModel: AdaptedConstructor<
+export const GoogleTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkGoogleTranscriptionModel,
   GoogleTranscriptionModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'GoogleTranscriptionModel',
   SdkGoogleTranscriptionModel,
   wrapTranscriptionModel,
+  unwrapTranscriptionModel,
 );
 export type GoogleTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel

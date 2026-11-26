@@ -1,7 +1,6 @@
 import { adaptProviderFactory } from '../internal/provider-settings.js';
 import type { EffectProviderSettings } from '../internal/provider-settings.js';
 import type { GoogleVertexProviderSettings as SdkSettings } from '@ai-sdk/google-vertex';
-import type { AdaptedConstructor } from '../internal/provider-adapter.js';
 import { GoogleVertexGeminiTranscriptionModel as SdkGoogleVertexGeminiTranscriptionModel } from '@ai-sdk/google-vertex';
 import { wrapProviderTools } from '../internal/provider-tool.js';
 import {
@@ -9,20 +8,21 @@ import {
   googleVertex as sdkGoogleVertex,
 } from '@ai-sdk/google-vertex';
 import type { GoogleVertexProvider as SdkProvider } from '@ai-sdk/google-vertex';
-import {
-  adaptMethod,
-  adaptModelConstructor,
-  wrapProviderBase,
-} from '../internal/provider-adapter.js';
+import { adaptMethod, wrapProviderBase } from '../internal/provider-adapter.js';
 import { wrapLanguageModel } from '../internal/language-model.js';
 import { runSync } from '../internal/operation.js';
 import {
+  unwrapTranscriptionModel,
   wrapEmbeddingModel,
   wrapImageModel,
   wrapSpeechModel,
   wrapTranscriptionModel,
   wrapVideoModel,
 } from '../internal/provider-model.js';
+import {
+  adaptWorkflowModelConstructor,
+  type AdaptedWorkflowConstructor,
+} from '../internal/workflow-model.js';
 
 export { VERSION } from '@ai-sdk/google-vertex';
 export type {
@@ -117,13 +117,14 @@ export const createGoogleVertex = adaptProviderFactory<
 export const createVertex = createGoogleVertex;
 export const googleVertex: GoogleVertexProvider = wrapProvider(sdkGoogleVertex);
 export const vertex: GoogleVertexProvider = googleVertex;
-export const GoogleVertexGeminiTranscriptionModel: AdaptedConstructor<
+export const GoogleVertexGeminiTranscriptionModel: AdaptedWorkflowConstructor<
   typeof SdkGoogleVertexGeminiTranscriptionModel,
   GoogleVertexGeminiTranscriptionModel
-> = adaptModelConstructor(
+> = adaptWorkflowModelConstructor(
   'GoogleVertexGeminiTranscriptionModel',
   SdkGoogleVertexGeminiTranscriptionModel,
   wrapTranscriptionModel,
+  unwrapTranscriptionModel,
 );
 export type GoogleVertexGeminiTranscriptionModel = ReturnType<
   typeof wrapTranscriptionModel
