@@ -5,11 +5,12 @@ import type {
   ProviderExecutedTool,
   Tool,
 } from '@ai-sdk/provider-utils';
-import { Effect } from 'effect';
+import { Effect, type Stream } from 'effect';
 import { wrapSandbox } from '../integrations/internal/sandbox.js';
 import type { SandboxSession } from '../integrations/internal/sandbox.js';
 import { runSync, sdkError } from './operation.js';
 import type { openOperation } from './operation.js';
+import { streamTool } from './tool-stream.js';
 
 type NativeProviderTool = ProviderDefinedTool | ProviderExecutedTool;
 type Owner<R> = Effect.Success<ReturnType<typeof openOperation<R>>>;
@@ -57,17 +58,24 @@ const wrapSandboxArgument = (value: unknown): unknown => {
     ),
   };
 };
-type AdaptCallback<Value, R> = Value extends (
+type ProviderExecution<Output, R> =
+  Effect.Effect<Output, unknown, R> | Stream.Stream<Output, unknown, R>;
+
+type CallbackResult<Name, Result, R> = Name extends 'execute'
+  ? ProviderExecution<EmittedOutput<Awaited<Result>>, R>
+  : Effect.Effect<Awaited<Result>, unknown, R>;
+
+type AdaptCallback<Value, R, Name> = Value extends (
   ...args: infer Args
 ) => infer Result
   ? (
       ...args: { [K in keyof Args]: AdaptSandboxArgument<Args[K]> }
-    ) => Effect.Effect<Awaited<Result>, unknown, R>
+    ) => CallbackResult<Name, Result, R>
   : Value;
 
 type AdaptOptions<Options, R> = {
   [Name in keyof Options]: Name extends CallbackName
-    ? AdaptCallback<Options[Name], R>
+    ? AdaptCallback<Options[Name], R, Name>
     : Options[Name];
 };
 
@@ -109,9 +117,49 @@ export const bindProviderTool = <I, A, R>(
   return bind(owner) as Tool<I, A>;
 };
 
+const bindCallback =
+  <R>(
+    name: string,
+    callback: (...args: unknown[]) => unknown,
+    owner: Owner<R>,
+    operation: string,
+  ) =>
+  (...args: unknown[]) => {
+    const abortSignal = args.find(
+      (arg): arg is { abortSignal: AbortSignal } =>
+        typeof arg === 'object' &&
+        !!arg &&
+        'abortSignal' in arg &&
+        arg.abortSignal instanceof AbortSignal,
+    )?.abortSignal;
+    const invoke = () => callback(...args.map(wrapSandboxArgument));
+    if (name !== 'execute') {
+      return owner.runCallback(
+        Effect.suspend(() => invoke() as Effect.Effect<unknown, unknown, R>),
+        abortSignal,
+      );
+    }
+    if (
+      owner.scope.state._tag === 'Closed' ||
+      owner.signal.aborted ||
+      abortSignal?.aborted
+    ) {
+      return owner.runCallback(
+        Effect.fail(sdkError(operation, 'Tool invocation is closed.')),
+        abortSignal,
+      );
+    }
+    const result = invoke() as ProviderExecution<unknown, R>;
+    // The SDK detects streaming before awaiting the executor result.
+    return Effect.isEffect(result)
+      ? owner.runCallback(result, abortSignal)
+      : streamTool(result, owner, operation, abortSignal);
+  };
+
 const bindArguments = <Args extends unknown[], R>(
   args: AdaptArguments<Args, R>,
   owner: Owner<R>,
+  operation: string,
 ): Args =>
   args.map((options) =>
     typeof options === 'object' && options
@@ -119,19 +167,7 @@ const bindArguments = <Args extends unknown[], R>(
           Object.entries(options).map(([key, value]) => [
             key,
             callbackNames.includes(key) && typeof value === 'function'
-              ? (...callbackArgs: unknown[]) =>
-                  owner.runCallback(
-                    Effect.suspend(() =>
-                      value(...callbackArgs.map(wrapSandboxArgument)),
-                    ),
-                    callbackArgs.find(
-                      (arg): arg is { abortSignal: AbortSignal } =>
-                        typeof arg === 'object' &&
-                        !!arg &&
-                        'abortSignal' in arg &&
-                        arg.abortSignal instanceof AbortSignal,
-                    )?.abortSignal,
-                  )
+              ? bindCallback(key, value, owner, `${operation}.${key}`)
               : value,
           ]),
         )
@@ -148,11 +184,19 @@ type CallbackEffect<C> = C extends (...args: never[]) => infer A ? A : never;
 
 type EmittedOutput<A> = A extends AsyncIterable<infer Output> ? Output : A;
 
-type ExecutionOutput<Args extends unknown[]> = EmittedOutput<
-  Effect.Success<CallbackEffect<Field<Args[number], 'execute'>>>
->;
+type ResultValue<Result> =
+  Result extends Stream.Stream<infer A, unknown, unknown>
+    ? A
+    : Effect.Success<Result>;
+type ResultServices<Result> =
+  Result extends Stream.Stream<unknown, unknown, infer R>
+    ? R
+    : Effect.Services<Result>;
 
-type ToolRequirements<Args extends unknown[]> = Effect.Services<
+type ExecutionOutput<Args extends unknown[]> = ResultValue<
+  CallbackEffect<Field<Args[number], 'execute'>>
+>;
+type ToolRequirements<Args extends unknown[]> = ResultServices<
   CallbackEffect<Field<Args[number], CallbackName>>
 >;
 
@@ -167,13 +211,13 @@ type ToolOutput<
     : InferToolOutput<Definition>
   : InferToolOutput<Definition>;
 
-type RetainedCallback<Native, Provided> = Native extends (
+type RetainedCallback<Native, Provided, Name> = Native extends (
   ...args: infer Args
 ) => infer Result
   ? (
       ...args: AdaptSandboxArguments<Args>
     ) => [CallbackEffect<Provided>] extends [never]
-      ? Effect.Effect<Awaited<Result>, unknown>
+      ? CallbackResult<Name, Result, never>
       : CallbackEffect<Provided>
   : Native extends boolean
     ? Native
@@ -184,14 +228,16 @@ type DescriptorCallbacks<Args extends unknown[], Provided extends unknown[]> = {
     Name in CallbackName as [
       RetainedCallback<
         Field<Args[number], Name>,
-        Field<Provided[number], Name>
+        Field<Provided[number], Name>,
+        Name
       >,
     ] extends [never]
       ? never
       : Name
   ]?: RetainedCallback<
     Field<Args[number], Name>,
-    Field<Provided[number], Name>
+    Field<Provided[number], Name>,
+    Name
   >;
 };
 
@@ -267,6 +313,7 @@ export const adaptProviderTool =
           ...bindArguments<Args, ToolRequirements<Provided>>(
             args as AdaptArguments<Args, ToolRequirements<Provided>>,
             owner as Owner<ToolRequirements<Provided>>,
+            operation,
           ),
         ),
       );
