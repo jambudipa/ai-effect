@@ -9,8 +9,7 @@
  * - `folders`     — a folder that holds source files but has no `README.md`, or whose
  *                   `README.md` is empty.
  * - `maintenance` — the repository root `README.md` does not carry the upkeep block, identified
- *                   by the marker below, or the root `AGENTS.md` or `CLAUDE.md` neither carries
- *                   the block nor points at `README.md`.
+ *                   by the marker below.
  *
  * The gate parses with the repository's own TypeScript compiler rather than with patterns, so a
  * declaration cannot hide behind formatting. It adds no dependency: `typescript` is already
@@ -349,7 +348,7 @@ export function auditFolder(dir) {
  * Checks that the repository root states how to keep the documentation current.
  *
  * `README.md` must carry the block itself. The provider entry points `AGENTS.md` and
- * `CLAUDE.md` may carry it or may point at `README.md`, because a root entry point that is only
+ * `CLAUDE.md`, when present, may carry it or may point at `README.md`, because a root entry point that is only
  * a pointer is the layout this gate wants and copying the block into three files would leave
  * three texts to drift apart.
  *
@@ -367,10 +366,7 @@ export function auditMaintenance(root) {
 
   for (const name of ['AGENTS.md', 'CLAUDE.md']) {
     const file = join(root, name);
-    if (!existsSync(file)) {
-      gaps.push({ file: name, reason: 'file missing' });
-      continue;
-    }
+    if (!existsSync(file)) continue;
     const text = readFileSync(file, 'utf8');
     if (!text.includes(MAINTENANCE_MARKER) && !text.includes('README.md')) {
       gaps.push({

@@ -77,7 +77,7 @@ void test('the root files must carry the upkeep marker', () => {
   const root = mkdtempSync(join(tmpdir(), 'docs-audit-root-'));
   mkdirSync(join(root, 'src'), { recursive: true });
 
-  assert.equal(auditMaintenance(root).length, 3);
+  assert.equal(auditMaintenance(root).length, 1);
 
   writeFileSync(
     join(root, 'README.md'),

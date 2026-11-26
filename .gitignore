@@ -8,6 +8,9 @@ coverage/
 !.env.example
 .DS_Store
 .serena/
-_bmad/render/
-_bmad-output/
+/_bmad*/
+/*.md
+!/README.md
+!/CHANGELOG.md
+/.snippet-check/
 __pycache__/

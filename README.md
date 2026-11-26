@@ -169,8 +169,7 @@ MIT
    the conditions that its caller must meet. Update the block with the declaration.
 2. Give each source folder a `README.md` that explains its purpose and names its
    entry points. Update it when the folder's purpose or entry points change.
-3. Keep these rules in this README. Keep the root `AGENTS.md` and `CLAUDE.md`
-   pointed at this file.
+3. Keep these rules in this README.
 
 Run `npm run docs:audit` before each commit. CI runs the same command.
 
