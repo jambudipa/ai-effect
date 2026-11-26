@@ -667,7 +667,8 @@
     "typecheck": "tsc --noEmit",
     "prepack": "npm run build",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test",
-    "version": "changeset version"
+    "version": "changeset version",
+    "docs:audit": "node scripts/docs-audit.mjs --exclude eslint/ --exclude src/internal/sdk-data/ --exclude src/protocols/provider-utils-simple.ts --exclude src/integrations/internal/code-mode-contract.ts --exclude src/integrations/internal/mcp-contract.ts"
   },
   "peerDependencies": {
     "effect": "^4.1.5",
