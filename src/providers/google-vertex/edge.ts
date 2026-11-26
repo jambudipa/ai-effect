@@ -21,8 +21,13 @@ import {
   wrapVideoModel,
 } from '../../internal/provider-model.js';
 
+/** Preserve the interaction payload accepted by the edge Vertex SDK. */
 type InteractionInput = Parameters<SdkProvider['interactions']>[0];
 
+/**
+ * Adapt language, embedding, image, video, speech, and transcription model selection from
+ * the edge Vertex AI SDK to Effect.
+ */
 const wrapProvider = (sdk: SdkProvider) =>
   Object.assign(adaptMethod('googleVertex', sdk, wrapLanguageModel), {
     ...wrapProviderBase('googleVertex', sdk),
@@ -82,12 +87,25 @@ const wrapProvider = (sdk: SdkProvider) =>
     ),
     tools: wrapProviderTools('googleVertex.tools', sdk.tools),
   });
+/** Provider returned by the adapter, with Effect-based model selection for Vertex AI. */
 export type GoogleVertexProvider = ReturnType<typeof wrapProvider>;
+/**
+ * Reserve `apiKey` and `headers` for settings the SDK may read through lazy Effect
+ * resolvers.
+ */
 type ResolverKey = 'apiKey' | 'headers';
+/**
+ * Keep the native Vertex AI options and allow the SDK to obtain `apiKey` and `headers`
+ * through Effect resolvers.
+ */
 export type GoogleVertexProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, ResolverKey, E, R>;
+/**
+ * Construct the Vertex AI provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `apiKey` and `headers`.
+ */
 export const createGoogleVertex = adaptProviderFactory<
   SdkSettings,
   ResolverKey,
@@ -95,6 +113,12 @@ export const createGoogleVertex = adaptProviderFactory<
 >('createGoogleVertex', ['apiKey', 'headers'], (settings) =>
   wrapProvider(sdkCreateGoogleVertex(settings)),
 );
+/** Expose the same Vertex AI factory as `createGoogleVertex` under the SDK alias. */
 export const createVertex = createGoogleVertex;
+/**
+ * Adapt the preconfigured provider from the edge Vertex AI SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const googleVertex: GoogleVertexProvider = wrapProvider(sdkGoogleVertex);
+/** Expose the same Vertex AI provider as `googleVertex` under the SDK alias. */
 export const vertex: GoogleVertexProvider = googleVertex;

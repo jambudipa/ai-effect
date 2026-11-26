@@ -11,14 +11,23 @@ import type { OpenAICompatibleProvider } from '../../internal/provider-openai-co
 
 export type { GoogleVertexMaasModelId } from '@ai-sdk/google-vertex/maas';
 
+/** OpenAI-compatible model selectors for Vertex MaaS, with SDK model IDs preserved. */
 export type GoogleVertexMaasProvider =
   OpenAICompatibleProvider<GoogleVertexMaasModelId>;
 
+/**
+ * Keep the native Vertex AI MaaS options and allow `headers` to resolve through Effect
+ * when the SDK requests the value.
+ */
 export type GoogleVertexMaasProviderSettings<
   E = never,
   R = never,
 > = EffectProviderSettings<SdkSettings, 'headers', E, R>;
 
+/**
+ * Construct the Vertex AI MaaS provider inside an Effect. Keep the scope open when using an
+ * Effect resolver for `headers`.
+ */
 export const createGoogleVertexMaas = adaptProviderFactory<
   SdkSettings,
   'headers',
@@ -29,7 +38,15 @@ export const createGoogleVertexMaas = adaptProviderFactory<
     sdkCreateGoogleVertexMaas(settings),
   ),
 );
+/**
+ * Expose the same Vertex AI MaaS factory as `createGoogleVertexMaas` under the SDK alias.
+ */
 export const createVertexMaas = createGoogleVertexMaas;
+/**
+ * Adapt the preconfigured provider from the Vertex AI MaaS SDK. Use the factory to supply
+ * explicit settings.
+ */
 export const googleVertexMaas: GoogleVertexMaasProvider =
   wrapOpenAICompatibleProvider('googleVertexMaas', sdkGoogleVertexMaas);
+/** Expose the same Vertex AI MaaS provider as `googleVertexMaas` under the SDK alias. */
 export const vertexMaas = googleVertexMaas;
