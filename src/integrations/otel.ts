@@ -143,15 +143,17 @@ export type OpenTelemetry = Effect.Success<
 
 export const LegacyOpenTelemetry = {
   make: (options?: ConstructorParameters<typeof sdk.LegacyOpenTelemetry>[0]) =>
-    runSync('LegacyOpenTelemetry.make', () =>
-      wrapTelemetry(
+    runSync('LegacyOpenTelemetry.make', () => {
+      const telemetry = wrapTelemetry(
         'LegacyOpenTelemetry',
         new sdk.LegacyOpenTelemetry(options),
-      ),
-    ),
+      );
+      // The legacy class provides every hook in its declared interface.
+      return telemetry as LegacyOpenTelemetry;
+    }),
 };
-export type LegacyOpenTelemetry = Effect.Success<
-  ReturnType<typeof LegacyOpenTelemetry.make>
+export type LegacyOpenTelemetry = Required<
+  Pick<ReturnType<typeof wrapTelemetry>, keyof sdk.LegacyOpenTelemetry>
 >;
 
 export const formatInputMessages = (
